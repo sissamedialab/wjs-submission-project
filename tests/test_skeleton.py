@@ -1,25 +1,18 @@
 import pytest
+from django.contrib.auth import get_user_model
+from django.test.client import Client
+from django.urls import reverse
 
-from wjs.wjs_submission.skeleton import fib, main
-
-__author__ = "Matteo Gamboz"
-__copyright__ = "Matteo Gamboz"
-__license__ = "AGPL-3.0-or-later"
-
-
-def test_fib():
-    """API Tests"""
-    assert fib(1) == 1
-    assert fib(2) == 1
-    assert fib(7) == 13
-    with pytest.raises(AssertionError):
-        fib(-10)
+Account = get_user_model()
 
 
-def test_main(capsys):
-    """CLI Tests"""
-    # capsys is a pytest fixture that allows asserts against stdout/stderr
-    # https://docs.pytest.org/en/stable/capture.html
-    main(["7"])
-    captured = capsys.readouterr()
-    assert "The 7-th Fibonacci number is 13" in captured.out
+@pytest.mark.django_db
+def test_me(client: Client, admin: Account):
+    url = reverse("wjs_submission_manager")
+    response = client.get(url)
+    assert response.status_code == 302  # noqa: PLR2004
+    # response.headers.get('Location') is the homepage... why?
+
+    client.force_login(admin)
+    response = client.get(url)
+    assert response.status_code == 200  # noqa: PLR2004

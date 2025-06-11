@@ -7,15 +7,32 @@ repos:
   - id: trailing-whitespace
   - id: check-added-large-files
   - id: check-ast
+  - id: check-executables-have-shebangs
   - id: check-json
   - id: check-merge-conflict
+  - id: check-toml
   - id: check-xml
   - id: check-yaml
   - id: debug-statements
   - id: end-of-file-fixer
   - id: requirements-txt-fixer
   - id: mixed-line-ending
-    args: ['--fix=auto']  # replace 'auto' with 'lf' to enforce Linux/Mac line endings or 'crlf' for Windows
+    args: ['--fix=lf']
+  - id: check-toml
+  - id: fix-encoding-pragma
+    args:
+      - --remove
+
+
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  # Ruff version.
+  rev: v0.11.13
+  hooks:
+    # Run the linter.
+    - id: ruff
+      args: [ --fix ]
+    # Run the formatter.
+    - id: ruff-format
 
 ## If you want to automatically "modernize" your Python code:
 # - repo: https://github.com/asottile/pyupgrade
@@ -35,30 +52,23 @@ repos:
 #       --remove-unused-variables,
 #     ]
 
-- repo: https://github.com/PyCQA/isort
-  rev: 5.13.2
-  hooks:
-  - id: isort
-
-- repo: https://github.com/psf/black
-  rev: stable
-  hooks:
-  - id: black
-    language_version: python3
-
-## If like to embrace black styles even in the docs:
-# - repo: https://github.com/asottile/blacken-docs
-#   rev: 1.18.0
+## TODO: should be replaced by ruff
+# - repo: https://github.com/PyCQA/isort
+#   rev: 5.13.2
 #   hooks:
-#   - id: blacken-docs
-#     additional_dependencies: [black]
+#   - id: isort
+# - repo: https://github.com/psf/black
+#   rev: stable
+#   hooks:
+#   - id: black
+#     language_version: python3
 
-- repo: https://github.com/PyCQA/flake8
-  rev: 7.1.1
-  hooks:
-  - id: flake8
-  ## You can add flake8 plugins via `additional_dependencies`:
-  #  additional_dependencies: [flake8-bugbear]
+# - repo: https://github.com/PyCQA/flake8
+#   rev: 7.1.1
+#   hooks:
+#   - id: flake8
+#   ## You can add flake8 plugins via `additional_dependencies`:
+#   #  additional_dependencies: [flake8-bugbear]
 
 ## Check for misspells in documentation files:
 # - repo: https://github.com/codespell-project/codespell

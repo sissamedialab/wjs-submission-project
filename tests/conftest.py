@@ -1,10 +1,20 @@
-"""
-    Dummy conftest.py for wjs_submission.
+import pytest
+from django.contrib.auth import get_user_model
 
-    If you don't know what this is for, just leave it empty.
-    Read more about conftest.py under:
-    - https://docs.pytest.org/en/stable/fixture.html
-    - https://docs.pytest.org/en/stable/writing_plugins.html
-"""
+Account = get_user_model()
 
-# import pytest
+
+@pytest.fixture
+def admin() -> Account:
+    """Create admin user."""
+    admin, _ = Account.objects.get_or_create(
+        username="admin@invalid.com",
+        email="admin@invalid.com",
+        first_name="Admin",
+        last_name="Admin",
+        is_active=True,
+        is_staff=True,
+        is_admin=True,
+        is_superuser=True,
+    )
+    return admin
