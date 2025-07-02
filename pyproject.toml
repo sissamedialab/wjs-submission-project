@@ -21,14 +21,18 @@ ignore = [
   "COM819",
   "EM101",
   "D100",  # missing docstring in public module
+  # "D101",  # missing docstring in public class   - 🤔 mixed feelings
   "D103",  # missing docstring in public function (?)
   "D104",  # missing docstring in public package
+  "D105",  # missing docstring in magic method
   "D212","D203",
   "CPY001",
   "G004",  # logging statement uses f-string
   "DOC201",  # "return" is not documented in docstring (too invasive)
-  "ANN201",  # missing return type annotation (too invasive, expecially for "-> None" cases)
-  "ANN202",  # missing return type annotation
+  "ANN201",  # missing return type annotation for private function
+  "ANN202",  # missing return type annotation for public function
+  "ANN204",  # missing return type annotation for special method
+  "ANN401",  # Any disallowed   - 🤔
   "TD",
   "FIX",
   ]
@@ -48,7 +52,7 @@ extend-select = [
 
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "wjs.defaults.tests"
+DJANGO_SETTINGS_MODULE = "wjs.defaults.tests_submission"
 # testpaths = tests
 python_files = ["test_*.py", "*_test.py", "testing/python/*.py"]
 addopts = [
@@ -57,9 +61,11 @@ addopts = [
   "--ignore=plugins",
 ]
 
-# # filterwarnings =
-# #     ignore::_pytest.warning_types.PytestCollectionWarning
-# #     ignore::DeprecationWarning
+# 🤔 mixed feelings
+filterwarnings = [
+#  "ignore::_pytest.warning_types.PytestCollectionWarning",
+  "ignore::DeprecationWarning",
+]
 
-# # markers =
-# #     fix_labels: marks test related to one shot management command (deselect with '-m "not fix_labels"')
+# markers =
+#     fix_labels: marks test related to one shot management command (deselect with '-m "not fix_labels"')

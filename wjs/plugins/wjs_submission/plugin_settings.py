@@ -30,7 +30,7 @@ class WJSSubmission(plugins.Plugin):
     version = VERSION
     janeway_version = JANEWAY_VERSION
     manager_url = MANAGER_URL
-
+    enabled = True
     # TODO: add here workflow-related attributes if necessary
 
 

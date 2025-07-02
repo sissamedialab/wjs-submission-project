@@ -28,10 +28,10 @@ include:
     ref: wjs-production
     file: '.gitlab-ci-pkg-deploy.yml'
   - project: 'wjs/wjs-profile-project'
-    ref: ${CI_COMMIT_REF_NAME}
+    ref: wjs-production
     file: '.gitlab-ci-run-tests.yml'
   - project: 'wjs/wjs-profile-project'
-    ref: ${CI_COMMIT_REF_NAME}
+    ref: wjs-production
     file: '.gitlab-ci-pre-commit.yml'
 
 
@@ -40,8 +40,44 @@ run-tests:
   # them when the commit is made.
   except:
     - tags
-  extends:
-    - .run-tests
+  # Not extending wjs-profile test job because the pytest command line is different
+  # extends:
+  #   - .run-tests
+
+  tags:
+    - fast-test
+  stage: test
+  image: registry.gitlab.sissamedialab.it/wjs/janeway/debian-python-git-janeway:develop
+
+  # NB: Must match with test_settings.DATABASES
+  variables:
+    POSTGRES_USER: janeway
+    POSTGRES_PASSWORD: janeway
+    POSTGRES_DB: janeway
+    # used by `pytest ...`:
+    DJANGO_SETTINGS_MODULE: core.cicd_test_settings
+    # used by `manage.py ...`:
+    JANEWAY_SETTINGS_MODULE: core.cicd_settings
+    # Use the following after force-pushes:
+    GIT_STRATEGY: clone
+    # see e.g.:
+    # - https://docs.gitlab.com/ee/ci/runners/configure_runners.html#git-strategy
+    # - https://stackoverflow.com/a/66519431/1581629
+    PYTHONPATH: ${CI_PROJECT_DIR}
+
+  services:
+    - name: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/postgres:13.8
+      alias: db
+      command: [
+        "postgres",
+        "-c", "max_locks_per_transaction=2048"
+      ]
+
+  script:
+    - cp setup_environment /usr/local/bin/
+    - setup_environment
+    - cd /janeway/src
+    - pytest ${CI_PROJECT_DIR}/ -v -n 6 --create-db
 
 
 pre-commit:
@@ -59,13 +95,13 @@ upload-package:
     - .upload-package
 
 
-deploy-to-dev:
-  extends:
-    - .deploy
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-  variables:
-    SERVER_IP: "$TEST_SERVER_IP"
-    SERVER_USER: "$TEST_SERVER_USER"
-    DEPLOY_CMD: "deploy-dev-wjs-submission:${CI_COMMIT_SHA}"
-    # TODO: the deploy script does not yet know about "deploy-dev-wjs-submission"!
+# deploy-to-dev:
+#   extends:
+#     - .deploy
+#   rules:
+#     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+#   variables:
+#     SERVER_IP: "$TEST_SERVER_IP"
+#     SERVER_USER: "$TEST_SERVER_USER"
+#     DEPLOY_CMD: "deploy-dev-wjs-submission:${CI_COMMIT_SHA}"
+#     # TODO: the deploy script does not yet know about "deploy-dev-wjs-submission"!
