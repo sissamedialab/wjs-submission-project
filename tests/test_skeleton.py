@@ -11,19 +11,30 @@ Account = get_user_model()
 
 
 @pytest.mark.django_db
-def test_me(
+def test_manager_unauthorized(
     journal: Journal,
     client: Client,
     admin: Account,
-    install_plugins: Callable,  # noqa: ARG001
+    install_plugins: Callable,
 ):
     assert check_plugin_exists("wjs_submission")
     url = reverse("wjs_submission_manager")
     assert journal.code in url
     response = client.get(url)
-    assert response.status_code == 302  # noqa: PLR2004
+    assert response.status_code == 302
     assert "login" in response.headers.get("Location")
 
+
+@pytest.mark.django_db
+def test_manager_authorized(
+    journal: Journal,
+    client: Client,
+    admin: Account,
+    install_plugins: Callable,
+):
+    assert check_plugin_exists("wjs_submission")
+    url = reverse("wjs_submission_manager")
+    assert journal.code in url
     client.force_login(admin)
     response = client.get(url)
-    assert response.status_code == 200  # noqa: PLR2004
+    assert response.status_code == 200

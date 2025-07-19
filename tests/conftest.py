@@ -1,12 +1,30 @@
+import random
 from collections.abc import Callable
+from datetime import timedelta
+from pathlib import Path
 
 import pytest
+from core.models import File, Role, SupplementaryFile
+from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model
 from django.core import management
 from django.urls.base import clear_script_prefix, clear_url_caches, set_script_prefix
+from django.utils import translation
+from django.utils.timezone import now
 from journal.models import Journal
+from plugins.wjs_submission import constants
 from press.models import Press
-from utils.install import update_emails, update_issue_types, update_settings, update_xsl_files
+from submission import models as submission_models
+from submission.models import Article
+from utils.install import (
+    update_emails,
+    update_issue_types,
+    update_settings,
+    update_xsl_files,
+)
+from utils.management.commands.install_janeway import ROLES_RELATIVE_PATH
+
+from .utils import create_rich_fake_request
 
 Account = get_user_model()
 
@@ -38,7 +56,7 @@ def press() -> Press:
 
 def _journal_factory(
     code: str,
-    press: Press,  # noqa: ARG001
+    press: Press,
     domain: str | None = None,
 ) -> Journal:
     """Create a journal initializing its settings."""
@@ -105,17 +123,114 @@ def clear_script_prefix_fix():
     clear_url_caches()
 
 
+def _user(name: str = "user", admin_flag: bool = False) -> Account:
+    """Create generic user."""
+    user, _ = Account.objects.get_or_create(
+        username=f"{name}@invalid.com",
+        email=f"{name}@invalid.com",
+        first_name="name",
+        last_name="name",
+        is_active=True,
+        is_staff=admin_flag,
+        is_admin=admin_flag,
+        is_superuser=admin_flag,
+    )
+    user.set_password("password")
+    user.save()
+    return user
+
+
 @pytest.fixture
 def admin() -> Account:
     """Create admin user."""
-    admin, _ = Account.objects.get_or_create(
-        username="admin@invalid.com",
-        email="admin@invalid.com",
-        first_name="Admin",
-        last_name="Admin",
-        is_active=True,
-        is_staff=True,
-        is_admin=True,
-        is_superuser=True,
+    return _user("admin", True)
+
+
+@pytest.fixture
+def user(name: str = "user", admin_flag: bool = False) -> Account:
+    return _user(name, admin_flag)
+
+
+def _article(author, coauthor, journal, sections, submitted=False):
+    if submitted:
+        date_started = date_submitted = now() - timedelta(
+            days=random.randint(10, 20),  # noqa: S311
+        )
+    else:
+        date_started = date_submitted = None
+    article = submission_models.Article.objects.create(
+        abstract="Abstract",
+        journal=journal,
+        title="Title",
+        correspondence_author=author,
+        owner=author,
+        date_submitted=date_submitted,
+        date_started=date_started,
+        section=random.choice(sections),  # noqa: S311
+        language="eng",
     )
-    return admin
+    article.authors.add(author, coauthor)
+    for file_ext in ["_es.pdf", "_en.pdf", ".epub"]:
+        file_obj = File.objects.create(
+            original_filename=f"JCOM_0101_2022_R0{article.pk}{file_ext}",
+        )
+        article.manuscript_files.add(file_obj)
+    for file_ext in ["_es.png", "_en.png"]:
+        file_obj = File.objects.create(
+            original_filename=f"JCOM_0101_2022_R0{article.pk}{file_ext}",
+        )
+        article.data_figure_files.add(file_obj)
+    for file_ext in ["_es.txt", "_en.txt"]:
+        file_obj = File.objects.create(
+            original_filename=f"JCOM_0101_2022_R0{article.pk}{file_ext}",
+        )
+        article.supplementary_files.add(SupplementaryFile.objects.create(file=file_obj))
+    return article
+
+
+@pytest.fixture
+def roles():
+    roles_path = Path(django_settings.BASE_DIR) / ROLES_RELATIVE_PATH
+    management.call_command("loaddata", roles_path)
+    Role.objects.create(name="Main Director", slug=constants.DIRECTOR_MAIN_ROLE)
+
+
+@pytest.fixture
+def sections(journal):
+    with translation.override("en"):
+        # we must explicitly determine the created sections because sections might be created by other fixtures
+        # and returning a blanket "all" queryset would include sections created by those fixtures
+        sections_pk = []
+        for i in range(3):
+            obj = submission_models.Section.objects.create(
+                journal=journal,
+                name=f"section{i}",
+                public_submissions=False,
+            )
+            sections_pk.append(obj.pk)
+    return submission_models.Section.objects.filter(pk__in=sections_pk)
+
+
+@pytest.fixture
+def author(journal: Journal, roles) -> Account:
+    user: Account = _user("author", False)
+    user.add_account_role(constants.AUTHOR_ROLE, journal)
+    return user
+
+
+@pytest.fixture
+def coauthor(journal: Journal, roles) -> Account:
+    user: Account = _user("coauthor", False)
+    user.add_account_role(constants.AUTHOR_ROLE, journal)
+    return user
+
+
+@pytest.fixture
+def article(author, coauthor, journal, sections) -> Article:
+    return _article(author, coauthor, journal, sections)
+
+
+@pytest.fixture
+def fake_request(journal, settings):
+    """Create a fake_factory request suitable for rendering templates."""
+    return create_rich_fake_request(journal, settings)
