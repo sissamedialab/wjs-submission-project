@@ -18,13 +18,22 @@ preview = true
 select = ["ALL"]
 # A003 is triggered only sometimes!
 ignore = [
+  "ARG001",
+  "ARG002",
+  "ARG003",
+  "ANN001",
+  "ANN002",
+  "ANN003",
+  "COM812",
   "COM819",
   "EM101",
   "D100",  # missing docstring in public module
-  # "D101",  # missing docstring in public class   - 🤔 mixed feelings
+  "D101",  # missing docstring in public class   - 🤔 mixed feelings
   "D103",  # missing docstring in public function (?)
   "D104",  # missing docstring in public package
   "D105",  # missing docstring in magic method
+  "D106",  # Missing docstring in public nested class
+  "D200",
   "D212","D203",
   "CPY001",
   "G004",  # logging statement uses f-string
@@ -35,6 +44,13 @@ ignore = [
   "ANN401",  # Any disallowed   - 🤔
   "TD",
   "FIX",
+  "TID252",
+  "PLC0414",
+  "FBT001",
+  "FBT002",
+  "FBT003",
+  "RUF012",
+  "PLR2004",
   ]
 
 fixable = ["ALL"]
