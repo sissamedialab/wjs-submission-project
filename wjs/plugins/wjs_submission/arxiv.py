@@ -14,7 +14,6 @@ from identifiers.models import Identifier
 from journal.models import Journal
 from submission.models import STAGE_REJECTED, STAGE_UNSUBMITTED, Article
 from utils.setting_handler import get_setting
-from wjs.jcom_profile import permissions as base_permissions
 
 ARXIV_API_URL = "https://export.arxiv.org/api/query?id_list={}"
 
@@ -413,7 +412,7 @@ class HandleArticleCreation:
         :return: An instance of an article, either newly created or retrieved from the database.
         :rtype: Article
         """
-        if not base_permissions.has_author_role(self.journal, self.user):
+        if not self.user.check_role(self.journal, "author", staff_override=False):
             self.user.add_account_role("author", self.journal)
 
         if not self.article_id:
