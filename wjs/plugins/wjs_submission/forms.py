@@ -4,6 +4,13 @@ from tinymce.widgets import TinyMCE
 
 class WjsMiniHTMLFormField(MiniHTMLFormField):
     def __init__(self, *args, **kwargs):
+        """
+        Initialize the instance and configure default attributes and options for content sanitization.
+
+        :param args: Positional arguments passed to the base class initializer.
+        :param kwargs: Keyword arguments passed to the base class initializer.
+            Extracts `height` with a default value of "30rem" if not specified.
+        """
         height = kwargs.pop("height", "30rem")
         super().__init__(*args, **kwargs)
         self.bleach_options["tags"] = [

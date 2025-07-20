@@ -18,10 +18,6 @@ class Manager(UserPassesTestMixin, TemplateView):
         """Verify that only staff can access."""
         return self.request.user.is_authenticated and (self.request.user.is_staff or self.request.user.is_superuser)
 
-    def get(self, request, *args, **kwargs):
-        """GET  Da."""
-        return super().get(request, *args, **kwargs)
-
 
 class RedirectToComplete(DetailView):
     """Redirect to the article submission complete page."""
@@ -41,6 +37,15 @@ class RedirectToComplete(DetailView):
 
 class ArxivMicroservice(HtmxMixin, View):
     def post(self, request, *args, **kwargs):
+        """
+        Handle POST requests to validate an arXiv ID and convert the article into a system-specific format.
+
+        :param request: The HTTP request object for the POST operation
+                        containing necessary data.
+        :param args: Additional positional arguments passed to the function.
+        :param kwargs: Additional keyword arguments passed to the function.
+        :return: JsonResponse indicating the success or failure of the operation.
+        """
         arxiv_id = request.POST.get("arxiv_id", "").strip()
         service = ArXivToWjsArticle(arxiv_id=arxiv_id, journal=self.request.journal, user=self.request.user)
         try:
@@ -52,5 +57,5 @@ class ArxivMicroservice(HtmxMixin, View):
                     "message": f'Validated for "{article.title}"',
                 }
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             return JsonResponse({"status": "error", "message": f"Error: {e}"})

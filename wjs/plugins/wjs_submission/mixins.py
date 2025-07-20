@@ -53,6 +53,19 @@ class HtmxMixin:
     htmx = False
 
     def dispatch(self, request, *args, **kwargs):
+        """
+        Handle an HTTP request dispatch, detecting if the request is made by HTMX and setting the `htmx` attribute.
+
+        This method overrides the base class dispatch method to include HTMX-specific
+        logic by checking the request headers.
+
+        :param request: The incoming HTTP request object.
+        :type request: HttpRequest
+        :param args: Positional arguments passed to the method.
+        :param kwargs: Keyword arguments passed to the method.
+        :return: The response from the base class `dispatch` method.
+        :rtype: HttpResponse
+        """
         if request.headers.get("HX-Request"):
             self.htmx = True
         return super().dispatch(request, *args, **kwargs)

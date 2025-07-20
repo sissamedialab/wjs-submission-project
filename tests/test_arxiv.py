@@ -2,13 +2,13 @@ import io
 import json
 import random
 import tarfile
+import typing
 from pathlib import Path
 
 import pytest
 import requests
 from core import files
 from django.core.files import File as DjangoFile
-from django.http import HttpResponse
 from django.test import RequestFactory
 from identifiers.models import Identifier
 from plugins.wjs_submission.arxiv import (
@@ -21,19 +21,33 @@ from submission.models import Article
 
 random.seed(42)
 
+if typing.TYPE_CHECKING:
+    from django.http import HttpResponse
+
 
 class DummyResponse:
-    def __init__(self, content: bytes, status_code: int = 200, text: str = None):
+    """Dummy response class for testing."""
+
+    def __init__(self, content: bytes, status_code: int = 200, text: str | None = None):
+        """Initialize with content, status code and optional text."""
         self.content = content
         self.status_code = status_code
         self.text = text if text is not None else content.decode(errors="ignore")
 
     def raise_for_status(self):
+        """
+        Raise an HTTPError if the HTTP response status code indicates an error.
+
+        This method checks if the status code of an HTTP response falls outside the
+        successful range (200-299) and raises an HTTPError exception if it does.
+
+        :raises requests.exceptions.HTTPError: If the status code is not between 200 and 299.
+        """
         if not (200 <= self.status_code < 300):
-            raise requests.exceptions.HTTPError(f"{self.status_code}")
+            raise requests.exceptions.HTTPError(self.status_code)
 
 
-def mock_requests_get(monkeypatch, responses: dict = None):
+def mock_requests_get(monkeypatch, responses: dict | None = None):
     """Mock requests.get for metadata and file downloads without raising on metadata."""
 
     def fake_get(url, *args, **kwargs):
@@ -92,7 +106,7 @@ def test_article_creation(fixtures_data, monkeypatch, tmp_path, journal, author,
         responses={"api/query": metadata_resp, "/src/": src_resp},
     )
 
-    result, errors = fetch_arxiv_metadata(arxiv_id)
+    result, __ = fetch_arxiv_metadata(arxiv_id)
 
     date_started = date_submitted = None
     new_article = Article.objects.create(
@@ -103,7 +117,7 @@ def test_article_creation(fixtures_data, monkeypatch, tmp_path, journal, author,
         owner=author,
         date_submitted=date_submitted,
         date_started=date_started,
-        section=random.choice(sections),
+        section=random.choice(sections),  # noqa: S311
         language="eng",
     )
     new_article.authors.add(author)
@@ -140,12 +154,12 @@ def test_article_creation(fixtures_data, monkeypatch, tmp_path, journal, author,
     new_article.source_files.add(file_instance)
 
     source_file = new_article.source_files.first()
-    with open(source_file.self_article_path(), "rb") as f:
+    with Path(source_file.self_article_path()).open("rb") as f:
         assert f.read() == tex_bytes
 
 
 @pytest.mark.parametrize(
-    "xml_content,expected_msg",
+    ("xml_content", "expected_msg"),
     [
         (b"<invalid><xml>", "XML parse error"),
         (
@@ -196,7 +210,7 @@ def test_fetch_arxiv_metadata_file_download_failure(fixtures_data, monkeypatch):
         },
     )
 
-    result, errors = fetch_arxiv_metadata("0000.0000v1")
+    __, errors = fetch_arxiv_metadata("0000.0000v1")
 
     assert "source_file" in errors
     assert errors["source_file"] == "HTTP 403"
@@ -207,7 +221,7 @@ def test_fetch_arxiv_metadata_connection_request_exception(monkeypatch):
     monkeypatch.setattr(
         requests,
         "get",
-        lambda url, *a, **k: (_ for _ in ()).throw(requests.exceptions.RequestException("network down")),
+        lambda url, *a, **k: (_ for _ in ()).throw(requests.exceptions.RequestException("network down")),  # noqa: ARG005
     )
     with pytest.raises(ArXivConnectionError) as excinfo:
         fetch_arxiv_metadata("0000.0000v1")
@@ -220,7 +234,7 @@ def test_fetch_arxiv_metadata_connection_http_error(monkeypatch):  # FIXME
     monkeypatch.setattr(
         requests,
         "get",
-        lambda url, *args, **kwargs: resp_404,
+        lambda url, *a, **k: resp_404,  # noqa: ARG005
     )
 
     with pytest.raises(ArXivConnectionError) as excinfo:
@@ -259,7 +273,7 @@ def test_fetch_arxiv_metadata_file_download_timeout(fixtures_data, monkeypatch):
 
     monkeypatch.setattr(requests, "get", fake_get)
 
-    result, errors = fetch_arxiv_metadata("0000.0000")
+    __, errors = fetch_arxiv_metadata("0000.0000")
     assert errors["source_file"] == "Request timed out"
 
 
@@ -289,7 +303,7 @@ def test_fetch_arxiv_metadata_unexpected_download_exception(monkeypatch, fixture
 
     monkeypatch.setattr(requests, "get", fake_get)
 
-    result, errors = fetch_arxiv_metadata("9999.9999")
+    __, errors = fetch_arxiv_metadata("9999.9999")
     assert errors["source_file"] == "unexpected download crash"
 
 

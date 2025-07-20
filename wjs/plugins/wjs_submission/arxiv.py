@@ -1,9 +1,9 @@
 import dataclasses
 import io
-import os
 import tarfile
-import xml.etree.ElementTree as ET  # noqa
+from pathlib import Path
 
+import defusedxml
 import requests
 from core import files as core_files
 from core.models import Account
@@ -16,44 +16,101 @@ from submission.models import STAGE_REJECTED, STAGE_UNSUBMITTED, Article
 from utils.setting_handler import get_setting
 from wjs.jcom_profile import permissions as base_permissions
 
+ARXIV_API_URL = "https://export.arxiv.org/api/query?id_list={}"
+
 
 class ArXivQueryError(Exception):
     """Raised when the initial arXiv query fails."""
 
     def __init__(self, message: str):
+        """
+        Represent an exception raised for errors related to an ArXiv query.
+
+        This exception indicates that an issue occurred while processing an ArXiv query,
+        providing the associated error message for further context on the failure.
+
+        :param message: The error message detailing the query issue.
+        :type message: str
+        """
         super().__init__(f"ArXiv query error: {message}")
         self.message = message
 
 
-class ArXivIDAlreadyUsed(ArXivQueryError):
+class ArXivIDAlreadyUsedError(ArXivQueryError):
     """Raised when and Article with the same arXiv ID or with the same metadata already exists."""
 
-    def __init__(self):
-        super().__init__("The arXiv ID must not already be in use")
+    def __init__(self, message: str = "The arXiv ID must not already be in use."):
+        """
+        Initialize the exception with a default or custom message.
+
+        :param message: A message describing the exception.
+        :type message: str
+        """
+        super().__init__(message=message)
 
 
 class ArXivIDNotFoundError(ArXivQueryError):
     """Raised when the given arXiv ID is syntactically valid but not found."""
 
-    def __init__(self):
-        super().__init__("The arXiv id you have entered cannot be found on arxiv.org")
+    def __init__(
+        self,
+        message: str = "The arXiv id you have entered cannot be found on arxiv.org",
+    ):
+        """
+        Initialize a custom exception used for handling cases where an arXiv ID cannot be found on arxiv.org.
+
+        :param message: Optional custom error message to specify details regarding the
+            unmatched arXiv ID.
+        """
+        super().__init__(message=message)
 
 
 class ArXivConnectionError(ArXivQueryError):
     """Raised when connection to the arXiv API fails (timeout, DNS, etc)."""
 
-    def __init__(self, message: str = "Connection to arXiv could not be established. "):
-        super().__init__(message)
+    def __init__(self, message: str = "Connection to arXiv could not be established."):
+        """
+        Represent an exception raised when a connection to arXiv could not be established.
+
+        This exception is a subclass of the base exception and is intended to inform the
+        user of connection-related issues specifically when interacting with the arXiv
+        platform. The exception allows for a custom message to be passed during
+        initialization.
+
+        :param message: The error message describing the connection failure (default is
+            "Connection to arXiv could not be established.").
+        :type message: str
+        """
+        super().__init__(message=message)
 
 
 def fetch_arxiv_metadata(arxiv_id: str) -> tuple[dict, dict]:
     """
-    Query arXiv and retrieve metadata and source files.
+    Fetch metadata for a given arXiv ID from the arXiv API.
 
-    Return:
-       - result: metadata dict with keys title, abstract, category_term, source_file, pdf_file
-       - errors: dict of any file‐download errors
+    This function retrieves metadata related to a specific scientific paper
+    by querying the arXiv API. It parses the XML response from the API to
+    extract details such as the title, abstract, and category. Additionally,
+    it attempts to download the source file associated with the paper.
 
+    If the arXiv ID is invalid or any issues occur during the API call or
+    data parsing, exceptions will be raised accordingly.
+
+    :param arxiv_id: The arXiv ID of the paper to query.
+    :type arxiv_id: str
+    :return: A tuple containing:
+             1. A dictionary with keys such as "title", "abstract",
+                "category_term", "source_file", "arxiv_id", and "doi_link".
+                Missing values are represented as None or an empty string.
+             2. A dictionary of errors that were encountered while downloading
+                or processing the source file.
+    :rtype: tuple[dict, dict]
+    :raises ArXivIDNotFoundError: If the arXiv ID is invalid or not found in
+                                  the API response.
+    :raises ArXivQueryError: If an expected XML element is missing or the XML
+                             response cannot be parsed.
+    :raises ArXivConnectionError: If there is a network-related issue or the
+                                  arXiv API cannot be reached.
     """
     errors: dict[str, str] = {}
     result: dict[str, str | None] = {
@@ -66,16 +123,15 @@ def fetch_arxiv_metadata(arxiv_id: str) -> tuple[dict, dict]:
     }
 
     try:
-        url = f"https://export.arxiv.org/api/query?id_list={arxiv_id}"
+        url = ARXIV_API_URL.format(arxiv_id)
         headers = {
             "Accept": "*/*",
             "Connection": "close",
         }  # TODO: do we want something more specific?
         r = requests.get(url, headers=headers, timeout=30)
         r.raise_for_status()
-        xml_content = r.text
 
-        root = ET.fromstring(xml_content)
+        root = defusedxml.ElementTree.fromstring(r.text)
         ns = {
             "atom": "http://www.w3.org/2005/Atom",
             "arxiv": "http://arxiv.org/schemas/atom",
@@ -84,7 +140,7 @@ def fetch_arxiv_metadata(arxiv_id: str) -> tuple[dict, dict]:
 
         title_elem = entry.find("atom:title", ns) if entry is not None else None
         if entry is None or title_elem is None or not title_elem.text.strip():
-            raise ArXivIDNotFoundError
+            raise ArXivIDNotFoundError  # noqa: TRY301
 
         abstract_elem = entry.find("atom:summary", ns)
         category_elem = entry.find("arxiv:primary_category", ns)
@@ -97,20 +153,22 @@ def fetch_arxiv_metadata(arxiv_id: str) -> tuple[dict, dict]:
         result["category_term"] = category_elem.attrib.get("term")
         result["arxiv_id"] = full_id.rsplit("/", 1)[-1]
         if doi_elem is not None:
-            result["doi_link"] = ET.tostring(doi_elem, encoding="unicode")
+            result["doi_link"] = defusedxml.ElementTree.tostring(doi_elem, encoding="unicode")
 
     except AttributeError as e:
-        raise ArXivQueryError(f"Missing expected element in arXiv response: {e}") from e
+        msg = f"Missing expected element in arXiv response: {e}"
+        raise ArXivQueryError(msg) from e
     except requests.exceptions.RequestException as e:
         # The following error will never be shown by the microservice because It's overriden with a message
         # containing the Journal's email and information for the user
         if getattr(e, "response", None) and getattr(e.response, "content", None):
-            msg = e.response.content.decode()
+            msg = f"Connection to arXiv could not be established: {e.response.content.decode()}"
         else:
-            msg = str(e)
-        raise ArXivConnectionError(f"Connection to arXiv could not be established: {msg}") from e
-    except ET.ParseError as e:
-        raise ArXivQueryError(f"XML parse error: {e}") from e
+            msg = f"Connection to arXiv could not be established: {e!s}"
+        raise ArXivConnectionError(msg) from e
+    except defusedxml.ElementTree.ParseError as e:
+        msg = f"XML parse error: {e}"
+        raise ArXivQueryError(msg) from e
     except Exception as e:
         raise ArXivQueryError(str(e)) from e
 
@@ -124,7 +182,7 @@ def fetch_arxiv_metadata(arxiv_id: str) -> tuple[dict, dict]:
             result[file_name] = resp.content
         else:
             errors[file_name] = f"HTTP {resp.status_code}"
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         errors[file_name] = str(e)
 
     return result, errors
@@ -139,31 +197,37 @@ class MockExternalPDFService:
     """
 
     def __init__(self, dummy_pdf_path: str):
-        # Path to the dummy PDF to return
-        self.dummy_pdf_path = dummy_pdf_path
+        """
+        Initialize an instance with a provided path to a dummy PDF.
+
+        The provided path is used to manage or reference a dummy PDF file
+        for specific operations.
+
+        :param dummy_pdf_path: The file system path to the dummy PDF.
+        :type dummy_pdf_path: str
+        """
+        self.dummy_pdf_path = Path(dummy_pdf_path)
 
     def process_archive(self, archive_content: bytes) -> bytes:
         """
         Process the given source archive content and return PDF content.
 
-        Args:
-            archive_content: bytes of the .tar.gz archive
-
-        Returns:
-            Bytes of the dummy PDF file.
-
+        :param archive_content: Bytes of the .tar.gz archive
+        :return: Bytes of the dummy PDF file.
         """
         try:
             with tarfile.open(fileobj=io.BytesIO(archive_content), mode="r:gz"):
                 pass
         except Exception as e:
-            raise ValueError(f"Invalid archive provided: {e}")
+            msg = f"Invalid archive provided: {e}"
+            raise ValueError(msg) from e
 
         try:
-            with open(self.dummy_pdf_path, "rb") as pdf_file:
+            with self.dummy_pdf_path.open("rb") as pdf_file:
                 return pdf_file.read()
-        except FileNotFoundError:
-            raise FileNotFoundError(f"Dummy PDF not found at {self.dummy_pdf_path}")
+        except FileNotFoundError as e:
+            msg = f"Dummy PDF not found at {self.dummy_pdf_path}"
+            raise FileNotFoundError(msg) from e
 
 
 @dataclasses.dataclass
@@ -173,12 +237,14 @@ class ArXivToArticle:
     user: Account
     check_unique: bool = True
 
-    def _check_article_unique(self, response_content: dict):
+    @staticmethod
+    def _check_article_unique(response_content: dict) -> None:
         """
-        Return False when one of the following is True:
-            - An Article with the same ArXiv ID already exists and state not in (withdrawn, incomplete submissions)
-            - An Article with the same title and abstract already exists and
-              state not in (withdrawn, incomplete submissions)
+        Raise an exception if the metadata for the given arXiv ID already exists in the database.
+
+        Checks:
+        - An Article with the same ArXiv ID already exists and state not in (withdrawn, unsubmitted)
+        - An Article with the same title and abstract already exists and state not in (withdrawn, unsubmitted)
         """
         # TODO: We will need to move this logic in a class of its own because we will need in other parts of
         #  the submission process
@@ -192,7 +258,7 @@ class ArXivToArticle:
                 STAGE_UNSUBMITTED,
                 STAGE_REJECTED,
             }:
-                raise ArXivIDAlreadyUsed
+                raise ArXivIDAlreadyUsedError
         except Identifier.DoesNotExist:
             pass
 
@@ -200,7 +266,7 @@ class ArXivToArticle:
             title__iexact=response_content["title"],
             abstract__iexact=response_content["abstract"],
         ).exists():
-            raise ArXivIDAlreadyUsed
+            raise ArXivIDAlreadyUsedError
 
     def _create_article_and_identifier(self, result):
         # ATM the owner and correspondence_author is the submitting user, in a later stage this can be changed
@@ -243,15 +309,34 @@ class ArXivToArticle:
         article.source_files.add(file_instance)
 
     def run(self):
+        """
+        Fetch metadata for a specified arXiv ID, validates it, creates an article and identifier.
+
+        Optionally attaches the source file if available and valid.
+
+        This method performs atomic operations ensuring that all or none of the changes
+        are applied to the database in the event of an error. Metadata is fetched from the arXiv,
+        checked for uniqueness if required, and used to generate an Article object. If the metadata
+        includes a valid source file and no errors are detected for the file, it is attached to the
+        created article.
+
+        This process ensures data integrity and handles errors gracefully, either by raising specific
+        exceptions or reverting changes when necessary.
+
+        :raises ArXivConnectionError: If a connection to the arXiv could not be established.
+        :param self: The class instance running the method.
+        :return: Created Article object.
+        """
         with transaction.atomic():
             try:
                 result, file_errors = fetch_arxiv_metadata(self.arxiv_id)
-            except ArXivConnectionError:
+            except ArXivConnectionError as e:
                 from_email = get_setting("general", "main_contact", self.journal).processed_value
-                raise ArXivConnectionError(
-                    "Connection to arXiv could not be established. "
+                msg = (
+                    f"Connection to arXiv could not be established. "
                     f"Please try again or contact {from_email} for assistance"
                 )
+                raise ArXivConnectionError(msg) from e
 
             if self.check_unique:
                 self._check_article_unique(result)
@@ -272,16 +357,25 @@ class ArXivToWjsArticle:
     journal: Journal
     user: Account
 
-    def _convert_source_archive(self, source_file_bytes: bytes) -> bytes:
-        base_dir = os.path.dirname(__file__)
-        dummy_pdf_path = os.path.join(base_dir, "files", "arxiv_pdf_sample.pdf")
+    @staticmethod
+    def _convert_source_archive(source_file_bytes: bytes) -> bytes:
+        base_dir = Path(__file__).parent
+        dummy_pdf_path = base_dir / "files" / "arxiv_pdf_sample.pdf"
         # TODO: this is just an example mock, the real implementation won't return anything since It will be
         # asynchronous
         service = MockExternalPDFService(dummy_pdf_path=str(dummy_pdf_path))
-        pdf_bytes = service.process_archive(source_file_bytes)
-        return pdf_bytes
+        return service.process_archive(source_file_bytes)
 
     def run(self):
+        """
+        Execute the process to convert an arXiv article to the desired format linked to a specific journal and user.
+
+        The method initializes the conversion process, updates the article's current step, saves it, and processes
+        the first available source file.
+
+        :return: Returns the processed article object.
+        :rtype: Article
+        """
         article = ArXivToArticle(arxiv_id=self.arxiv_id, journal=self.journal, user=self.user).run()
 
         article.current_step = 0
@@ -311,6 +405,14 @@ class HandleArticleCreation:
         return new_article
 
     def run(self):
+        """
+        Ensure the user has the "author" role in the context of the specified journal and get / create an article.
+
+        :raises PermissionError: If the user does not have sufficient permissions.
+        :param self: The instance of the class that contains this method.
+        :return: An instance of an article, either newly created or retrieved from the database.
+        :rtype: Article
+        """
         if not base_permissions.has_author_role(self.journal, self.user):
             self.user.add_account_role("author", self.journal)
 
