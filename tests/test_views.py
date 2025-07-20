@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 from django.urls import reverse
 from journal.models import Journal
-from plugins.wjs_submission.step1 import SubmissionStep1
+from plugins.wjs_submission.step1 import SubmissionStep1View
 from plugins.wjs_submission.workflow import STEPS
 from submission.models import Article
 
@@ -31,7 +31,7 @@ def test_submission_context_step_1(
     :param fake_request: Mock request
     :type fake_request: HttpRequest
     """
-    view_obj = SubmissionStep1()
+    view_obj = SubmissionStep1View()
     view_obj.kwargs = {"article_id": article.pk}
     view_obj.object = article
     view_obj.request = fake_request
@@ -67,7 +67,7 @@ def test_submission_step_1_skip(
     """
     step = STEPS.get(1)
     with patch.object(step, "check_function", return_value=not skip):
-        view_obj = SubmissionStep1()
+        view_obj = SubmissionStep1View()
         view_obj.kwargs = {"article_id": article.pk}
         view_obj.object = article
         view_obj.request = fake_request

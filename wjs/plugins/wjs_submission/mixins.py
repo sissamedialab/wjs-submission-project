@@ -45,3 +45,14 @@ class StepCheckView(ModelFormMixin):
         context["steps"] = self._step_object.get_steps_states(self.request.journal)
         context["step"] = self._step_object
         return context
+
+
+class HtmxMixin:
+    """Mixin to detect if request is an htmx request."""
+
+    htmx = False
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.headers.get("HX-Request"):
+            self.htmx = True
+        return super().dispatch(request, *args, **kwargs)

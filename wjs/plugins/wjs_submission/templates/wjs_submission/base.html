@@ -1,0 +1,24 @@
+{% extends "wjs/base/base.html" %}
+
+{% load django_bootstrap5 static field %}
+
+{% block content %}
+  <div class="wjs-submission-container">
+    {% block submission_flow %}
+    {% endblock submission_flow %}
+  </div>
+{% endblock content %}
+
+{% block js %}
+  {{ block.super }}
+  <script src="{% static "js/detect_required.js" %}"></script>
+  <script src="{% static "js/ai_field.js" %}"></script>
+  <script src="{% static "js/arxiv.js" %}"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      setupRequiredChecklist();
+      setupArxivValidation();
+      handleUseAiToggle();
+    });
+  </script>
+{% endblock js %}

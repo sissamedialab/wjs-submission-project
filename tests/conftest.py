@@ -32,7 +32,7 @@ Account = get_user_model()
 JOURNAL_CODE = "JCOM"
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def install_plugins():
     management.call_command("install_plugins")
 

@@ -1,17 +1,17 @@
 from django.urls import path
 
-from . import views
 from .plugin_settings import MANAGER_URL
-from .step1 import SubmissionStep1
+from .step1 import SubmissionStep1View
 from .step2 import SubmissionStep2
-from .views import RedirectToComplete
+from .views import ArxivMicroservice, Manager, RedirectToComplete
 
 urlpatterns = [
-    path("manager/", views.Manager.as_view(), name=MANAGER_URL),
-    path("submission/1/", SubmissionStep1.as_view(), name="wjs_submission_1"),
+    path("manager/", Manager.as_view(), name=MANAGER_URL),
+    path("arxiv/", ArxivMicroservice.as_view(), name="arxiv_microservice"),
+    path("submission/1/", SubmissionStep1View.as_view(), name="wjs_submission_1"),
     path(
         "submission/<int:article_id>/1/",
-        SubmissionStep1.as_view(),
+        SubmissionStep1View.as_view(),
         name="wjs_submission_1",
     ),
     path(
