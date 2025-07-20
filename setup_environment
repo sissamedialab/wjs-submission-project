@@ -54,7 +54,7 @@ python3 manage.py migrate --no-input --run-syncdb
 
 info "Installing plugins and themes..."
 python3 manage.py install_plugins
-# python3 manage.py install_themes
+python3 manage.py install_themes
 
 # info "Patch settings..." (not needed because of wjs_review.tests.conftest.review_settings)
 # # ensure all janeway settings are present (docker image migh lag behind...)

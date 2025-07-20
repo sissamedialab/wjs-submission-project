@@ -128,13 +128,13 @@ def test_article_creation(fixtures_data, monkeypatch, tmp_path, journal, author,
         id_type="arxiv",
     )
 
-    new_article.articleworkflow.arxiv_category = result["category_term"]  # 🌟 use metadata
-    new_article.articleworkflow.save()
+    new_article.submission_data.arxiv_category = result["category_term"]  # 🌟 use metadata
+    new_article.submission_data.save()
 
     assert result["title"] == new_article.title
     assert result["abstract"] == new_article.abstract
     assert arxiv_id == new_article.get_identifier(identifier_type="arxiv")
-    assert result["category_term"] == new_article.articleworkflow.arxiv_category
+    assert result["category_term"] == new_article.submission_data.arxiv_category
 
     # 🌟 Save/attach source files
     # for simplicity, suppose that the archive contains only one .tex file
@@ -358,7 +358,7 @@ def test_article_creation_and_endpoint(rf, author, journal, fixtures_data, monke
         doi_obj = Identifier.objects.get(article=article, id_type="doi")
         assert doi_obj.identifier.startswith("https://doi.org/")
 
-    assert article.articleworkflow.arxiv_category == "hep-th"
+    assert article.submission_data.arxiv_category == "hep-th"
 
     assert article.source_files.count() == 1
     saved = article.source_files.first().get_file(article, as_bytes=True)

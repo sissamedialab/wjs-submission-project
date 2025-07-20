@@ -292,8 +292,8 @@ class ArXivToArticle:
                 article=new_article,
                 id_type="doi",
             )
-        new_article.articleworkflow.arxiv_category = result["category_term"]
-        new_article.articleworkflow.save()
+        new_article.submission_data.arxiv_category = result["category_term"]
+        new_article.submission_data.save()
 
         return new_article
 

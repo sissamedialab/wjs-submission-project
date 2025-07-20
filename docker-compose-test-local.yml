@@ -1,0 +1,120 @@
+# Run as (e.g.):
+# docker-compose -f docker-compose-test-local.yml run janeway /bin/bash
+#
+# * How to work in ci/cd-similar env
+# ** setup docker environment
+#
+# Run::
+#     docker-compose -f docker-compose-test-local.yml run janeway /bin/bash
+#
+# # The above command line brings up a db service (reachable from the
+# # hosting machine to port 2345) and gives you a shell into
+# # janeway image
+#
+# ** setup env
+#
+# Run::
+#     setup_environment
+#
+# # The above command run some initialization commands:
+# # - install wjs-submission
+# # - link plugins
+# # - copy cicd settings
+# # - create extra migrations (to sync languages)
+# # - run migrations
+# # - install janeway with full defaults
+#
+#
+# You **must not** commit generated migrations: they are spurious migrations valid only in the docker test environment.
+#
+# ** run tests
+#
+# Run::
+#     pytest -c ${CI_PROJECT_DIR}/pytest.ini ${CI_PROJECT_DIR}/ -v -n 6 --reverse -m "not fix_labels" --create-db
+#
+# ** reset database
+#
+# If you need to reset then dockerized database, run::
+# Run::
+#     docker-compose -f docker-compose-test-local.yml up -d db
+#     docker-compose -f docker-compose-test-local.yml exec -T db dropdb --if-exists -U janeway janeway
+#     docker-compose -f docker-compose-test-local.yml exec -T db createdb -U janeway janeway
+#
+#
+# ** Troubleshooting
+#
+# *** gitlab 2 factor authentication (2FA), docker login and personal access token (PAT)
+#
+# If `docker-compose -f docker-compose-test-local.yml run janeway /bin/bash` gives
+# ```
+# Error response from daemon: Head "https://registry.gitlab.sissamedialab.it/v2/wjs/janeway/debian-python-git-janeway/manifests/develop": unauthorized: HTTP Basic: Access denied. The provided password or token is incorrect or your account has 2FA enabled and you must use a personal access token instead of a password. See https://gitlab.sissamedialab.it/help/user/profile/account/two_factor_authentication#troubleshooting
+# ```
+#
+# try as follow:
+#   - (on gitlab) create a PAT as described above
+#   - (on your machine) logout from docker registry (just in case...):
+#     docker logout  registry.gitlab.sissamedialab.it
+#   - (on your machine) login to the registry:
+#     docker login -u gamboz@medialab.sissa.it registry.gitlab.sissamedialab.it
+#     NB: the username is useless; the important part is to use the PAT when asked for a password
+#   - (on your machine) try a pull (optional):
+#     docker pull registry.gitlab.sissamedialab.it/wjs/janeway/debian-python-git-janeway:develop
+#   - (on your machine) try again the command:
+#     docker-compose -f docker-compose-test-local.yml run janeway /bin/bash
+#
+services:
+  db:
+    image: postgres:13.8
+    # Must match with test_settings.DATABASES
+    environment:
+      - POSTGRES_USER=janeway
+      - POSTGRES_PASSWORD=janeway
+      - POSTGRES_DB=janeway
+    # NB: db runs on 5432 (postgres's default) and service "janeway" sees it there
+    #     the port 2345 is exposed to the HOST, not to other services!
+    ports:
+      - '2345:5432'
+    volumes:
+      - db:/var/lib/postgresql/data
+
+    # Must set user (-U) or get `FATAL: role "postgres" does not
+    # exist` (or role "root")
+    healthcheck:
+      test: "/usr/bin/pg_isready -U janeway"
+      interval: 2s
+      timeout: 10s
+      retries: 5
+
+  janeway:
+    image: registry.gitlab.sissamedialab.it/wjs/janeway/debian-python-git-janeway:develop
+    volumes:
+      - /tmp:/host-tmp
+      - .:/build/wjs/wjs-submission
+      - ./setup_environment:/usr/local/bin/setup_environment
+      - cache-var-cache:/var/cache
+      - cache-dot-cache:/root/.cache
+      # The following two volumes gives this error:
+      # The directory '/root/.cache/pip' or its parent directory is not owned or is not writable by the current user. The cache has been disabled.
+      # - '~/.cache:/root/.cache:delegated'
+      # - '~/.cache:/root/.cache:cached'
+    environment:
+      - JANEWAY_SETTINGS_MODULE=core.cicd_settings
+      - DJANGO_SETTINGS_MODULE=core.cicd_test_settings
+      - CI_PROJECT_DIR=/build/wjs/wjs-submission
+      - PYTHONPATH=/build/wjs/wjs-submission
+      - POSTGRES_USER=janeway
+      - POSTGRES_PASSWORD=janeway
+      - POSTGRES_DB=janeway
+    working_dir: /janeway/src
+    depends_on:
+      db:
+        condition: service_healthy
+
+
+volumes:
+  db:
+    driver: local
+  cache-var-cache:
+    driver: local
+  cache-dot-cache:
+    driver: local
