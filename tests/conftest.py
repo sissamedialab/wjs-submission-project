@@ -137,6 +137,13 @@ def _user(name: str = "user", admin_flag: bool = False) -> Account:
     )
     user.set_password("password")
     user.save()
+    # FIXME: This is needed to run tests using wjs.defaults.tests (wjs.jcom-profile defaults)
+    #  instead of wjs.defaults.tests_submission (wjs-submission defaults) due to the privacy checking middleware
+    try:
+        user.jcomprofile.gdpr_checkbox = True
+        user.jcomprofile.save_base(raw=True)
+    except AttributeError:
+        pass
     return user
 
 
