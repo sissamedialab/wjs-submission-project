@@ -1,58 +1,14 @@
 <div class="wjs-submission-navigation">
-  <div class="wjs-submission-navigation-step wjs-submission-navigation-step--active">
-    <a href="#" class="wjs-submission-navigation-step__link">
-      <div class="wjs-submission-navigation-step__circle"><i class="bi bi-clipboard"></i></div>
-      <div class="wjs-submission-navigation-step__label">Start</div>
-    </a>
-  </div>
-  <div class="wjs-submission-navigation-step">
-    <div class="wjs-submission-navigation-step__line"></div>
-    <a href="#" class="wjs-submission-navigation-step__link">
-      <div class="wjs-submission-navigation-step__circle"><i class="bi bi-card-checklist"></i></div>
-      <div class="wjs-submission-navigation-step__label">Issue</div>
-    </a>
-  </div>
-  <div class="wjs-submission-navigation-step">
-    <div class="wjs-submission-navigation-step__line"></div>
-    <a href="#" class="wjs-submission-navigation-step__link">
-      <div class="wjs-submission-navigation-step__circle"><i class="bi bi-key"></i></div>
-      <div class="wjs-submission-navigation-step__label">Keywords</div>
-    </a>
-  </div>
-  <div class="wjs-submission-navigation-step">
-    <div class="wjs-submission-navigation-step__line"></div>
-    <a href="#" class="wjs-submission-navigation-step__link">
-      <div class="wjs-submission-navigation-step__circle"><i class="bi bi-person"></i></div>
-      <div class="wjs-submission-navigation-step__label">Authors</div>
-    </a>
-  </div>
-  <div class="wjs-submission-navigation-step">
-    <div class="wjs-submission-navigation-step__line"></div>
-    <a href="#" class="wjs-submission-navigation-step__link">
-      <div class="wjs-submission-navigation-step__circle"><i class="bi bi-file-earmark-text"></i></div>
-      <div class="wjs-submission-navigation-step__label">Metadata</div>
-    </a>
-  </div>
-  <div class="wjs-submission-navigation-step">
-    <div class="wjs-submission-navigation-step__line"></div>
-    <a href="#" class="wjs-submission-navigation-step__link">
-      <div class="wjs-submission-navigation-step__circle"><i class="bi bi-files"></i></div>
-      <div class="wjs-submission-navigation-step__label">Files</div>
-    </a>
-  </div>
-  <div class="wjs-submission-navigation-step">
-    <div class="wjs-submission-navigation-step__line"></div>
-    <a href="#" class="wjs-submission-navigation-step__link">
-      <div class="wjs-submission-navigation-step__circle"><i class="bi bi-credit-card"></i></div>
-      <div class="wjs-submission-navigation-step__label">Access and funding</div>
-    </a>
-  </div>
-  <div class="wjs-submission-navigation-step">
-    <div class="wjs-submission-navigation-step__line"></div>
-    <a href="#" class="wjs-submission-navigation-step__link">
-      <div class="wjs-submission-navigation-step__circle"><i class="bi bi-search"></i></div>
-      <div class="wjs-submission-navigation-step__label">Review and submit</div>
-    </a>
-    <div class="wjs-submission-navigation-step__line"></div>
-  </div>
+  {% for step_state in steps.values %}
+    <div
+      class="wjs-submission-navigation-step {% if step_state.step.step_number <= step.step_number %}wjs-submission-navigation-step--active{% endif %}">
+      {% if step_state.step.step_number > 1 %}
+        <div class="wjs-submission-navigation-step__line"></div>{% endif %}
+      <a {% if article %}href="{% url step_state.step.step_view_name article.pk %}"{% else %}href="#"{% endif %}
+         class="wjs-submission-navigation-step__link">
+        <div class="wjs-submission-navigation-step__circle"><i class="bi {{ step_state.step.icon }}"></i></div>
+        <div class="wjs-submission-navigation-step__label">{{ step_state.step.label }}</div>
+      </a>
+    </div>
+  {% endfor %}
 </div>
