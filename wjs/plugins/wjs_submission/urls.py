@@ -8,7 +8,7 @@ from .views import ArxivMicroservice, Manager, RedirectToComplete
 urlpatterns = [
     path("manager/", Manager.as_view(), name=MANAGER_URL),
     path("arxiv/", ArxivMicroservice.as_view(), name="arxiv_microservice"),
-    path("submission/1/", SubmissionStep1View.as_view(), name="wjs_submission_1"),
+    path("submission/", SubmissionStep1View.as_view(), name="wjs_submission_1"),
     path(
         "submission/<int:article_id>/1/",
         SubmissionStep1View.as_view(),

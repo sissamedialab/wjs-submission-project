@@ -18,6 +18,8 @@ class StepCheckView(ModelFormMixin):
 
     def _verify_step(self, request, *args, **kwargs) -> HttpResponseRedirect | None:
         """Extract information about the current step and verify if it is active."""
+        if not self.kwargs.get("article_id"):
+            return None
         try:
             article = self.get_object()
             active_step = self._step_object.is_active(article.journal, article)
