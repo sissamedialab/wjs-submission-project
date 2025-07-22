@@ -245,8 +245,13 @@ class ArXivToArticle:
         - An Article with the same ArXiv ID already exists and state not in (withdrawn, unsubmitted)
         - An Article with the same title and abstract already exists and state not in (withdrawn, unsubmitted)
         """
-        # TODO: We will need to move this logic in a class of its own because we will need in other parts of
-        #  the submission process
+        # FIXME: Make this check pluggable and provide a base implementation in wjs-submission and create a logic
+        #   in wjs_review, where we can use ArticleWorkflow.ReviewStates for checking the states
+        #   if identifier.article.articleworkflow.state not in {
+        #       ArticleWorkflow.ReviewStates.WITHDRAWN,
+        #       ArticleWorkflow.ReviewStates.INCOMPLETE_SUBMISSION,
+        #   }:
+        #   See https://gitlab.sissamedialab.it/wjs/specs/-/issues/1809
         try:
             identifier = Identifier.objects.get(
                 identifier=response_content["arxiv_id"],
