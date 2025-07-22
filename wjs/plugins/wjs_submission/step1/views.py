@@ -7,6 +7,7 @@ from ..mixins import StepCheckView
 from .forms import SubmissionStep1Form
 
 
+# FIXME: Restrict to staff users
 class SubmissionStep1View(StepCheckView, CreateView):
     model = Article
     template_name = "wjs_submission/step1/article_form.html"

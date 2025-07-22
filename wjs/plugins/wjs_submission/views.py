@@ -19,6 +19,7 @@ class Manager(UserPassesTestMixin, TemplateView):
         return self.request.user.is_authenticated and (self.request.user.is_staff or self.request.user.is_superuser)
 
 
+# FIXME: Restrict to staff users
 class RedirectToComplete(DetailView):
     """Redirect to the article submission complete page."""
 
@@ -35,6 +36,7 @@ class RedirectToComplete(DetailView):
         )
 
 
+# FIXME: Restrict to staff users
 class ArxivMicroservice(HtmxMixin, View):
     def post(self, request, *args, **kwargs):
         """
