@@ -12,6 +12,7 @@ class ArticleSubmission(models.Model):
         on_delete=models.CASCADE,
         related_name="submission_data",
     )
+    arxiv_category = models.CharField(max_length=30, verbose_name=_("Arxiv category"), default="", blank=True)
 
     class Meta:
         verbose_name = _("Article submission")

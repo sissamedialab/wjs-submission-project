@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 from django.urls import reverse
 from journal.models import Journal
-from plugins.wjs_submission.workflow import STEPS
+from plugins.wjs_submission.workflow import STEPS, Step
 from submission.models import Article
 
 
@@ -186,3 +186,45 @@ def test_step_next_step_no_article(
     assert step.get_next_step(None) == reverse(
         url_name,
     )
+
+
+@pytest.mark.parametrize(
+    "step_number",
+    [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+    ],
+)
+@pytest.mark.django_db
+def test_step_state_mapping(
+    article: Article,
+    install_plugins: Callable,
+    step_number: int,
+):
+    """
+    Each step state is marked as available if its step number is less than or equal to the current step number + 1.
+
+    Ie: As the current step is the last step the article has successfully submitted, all steps before it and the
+    next one are available.
+
+    :param article: An instance of a submitted article, used to test the mapping of steps to states.
+    :type article: Article
+    :param install_plugins: A callable function to set up required plugins for the journal test.
+    :type install_plugins: Callable
+    :param step_number: An integer representing the step number to be tested.
+    :type step_number: int
+    :param step_number:
+    """
+    article.current_step = step_number
+    states = Step.get_steps_states(article.journal, article)
+    for state in states.values():
+        if state.step.step_number <= step_number + 1:
+            assert state.available is True
+        else:
+            assert state.available is False

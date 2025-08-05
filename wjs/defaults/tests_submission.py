@@ -6,18 +6,19 @@ isort:skip_file
 
 import contextlib
 from collections.abc import Mapping
+from typing import Any
 
 from core.janeway_global_settings import *  # noqa: F403
 from django.db import connection
 
-from wjs.defaults.settings_submission import *  # noqa: F403
+from .settings_submission import INSTALLED_APPS as CUSTOM_APPS
 
 with contextlib.suppress(ImportError):
     # Non committed local settings may non exists (eg: in the CI)
     from core.settings import *  # noqa: F403
 
 
-from typing import Any
+INSTALLED_APPS.extend(CUSTOM_APPS)  # noqa: F405
 
 # Check wjs-profile-project wjs.defaults files if you need to manage django apps or middleware.
 
