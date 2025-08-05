@@ -1,12 +1,17 @@
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import NamedTuple
 
 from core.models import Account
 from django.urls import reverse
 from journal.models import Journal
 from submission.models import Article
 
-from .types import StepState
+
+class StepState(NamedTuple):
+    step: "Step"
+    state: bool
+    available: bool
 
 
 @dataclass
@@ -28,6 +33,11 @@ class Step:
     step_view_name: str
     """
     The name of the view that manages this step
+    """
+
+    icon: str
+    """
+    Name of the icon to be used in the navigation bar
     """
 
     check_function: Callable[[Journal, Article], bool] | None = None
@@ -89,7 +99,7 @@ class Step:
         user: Account | None = None,
     ) -> dict[int, StepState]:
         """
-        Return a dictionary with the active steps for the given journal / article.
+        Return a dictionary with the active/available steps for the given journal / article.
 
         :param journal: Journal instance
         :type journal: Journal
@@ -100,13 +110,23 @@ class Step:
         :return: Dictionary with the step number as key and the active status as value
         :rtype: dict[int, StepState]
         """
-        return {
-            step.step_number: StepState(
+        states = {}
+        offset = 1
+        for step in STEPS.values():
+            active = step.is_active(journal, article, user)
+            if not active:
+                # Non active states does not count towards the availability
+                available = False
+                offset += 1
+            else:
+                available = step.step_number <= article.current_step + offset if article else False
+            states[step.step_number] = StepState(
                 step=step,
-                state=step.is_active(journal, article, user),
+                state=active,
+                available=available,
             )
-            for step in STEPS.values()
-        }
+
+        return states
 
 
 def step_check_select_issue(
@@ -166,52 +186,54 @@ def step_check_review_submit(
 
 
 STEPS = {
-    1: Step(
-        step_number=1,
-        label="Start",
-        step_view_name="wjs_submission_1",
-        check_function=None,
-    ),
+    1: Step(step_number=1, label="Start", step_view_name="wjs_submission_1", check_function=None, icon="bi-clipboard"),
     2: Step(
         step_number=2,
         label="Select Issue",
         step_view_name="wjs_submission_2",
         check_function=step_check_select_issue,
+        icon="bi-card-checklist",
     ),
     3: Step(
         step_number=3,
         label="Keywords",
         step_view_name="wjs_submission_3",
         check_function=step_check_keywords,
+        icon="bi-key",
     ),
     4: Step(
         step_number=4,
         label="Authors",
         step_view_name="wjs_submission_4",
         check_function=step_check_authors,
+        icon="bi-person",
     ),
     5: Step(
         step_number=5,
         label="data",
         step_view_name="wjs_submission_5",
         check_function=step_check_metadata,
+        icon="bi-file-earmark-text",
     ),
     6: Step(
         step_number=6,
         label="Files",
         step_view_name="wjs_submission_6",
         check_function=step_check_files,
+        icon="bi-files",
     ),
     7: Step(
         step_number=7,
         label="Access & funding",
         step_view_name="wjs_submission_7",
         check_function=step_check_access_funding,
+        icon="bi-credit-card",
     ),
     8: Step(
         step_number=8,
         label="Review & submit",
         step_view_name="wjs_submission_8",
         check_function=step_check_review_submit,
+        icon="bi-search",
     ),
 }

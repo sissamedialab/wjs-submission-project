@@ -1,10 +1,89 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title> </title>
-</head>
-<body>
-{{ form }}
-</body>
-</html>
+{% extends "wjs_submission/base.html" %}
+{% load django_bootstrap5 static field %}
+
+{% block submission_flow %}
+  <div class="wjs-submission-form__intro">
+    All authors must agree to the below statement in order to submit an article to Journal of Science Communication.
+    If you
+    do not agree with these terms you will be unable to proceed with your submission.
+  </div>
+  <div class="wjs-submission-form__section wjs-submission-form__section--submission-checklist mb-5">
+    <h5 class="wjs-submission-form__form-label">Submission Checklist</h5>
+    <div class="wjs-submission-form__section-content">
+      {{ journal_settings.general.submission_checklist|safe }}
+      {% bootstrap_field form.submission_requirements checkbox_style="switch" %}
+      {% bootstrap_field form.copyright_notice checkbox_style="switch" %}
+      {% for bound_field in form.visible_fields %}
+        {% if bound_field.name not in form.Meta.fields %}
+          {% bootstrap_field bound_field checkbox_style="switch" show_help=False %}
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="wjs-submission-form__section mb-5">
+    <h5 class="wjs-submission-form__form-label">ArXiv</h5>
+    <div class="wjs-submission-form__section-content">
+      <div class="mb-4">
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore
+        magna aliqua.
+        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+      </div>
+      <div class="wjs-submission-form__arxiv-validation-wrapper">
+        {# FIXME: Use django form fields #}
+        <input id="arxiv-id-input" name="arxiv_id" class="form-control" placeholder="Enter arXiv ID"
+               value="{{ form.initial.arxiv_id }}" />
+        {{ form.arxiv_article_id }}
+
+        {# FIXME: Use django form fields #}
+        <button
+          class="btn btn-primary"
+          id="js-arxiv-validation-btn"
+          hx-post="{% url 'arxiv_microservice' %}"
+          hx-include="#arxiv-id-input"
+          hx-target="#js-arxiv-validation-result"
+          disabled
+          aria-label="Validate ArXiv ID"
+          type="button"
+        >
+          Validate ArXiv ID
+        </button>
+      </div>
+      <div class="wjs-submission-form__arxiv-validation-messages-wrapper" tabindex="-1">
+        <div id="js-arxiv-validation-result" class="wjs-submission-form__arxiv-validation-result d-none" role="alert"
+             aria-live="assertive"></div>
+        <p id="js-arxiv-validation-suggestion" class="wjs-submission-form__arxiv-validation-suggestion d-none">
+          ArXiv ID must be in the following format: nnnn.nnnnn
+        </p>
+      </div>
+      <div id="js-arxiv-validation-loader" class="wjs-submission-form__arxiv-validation-loader d-none" role="status"
+           aria-live="polite">
+        <i class="wjs-submission-form__arxiv-validation-loader-icon bi bi-arrow-clockwise"></i> Validating...
+      </div>
+    </div>
+  </div>
+
+  <div class="wjs-submission-form__section mb-5">
+    <h5 class="wjs-submission-form__form-label"> Conflict of interest</h5>
+    <div class="wjs-submission-form__section-content">
+      <div class="mb-3">
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore
+        magna aliqua.
+        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+      </div>
+      {% bootstrap_field form.competing_interests show_help=False show_label=False %}
+    </div>
+  </div>
+
+  <div class="wjs-submission-form__section mb-5">
+    <h5 class="wjs-submission-form__form-label"> Cover letter</h5>
+    <div class="wjs-submission-form__section-content">
+      <div class="mb-3">
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore
+        magna aliqua.
+        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+      </div>
+      {% bootstrap_field form.comments_editor show_help=False show_label=False %}
+    </div>
+  </div>
+{% endblock submission_flow %}

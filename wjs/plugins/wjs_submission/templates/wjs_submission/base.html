@@ -1,0 +1,39 @@
+{% extends "wjs/base/base.html" %}
+
+{% load django_bootstrap5 static field %}
+
+{% block content %}
+  <div class="wjs-submission-container">
+    <form method="post" action="" class="wjs-submission-form">
+      {% csrf_token %}
+      {% include "wjs_submission/elements/nav.html" %}
+      {% block submission_flow %}
+      {% endblock submission_flow %}
+
+      <div class="wjs-submission-form__footer">
+        <div class="mx-2 my-1">
+          <h6 class="wjs-submission-form__footer-label">Required fields</h6>
+          Fill the following fields to continue to the next page:
+        </div>
+        <div id="form-footer"></div>
+        <div class="wjs-submission-form__footer-button">
+          <button type="submit" class="btn btn-primary" id="submit-btn" disabled>Save and continue</button>
+        </div>
+      </div>
+    </form>
+  </div>
+{% endblock content %}
+
+{% block js %}
+  {{ block.super }}
+  <script src="{% static "js/detect_required.js" %}"></script>
+  <script src="{% static "js/ai_field.js" %}"></script>
+  <script src="{% static "js/arxiv.js" %}"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      setupRequiredChecklist();
+      setupArxivValidation();
+      handleUseAiToggle();
+    });
+  </script>
+{% endblock js %}

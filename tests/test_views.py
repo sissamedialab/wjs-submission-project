@@ -2,9 +2,11 @@ from collections.abc import Callable
 from unittest.mock import patch
 
 import pytest
+from core.models import Account
+from django.test import Client
 from django.urls import reverse
 from journal.models import Journal
-from plugins.wjs_submission.step1 import SubmissionStep1
+from plugins.wjs_submission.step1 import SubmissionStep1View
 from plugins.wjs_submission.workflow import STEPS
 from submission.models import Article
 
@@ -31,14 +33,14 @@ def test_submission_context_step_1(
     :param fake_request: Mock request
     :type fake_request: HttpRequest
     """
-    view_obj = SubmissionStep1()
+    view_obj = SubmissionStep1View()
     view_obj.kwargs = {"article_id": article.pk}
     view_obj.object = article
     view_obj.request = fake_request
     context = view_obj.get_context_data()
     assert context["article"] == article
     assert context["step"] == STEPS.get(1)
-    assert context["steps"] == context["step"].get_steps_states(journal)
+    assert context["steps"] == context["step"].get_steps_states(journal, article)
     for index in STEPS:
         assert context["steps"][index].state is True
 
@@ -66,8 +68,9 @@ def test_submission_step_1_skip(
     :type fake_request: HttpRequest
     """
     step = STEPS.get(1)
+    fake_request.user = article.owner
     with patch.object(step, "check_function", return_value=not skip):
-        view_obj = SubmissionStep1()
+        view_obj = SubmissionStep1View()
         view_obj.kwargs = {"article_id": article.pk}
         view_obj.object = article
         view_obj.request = fake_request
@@ -80,3 +83,63 @@ def test_submission_step_1_skip(
             )
         else:
             assert response.status_code == 200
+
+
+@pytest.mark.parametrize("authenticate", [True, False])
+@pytest.mark.django_db
+def test_submission_auth_only(
+    client: Client, journal: Journal, install_plugins: Callable, user: Account, fake_request, authenticate: bool
+):
+    """
+    Submittion views are only accessible to authenticated users.
+
+    :param client: A test client instance
+    :type client: Client
+    :param journal: An instance of the Journal object that represents the context for
+        evaluating step states.
+    :type journal: Journal
+    :param install_plugins: A callable function to set up required plugins for the journal test.
+    :type install_plugins: Callable
+    :param fake_request: Mock request
+    :type fake_request: HttpRequest]
+    :param authenticate: If the user should be authenticated or not
+    :type authenticate: bool
+    """
+    if authenticate:
+        client.force_login(user)
+        fake_request.user = user
+    response = client.get(reverse("wjs_submission_1"))
+    if authenticate:
+        assert response.status_code == 200
+    else:
+        assert response.status_code == 302
+
+
+@pytest.mark.parametrize("is_author", [True, False])
+@pytest.mark.django_db
+def test_submission_author_only(
+    client: Client, article: Article, install_plugins: Callable, user: Account, fake_request, is_author: bool
+):
+    """
+    Submittion views are only accessible to authenticated users.
+
+    :param client: A test client instance
+    :type client: Client
+    :param article: An instance of the article object.
+    :type article: Article
+    :param install_plugins: A callable function to set up required plugins for the journal test.
+    :type install_plugins: Callable
+    :param fake_request: Mock request
+    :type fake_request: HttpRequest]
+    :param is_author: If the user is the article author or a different user
+    :type is_author: bool
+    """
+    if is_author:
+        client.force_login(article.owner)
+    else:
+        client.force_login(user)
+    response = client.get(reverse("wjs_submission_1", kwargs={"article_id": article.pk}))
+    if is_author:
+        assert response.status_code == 200
+    else:
+        assert response.status_code == 404
