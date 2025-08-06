@@ -12,18 +12,7 @@ Includes
 
 ## Install
 
-Being a Janeway plugin, this code should be made available to Janeway in the `plugins` folder.
+See [Janeway Setup](https://gitlab.sissamedialab.it/wjs/specs/-/wikis/setup-janeway) and
+[migration guide](https://gitlab.sissamedialab.it/wjs/specs/-/wikis/migrate-wjs-submission) for installation instructions.
 
-One can proceed as follow:
-- install the package
-- give Janeway access to the plugin (link the plugin into Janeway's `plugins` dir)
-- install the plugins
-
-E.g.
-```sh
-pip install -e .[test]
-ln -s ...venv/.../wjs_submission ...janeway/src/plugins/
-python -m manage install_plugins
-```
-
-**NB**: link the plugin manually and do not use WJS's `link_plugins`: it does not work if the packages are installed in edit-mode (with `-e`).
+##
