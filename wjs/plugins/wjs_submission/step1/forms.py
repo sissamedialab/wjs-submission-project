@@ -1,3 +1,4 @@
+from core import files as core_files
 from django import forms
 from django.core.exceptions import ValidationError
 from django.forms import HiddenInput
@@ -24,6 +25,11 @@ class SubmissionStep1Form(forms.ModelForm):
             "If you have any conflict of interests in the publication of this article please state them here."
         ),
     )
+    cover_letter_file = forms.FileField(
+        required=False,
+        label="Upload file",
+        widget=forms.ClearableFileInput(attrs={"accept": ".pdf,.docx,.doc,.odt,.rtf"}),
+    )
 
     class Meta:
         model = Article
@@ -33,6 +39,7 @@ class SubmissionStep1Form(forms.ModelForm):
             "competing_interests",
             "comments_editor",
             "arxiv_article_id",
+            "cover_letter_file",
         ]
 
     def __init__(self, *args, **kwargs):
@@ -160,6 +167,29 @@ class SubmissionStep1Form(forms.ModelForm):
             raise forms.ValidationError(_("You must accept the copyright notice to proceed."))
         return val
 
+    def clean_cover_letter_file(self):
+        """
+        Validate the uploaded file in the 'cover_letter_file' field.
+
+        Checks whether the uploaded file has an allowed extension. Supported extensions
+        include: .pdf, .docx, .doc, .odt, and .rtf. If the file is provided but does not match
+        any of the allowed formats, a `forms.ValidationError` is raised.
+
+        This validation ensures that authors only upload cover letters in commonly accepted
+        document formats compatible with editorial workflows.
+
+        :raises forms.ValidationError: If the uploaded file has an unsupported extension.
+
+        :return: The validated file object if it exists and passes the extension check.
+        :rtype: UploadedFile | None
+        """
+        file = self.cleaned_data.get("cover_letter_file")
+        if file:
+            allowed_extensions = [".pdf", ".docx", ".doc", ".odt", ".rtf"]
+            if not any(file.name.lower().endswith(ext) for ext in allowed_extensions):
+                raise forms.ValidationError("File extension not allowed.")
+        return file
+
     def save(self, commit=True):
         """
         Save the form instance by handling the creation of an article object using provided data.
@@ -194,6 +224,14 @@ class SubmissionStep1Form(forms.ModelForm):
                     field=field,
                     defaults={"answer": answer},
                 )
+
+        if self.cleaned_data.get("cover_letter_file"):
+            file = core_files.save_file_to_article(
+                file_to_handle=self.cleaned_data["cover_letter_file"],
+                article=self.instance,
+                owner=self.user,  # FIXME: is this ALWAYS the case?
+            )
+            self.instance.submission_data.cover_letter_file = file
 
         # Set the current step to 1 if it's the first time the article is saved, or keep the current one if we are
         # going back to the step 1 from a further one

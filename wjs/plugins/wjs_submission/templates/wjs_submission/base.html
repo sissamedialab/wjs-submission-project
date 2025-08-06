@@ -4,7 +4,7 @@
 
 {% block content %}
   <div class="wjs-submission-container">
-    <form method="post" action="" class="wjs-submission-form">
+    <form method="post" action="" class="wjs-submission-form" enctype="multipart/form-data">
       {% csrf_token %}
       {% include "wjs_submission/elements/nav.html" %}
       {% block submission_flow %}
@@ -13,7 +13,7 @@
       <div class="wjs-submission-form__footer">
         <div class="mx-2 my-1">
           <h6 class="wjs-submission-form__footer-label">Required fields</h6>
-          Fill the following fields to continue to the next page:
+            Fill in the following fields to enable the <strong>Save and Continue</strong> button and proceed to the next step:
         </div>
         <div id="form-footer"></div>
         <div class="wjs-submission-form__footer-button">

@@ -14,6 +14,10 @@ class ArticleSubmission(models.Model):
     )
     arxiv_category = models.CharField(max_length=30, verbose_name=_("Arxiv category"), default="", blank=True)
 
+    cover_letter_file = models.ForeignKey(
+        "core.File", null=True, blank=True, related_name="cover_letter_file", on_delete=models.SET_NULL
+    )
+
     class Meta:
         verbose_name = _("Article submission")
         verbose_name_plural = _("Articles submission")
