@@ -42,7 +42,9 @@ def test_submission_context_step_1(
     assert context["step"] == STEPS.get(1)
     assert context["steps"] == context["step"].get_steps_states(journal, article)
     for index in STEPS:
-        assert context["steps"][index].state is True
+        func = context["steps"][index].step.check_function
+        expected = True if func is None else func(journal)
+        assert context["steps"][index].state is expected
 
 
 @pytest.mark.parametrize("skip", [True, False])

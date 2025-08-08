@@ -54,7 +54,7 @@ class StepCheckView(ModelFormMixin):
             return None
         try:
             article = self.get_object()
-            active_step = self._step_object.is_active(article.journal, article)
+            active_step = self._step_object.is_active(article.journal, article, self.request.user)
             if not active_step:
                 return HttpResponseRedirect(self._step_object.get_next_step(article))
         except self.model.DoesNotExist:
@@ -76,7 +76,9 @@ class StepCheckView(ModelFormMixin):
     def get_context_data(self, **kwargs):
         """Populate view context with step states."""
         context = super().get_context_data(**kwargs)
-        context["steps"] = self._step_object.get_steps_states(journal=self.request.journal, article=self.object)
+        context["steps"] = self._step_object.get_steps_states(
+            journal=self.request.journal, article=self.object, user=self.request.user
+        )
         context["step"] = self._step_object
         return context
 

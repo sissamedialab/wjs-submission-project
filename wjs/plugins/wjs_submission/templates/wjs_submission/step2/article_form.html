@@ -2,9 +2,15 @@
 {% load django_bootstrap5 static field %}
 
 {% block submission_flow %}
-  <div class="wjs-submission-form__intro">
-    All authors must agree to the below statement in order to submit an article to Journal of Science Communication.
-    If you
-    do not agree with these terms you will be unable to proceed with your submission.
+  <div class="wjs-submission-form__section mb-5">
+    <h5 class="wjs-submission-form__form-label">Select Issue of publication</h5>
+    <div class="wjs-submission-form__section-content">
+      <div class="mb-3">
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore
+        magna aliqua.
+        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+      </div>
+      {% bootstrap_form form %}
+    </div>
   </div>
 {% endblock submission_flow %}
