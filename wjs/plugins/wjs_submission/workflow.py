@@ -46,7 +46,7 @@ class Step:
     """
 
     @classmethod
-    def get_next_step(cls, article: Article) -> str:
+    def get_next_step(cls, article: Article, step: "Step") -> str:
         """
         Return the url of the next step for the given article.
 
@@ -56,7 +56,7 @@ class Step:
         :rtype: str
         """
         try:
-            next_step = article.current_step + 1
+            next_step = max(article.current_step, step.step_number) + 1
             if next_step in STEPS:
                 return reverse(
                     f"{STEPS[next_step].step_view_name}",

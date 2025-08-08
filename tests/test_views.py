@@ -47,13 +47,34 @@ def test_submission_context_step_1(
         assert context["steps"][index].state is expected
 
 
-@pytest.mark.parametrize("skip", [True, False])
+@pytest.mark.parametrize(
+    "step_number,skip",  # noqa: PT006
+    [
+        (1, True),
+        (1, False),
+        (2, True),
+        (2, False),
+        (3, True),
+        (3, False),
+        (4, True),
+        (4, False),
+        (5, True),
+        (5, False),
+        (6, True),
+        (6, False),
+        (7, True),
+        (7, False),
+        (8, True),
+        (8, False),
+    ],
+)
 @pytest.mark.django_db
-def test_submission_step_1_skip(
+def test_submission_step_skip(
     journal: Journal,
     install_plugins: Callable,
     article: Article,
     fake_request,
+    step_number: int,
     skip: bool,
 ):
     """
@@ -68,19 +89,27 @@ def test_submission_step_1_skip(
     :type article: Article
     :param fake_request: Mock request
     :type fake_request: HttpRequest
+    :param step_number: Number of the step to be tested
+    :type step_number: int
+    :param skip: step is not active
+    :type skip: bool
     """
-    step = STEPS.get(1)
+    step = STEPS.get(step_number)
     fake_request.user = article.owner
     with patch.object(step, "check_function", return_value=not skip):
         view_obj = SubmissionStep1View()
         view_obj.kwargs = {"article_id": article.pk}
         view_obj.object = article
         view_obj.request = fake_request
+        view_obj.step = step_number
         response = view_obj.get(fake_request, article_id=article.pk)
         if skip:
+            # as the step is skipped, the view will redirect to the next step, in case the current step is the last one
+            # it's redirected to the (temporary) step 0
+            next_step_number = (step_number + 1) % 9
             assert response.status_code == 302
             assert response.headers.get("Location") == reverse(
-                "wjs_submission_2",
+                f"wjs_submission_{next_step_number}",
                 kwargs={"article_id": article.pk},
             )
         else:
