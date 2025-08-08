@@ -4,7 +4,7 @@ from typing import NamedTuple
 
 from core.models import Account
 from django.urls import reverse
-from journal.models import Journal
+from journal.models import Issue, Journal
 from submission.models import Article
 
 
@@ -40,7 +40,7 @@ class Step:
     Name of the icon to be used in the navigation bar
     """
 
-    check_function: Callable[[Journal, Article], bool] | None = None
+    check_function: Callable[[Journal, Article, Account], bool] | None = None
     """
     A generic function to check the availablity of a single step for an article
     """
@@ -125,7 +125,6 @@ class Step:
                 state=active,
                 available=available,
             )
-
         return states
 
 
@@ -134,7 +133,15 @@ def step_check_select_issue(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
-    return True
+    """
+    Use Janeway Issue manager to determine if there is any available special issue for the current paper.
+
+    - collection() -> filters all Issues with type="collection" (special issues)
+    - by_user() -> returns either issues with no invitees or issues where the user is among the invitees
+    - open_for_submission() -> uses date_open and date_close to filter out outdated or future issues
+    - current_journal() -> only returns issues for the current journal
+    """
+    return Issue.objects.collection().by_user(user).open_for_submission().current_journal(journal).exists()
 
 
 def step_check_keywords(

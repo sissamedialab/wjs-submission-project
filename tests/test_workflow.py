@@ -104,7 +104,9 @@ def test_steps_states(
             if index == step_number:
                 assert states[index].state is mock_true
             else:
-                assert states[index].state
+                func = states[index].step.check_function
+                expected = True if func is None else func(journal)
+                assert states[index].state == expected
 
 
 @pytest.mark.parametrize(
@@ -223,8 +225,11 @@ def test_step_state_mapping(
     """
     article.current_step = step_number
     states = Step.get_steps_states(article.journal, article)
+    offset = 1
     for state in states.values():
-        if state.step.step_number <= step_number + 1:
-            assert state.available is True
-        else:
+        if not state.state:
             assert state.available is False
+            offset += 1
+        else:
+            expected_available = state.step.step_number <= step_number + offset
+            assert state.available == expected_available

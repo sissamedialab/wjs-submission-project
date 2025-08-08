@@ -1,1 +1,1 @@
-from .views import SubmissionStep2 as SubmissionStep2
+from .views import SubmissionStep2View as SubmissionStep2View
