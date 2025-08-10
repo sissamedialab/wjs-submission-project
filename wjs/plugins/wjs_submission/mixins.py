@@ -2,9 +2,11 @@ from django.conf import settings
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db.models import Q, QuerySet
 from django.http import HttpResponseRedirect
+from django.urls import reverse
 from django.utils.functional import cached_property
 from django.views.generic.edit import ModelFormMixin
 from submission.models import STAGE_UNSUBMITTED, Article
+from utils.setting_handler import get_setting
 
 from .workflow import STEPS, Step
 
@@ -50,6 +52,9 @@ class StepCheckView(ModelFormMixin):
 
     def _verify_step(self, request, *args, **kwargs) -> HttpResponseRedirect | None:
         """Extract information about the current step and verify if it is active."""
+        if get_setting("general", "disable_journal_submission", request.journal).processed_value:
+            return HttpResponseRedirect(reverse("wjs_submission_closed"))
+
         if not self.kwargs.get("article_id"):
             return None
         try:

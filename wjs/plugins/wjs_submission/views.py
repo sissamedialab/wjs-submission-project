@@ -36,6 +36,12 @@ class RedirectToComplete(AuthorFilteringView, DetailView):
         )
 
 
+class ClosedSubmissionsView(AuthorFilteringView, TemplateView):
+    """Redirect to the article submission complete page."""
+
+    template_name = "wjs_submission/closed.html"
+
+
 class SubmissionLastStepRedirectView(AuthorFilteringView, RedirectView):
     def get_redirect_url(self, *args, **kwargs):  # noqa: PLR6301
         """
