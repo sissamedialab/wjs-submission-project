@@ -2,23 +2,113 @@
 {% load django_bootstrap5 static field %}
 
 {% block submission_flow %}
-  <ul>
-    {% for group in keyword_groups %}
-      <li>
-        {{ group }}
-        <ul>
-          {% for subgroup in group.keywordgroup_set.all %}
-            <li>
-              {{ subgroup }}
-              <ul>
-                {% for keyword in subgroup.keywords.all %}
-                  <li>{{ keyword }}</li>
-                {% endfor %}
-              </ul>
-            </li>
+  <div class="wjs-submission-form__section mb-5">
+    <h5 class="wjs-submission-form__form-label">Keywords</h5>
+
+    <div class="wjs-submission-form__section-content">
+      <input
+        type="checkbox"
+        id="js-keywords-hidden-required"
+        class="d-none"
+        required
+      />
+
+      <div class="wjs-submission-form__keywords-controls">
+        <p class="wjs-submission-form__keywords-requirements">Select from 2 to 4 keywords</p>
+        <button
+          type="button"
+          id="toggleAllAccordions"
+          class="btn btn-primary"
+        >
+          Open All
+        </button>
+      </div>
+
+      <p class="wjs-submission-form__keywords-intro-text">
+        Lorem ipsum dolor sit amet consectetur. Sed vitae suspendisse rhoncus sed.
+        Rhoncus pulvinar turpis arcu facilisi cras orci integer tellus id.
+        Id massa phasellus elementum adipiscing. Urna sagittis condimentum ut nisl proin egestas.
+      </p>
+
+      <div class="wjs-submission-form__fields-list" id="keywords-list">
+        <div class="accordion wjs-submission-form__keywords-accordion" id="groupAccordion">
+          {% for group in keyword_groups %}
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="headingGroup{{ forloop.counter }}">
+                <button
+                  class="accordion-button collapsed"
+                  type="button"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#collapseGroup{{ forloop.counter }}"
+                  aria-expanded="false"
+                  aria-controls="collapseGroup{{ forloop.counter }}"
+                >
+                  {{ group }}
+                </button>
+              </h2>
+              <div
+                id="collapseGroup{{ forloop.counter }}"
+                class="accordion-collapse collapse"
+                aria-labelledby="headingGroup{{ forloop.counter }}"
+              >
+                <div class="accordion-body">
+                  <div
+                    class="accordion"
+                    id="subgroupAccordion{{ forloop.counter }}"
+                  >
+                    {% for subgroup in group.keywordgroup_set.all %}
+                      <div class="accordion-item wjs-submission-form__subaccordion">
+                        <h2
+                          class="accordion-header"
+                          id="headingSubGroup{{ forloop.parentloop.counter }}_{{ forloop.counter }}"
+                        >
+                          <button
+                            class="accordion-button collapsed"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#collapseSubGroup{{ forloop.parentloop.counter }}_{{ forloop.counter }}"
+                            aria-expanded="false"
+                            aria-controls="collapseSubGroup{{ forloop.parentloop.counter }}_{{ forloop.counter }}"
+                          >
+                            {{ subgroup }}
+                          </button>
+                        </h2>
+                        <div
+                          id="collapseSubGroup{{ forloop.parentloop.counter }}_{{ forloop.counter }}"
+                          class="accordion-collapse collapse"
+                          aria-labelledby="headingSubGroup{{ forloop.parentloop.counter }}_{{ forloop.counter }}"
+                        >
+                          <div class="accordion-body">
+                            <ul class="wjs-submission-form__keywords-list">
+                              {% for keyword in subgroup.keywords.all %}
+                                <li class="form-check wjs-submission-form__keywords-list-item">
+                                  <input
+                                    class="wjs-submission-form__keywords-checkbox form-check-input"
+                                    type="checkbox"
+                                    name="keyword"
+                                    value="{{ keyword.id }}"
+                                    id="keyword{{ keyword.id }}"
+                                  />
+                                  <label
+                                    class="wjs-submission-form__keywords-checkbox-label form-check-label"
+                                    for="keyword{{ keyword.id }}"
+                                  >
+                                    {{ keyword }}
+                                  </label>
+                                </li>
+                              {% endfor %}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    {% endfor %}
+                  </div>
+                </div>
+              </div>
+            </div>
           {% endfor %}
-        </ul>
-      </li>
-    {% endfor %}
-  </ul>
+        </div>
+      </div>
+    </div>
+  </div>
 {% endblock submission_flow %}
