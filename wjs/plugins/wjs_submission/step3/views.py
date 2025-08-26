@@ -2,6 +2,7 @@ from django.urls import reverse_lazy
 from django.views.generic import UpdateView
 from submission.models import Article
 
+from ..keywords import get_keywords_by_journal
 from ..mixins import AuthorFilteringView, StepCheckView
 
 
@@ -20,3 +21,11 @@ class SubmissionStep3View(AuthorFilteringView, StepCheckView, UpdateView):
         :return: Next step URL.
         """
         return reverse_lazy("wjs_submission_3", kwargs={"article_id": self.object.pk})
+
+    def get_context_data(self, **kwargs):
+        """
+        Populate view contex with keyword groups.
+        """
+        context = super().get_context_data(**kwargs)
+        context["keyword_groups"] = get_keywords_by_journal(self.request.journal)
+        return context
