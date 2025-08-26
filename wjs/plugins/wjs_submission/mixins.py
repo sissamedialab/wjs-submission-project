@@ -56,7 +56,7 @@ class StepCheckView(ModelFormMixin):
             article = self.get_object()
             active_step = self._step_object.is_active(article.journal, article, self.request.user)
             if not active_step:
-                return HttpResponseRedirect(self._step_object.get_next_step(article, self._step_object))
+                return HttpResponseRedirect(self._step_object.get_next_step(article))
         except self.model.DoesNotExist:
             pass
         return None

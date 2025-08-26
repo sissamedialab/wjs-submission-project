@@ -2,11 +2,12 @@ from django.contrib.auth.mixins import UserPassesTestMixin
 from django.http import JsonResponse
 from django.urls import reverse
 from django.views import View
-from django.views.generic import DetailView, TemplateView
+from django.views.generic import DetailView, RedirectView, TemplateView
 from submission.models import Article
 
 from .arxiv import ArXivToWjsArticle
 from .mixins import AuthorFilteringView, HtmxMixin
+from .workflow import STEPS
 
 
 class Manager(UserPassesTestMixin, TemplateView):
@@ -33,6 +34,19 @@ class RedirectToComplete(AuthorFilteringView, DetailView):
             "wjs_article_details_from_id",
             kwargs={"article_id": self.object.id},
         )
+
+
+class SubmissionLastStepRedirectView(AuthorFilteringView, RedirectView):
+    def get_redirect_url(self, *args, **kwargs):  # noqa: PLR6301
+        """
+        Redirect to first incomplete step of the article.
+
+        :return: Next step URL.
+        """
+        article = Article.objects.get(pk=kwargs["article_id"])
+        step = STEPS.get(article.current_step)
+
+        return step.get_next_step(article)
 
 
 class ArxivMicroservice(HtmxMixin, AuthorFilteringView, View):

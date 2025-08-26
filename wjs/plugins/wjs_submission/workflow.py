@@ -42,11 +42,10 @@ class Step:
 
     check_function: Callable[[Journal, Article, Account], bool] | None = None
     """
-    A generic function to check the availablity of a single step for an article
+    A generic function to check the availability of a single step for an article
     """
 
-    @classmethod
-    def get_next_step(cls, article: Article, step: "Step") -> str:
+    def get_next_step(self, article: Article) -> str:
         """
         Return the url of the next step for the given article.
 
@@ -56,7 +55,7 @@ class Step:
         :rtype: str
         """
         try:
-            next_step = max(article.current_step, step.step_number) + 1
+            next_step = max(article.current_step, self.step_number) + 1
             if next_step in STEPS:
                 return reverse(
                     f"{STEPS[next_step].step_view_name}",
