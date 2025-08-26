@@ -4,12 +4,17 @@ from .plugin_settings import MANAGER_URL
 from .step1 import SubmissionStep1RedirectView, SubmissionStep1View
 from .step2 import SubmissionStep2View
 from .step3 import SubmissionStep3View
-from .views import ArxivMicroservice, Manager, RedirectToComplete
+from .views import ArxivMicroservice, Manager, RedirectToComplete, SubmissionLastStepRedirectView
 
 urlpatterns = [
     path("manager/", Manager.as_view(), name=MANAGER_URL),
     path("arxiv/", ArxivMicroservice.as_view(), name="arxiv_microservice"),
     path("submission/", SubmissionStep1View.as_view(), name="wjs_submission_1"),
+    path(
+        "submission/<int:article_id>/continue/",
+        SubmissionLastStepRedirectView.as_view(),
+        name="wjs_submission_continue",
+    ),
     path(
         "submission/<int:article_id>/",
         SubmissionStep1RedirectView.as_view(),

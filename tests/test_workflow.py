@@ -146,7 +146,7 @@ def test_step_next_step(
     step = STEPS.get(step_number)
     article.current_step = step_number
     url_name = f"wjs_submission_{step_number + 1}" if step_number < 8 else "wjs_submission_0"
-    assert step.get_next_step(article, step) == reverse(
+    assert step.get_next_step(article) == reverse(
         url_name,
         kwargs={"article_id": article.id},
     )
@@ -193,7 +193,7 @@ def test_step_next_step_skip_current(
     article.current_step = step_number - 1
     with patch.object(step, "check_function", return_value=False):
         url_name = f"wjs_submission_{step_number + 1}" if step_number < 8 else "wjs_submission_0"
-        assert step.get_next_step(article, step) == reverse(
+        assert step.get_next_step(article) == reverse(
             url_name,
             kwargs={"article_id": article.id},
         )
@@ -232,7 +232,7 @@ def test_step_next_step_no_article(
     """
     step = STEPS.get(step_number)
     url_name = "wjs_submission_1"
-    assert step.get_next_step(None, step=step) == reverse(
+    assert step.get_next_step(None) == reverse(
         url_name,
     )
 

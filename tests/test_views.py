@@ -7,6 +7,7 @@ from django.test import Client
 from django.urls import reverse
 from journal.models import Journal
 from plugins.wjs_submission.step1 import SubmissionStep1View
+from plugins.wjs_submission.views import SubmissionLastStepRedirectView
 from plugins.wjs_submission.workflow import STEPS
 from submission.models import Article
 
@@ -114,6 +115,59 @@ def test_submission_step_skip(
             )
         else:
             assert response.status_code == 200
+
+
+@pytest.mark.parametrize(
+    "step_number",
+    [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+    ],
+)
+@pytest.mark.django_db
+def test_submission_first_incomplete_step(
+    journal: Journal,
+    install_plugins: Callable,
+    article: Article,
+    fake_request,
+    step_number: int,
+):
+    """
+
+    SubmissionLastStepRedirectView redirect to the first incomplete step for the article.
+
+    :param journal: An instance of the Journal object that represents the context for
+        evaluating step states.
+    :type journal: Journal
+    :param install_plugins: A callable function to set up required plugins for the journal test.
+    :type install_plugins: Callable
+    :param article: Submitted article
+    :type article: Article
+    :param fake_request: Mock request
+    :type fake_request: HttpRequest
+    :param step_number: Number of the step to be tested
+    :type step_number: int
+    """
+    fake_request.user = article.owner
+    article.current_step = step_number
+    article.save()
+    view_obj = SubmissionLastStepRedirectView()
+    view_obj.kwargs = {"article_id": article.pk}
+    view_obj.object = article
+    view_obj.request = fake_request
+    response = view_obj.get(fake_request, article_id=article.pk)
+    next_step_number = (step_number + 1) % 9
+    assert response.status_code == 302
+    assert response.headers.get("Location") == reverse(
+        f"wjs_submission_{next_step_number}",
+        kwargs={"article_id": article.pk},
+    )
 
 
 @pytest.mark.parametrize("authenticate", [True, False])
