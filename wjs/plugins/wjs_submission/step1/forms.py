@@ -1,34 +1,40 @@
 from core import files as core_files
 from django import forms
 from django.core.exceptions import ValidationError
-from django.forms import HiddenInput
 from django.utils.translation import gettext_lazy as _
 from submission.models import Article, Field, FieldAnswer
+from utils.setting_handler import get_setting
 
 from ..arxiv import HandleArticleCreation
-from ..forms import WjsMiniHTMLFormField
+from ..fields import CoreFileWrapper, WjsMiniHTMLFormField
+from ..models import ArticleSubmission
 
 
 class SubmissionStep1Form(forms.ModelForm):
-    arxiv_article_id = forms.IntegerField(required=False, widget=HiddenInput())
-    arxiv_id = forms.CharField(required=False, widget=HiddenInput())
+    arxiv_article_id = forms.IntegerField(widget=forms.HiddenInput(), required=False)
+    arxiv_id = forms.CharField(
+        label=_("arXiv ID"),
+        widget=forms.TextInput(attrs={"placeholder": "Enter arXiv ID"}),
+        required=False,
+    )
     comments_editor = WjsMiniHTMLFormField(
         label=_("Cover letter"),
         height="15rem",
         help_text=_("missing help text"),
+        required=False,
     )
     competing_interests = WjsMiniHTMLFormField(
         label=_("Competing interests"),
-        required=True,
         height="15rem",
         help_text=_(
             "If you have any conflict of interests in the publication of this article please state them here."
         ),
+        required=False,
     )
     cover_letter_file = forms.FileField(
-        required=False,
         label="Upload file",
         widget=forms.ClearableFileInput(attrs={"accept": ".pdf,.docx,.doc,.odt,.rtf"}),
+        required=False,
     )
 
     class Meta:
@@ -39,6 +45,7 @@ class SubmissionStep1Form(forms.ModelForm):
             "competing_interests",
             "comments_editor",
             "arxiv_article_id",
+            "arxiv_id",
             "cover_letter_file",
         ]
 
@@ -62,17 +69,56 @@ class SubmissionStep1Form(forms.ModelForm):
         self.journal = kwargs.pop("journal")
         self.user = kwargs.pop("user")
         self._additional_fields = Field.objects.filter(journal=self.journal).order_by("order")
+        try:
+            # As cover_letter_file is a Janeway core File, we can't just pass it to the form FileField, we must wrap it
+            # in something which "resembles" a model FileField instance (ie: a File + a URL).
+            # The value is used only for display purposes, because the value is changed only when a new file is
+            # uploaded so it should be safe to mock with lookalike classes instead of the real ones.
+            cover_letter_file = kwargs.get("instance").submission_data.cover_letter_file
+            if cover_letter_file:
+                django_file = CoreFileWrapper(cover_letter_file)
+                kwargs["initial"].update({"cover_letter_file": django_file})
+
+        except AttributeError:
+            pass
         super().__init__(*args, **kwargs)
 
-        if not self.journal.submissionconfiguration.copyright_notice:
-            self.fields.pop("copyright_notice")
-        else:
+        copyright_label = get_setting(
+            "general",
+            "copyright_submission_label",
+            self.journal,
+        ).processed_value
+        self.fields["copyright_notice"].label = copyright_label
+        if self.journal.submissionconfiguration.copyright_notice:
             self.fields["copyright_notice"].required = True
-
-        if not self.journal.submissionconfiguration.submission_check:
-            self.fields.pop("submission_requirements")
         else:
+            self.fields.pop("copyright_notice")
+
+        if self.journal.submissionconfiguration.submission_check:
             self.fields["submission_requirements"].required = True
+
+        # widget.attrs["required"] must be set on textarea because it's not an attribute supported by default
+        # on texarea fields in Django, setting on widget will make it render in the HTML and picked up by the js
+        # validation
+        if self.journal.submissionconfiguration.competing_interests:
+            self.fields["competing_interests"].required = True
+            # Using a custom attribute to not trigger bootstrap validation as we use custom logic which checks tinymce
+            self.fields["competing_interests"].widget.attrs["js_required"] = True
+
+        if self.journal.submissionconfiguration.comments_to_the_editor:
+            self.fields["comments_editor"].required = True
+            # Using a custom attribute to not trigger bootstrap validation as we use custom logic which checks tinymce
+            self.fields["comments_editor"].widget.attrs["js_required"] = True
+            self.fields["cover_letter_file"].required = False
+
+        arxiv_field_status = get_setting("wjs_submission", "arxiv_field_status", self.journal).processed_value
+        if arxiv_field_status == "disabled":
+            self.fields.pop("arxiv_article_id")
+            self.fields.pop("arxiv_id")
+        elif arxiv_field_status == "required":
+            self.fields["arxiv_id"].required = True
+            self.fields["arxiv_id"].widget.attrs["force_required"] = True
+            self.fields["arxiv_article_id"].required = True
 
         # the following code is copied from submission.forms.ArticleInfo
         if self._additional_fields:
@@ -130,43 +176,6 @@ class SubmissionStep1Form(forms.ModelForm):
 
         return cleaned_data
 
-    def clean_submission_requirements(self):
-        """
-        Validate the 'submission_requirements' field in the cleaned data.
-
-        Ensures that the user has agreed to the required submission requirements before proceeding.
-
-        If the field is not checked or agreed upon, a ValidationError is raised.
-
-        :raises ValidationError: If 'submission_requirements' is not agreed upon.
-        :rtype: Any
-        :return: The validated value of 'submission_requirements' if the check passes.
-        """
-        val = self.cleaned_data.get("submission_requirements")
-        if not val:
-            raise forms.ValidationError(_("You must agree to the submission requirements to proceed."))
-        return val
-
-    def clean_copyright_notice(self):
-        """
-        Clean and validates the copyright notice field.
-
-        Retrieve the value of the `copyright_notice` field from the
-        cleaned data dictionary. If the value is None or not provided, a
-        `forms.ValidationError` is raised, indicating that the copyright notice
-        must be accepted to continue. If the value is valid, it returns the cleaned
-        value.
-
-        :raises forms.ValidationError: If the `copyright_notice` field is not provided or is empty.
-
-        :return: The validated and cleaned value of the `copyright_notice` field.
-        :rtype: Any
-        """
-        val = self.cleaned_data.get("copyright_notice")
-        if not val:
-            raise forms.ValidationError(_("You must accept the copyright notice to proceed."))
-        return val
-
     def clean_cover_letter_file(self):
         """
         Validate the uploaded file in the 'cover_letter_file' field.
@@ -184,10 +193,10 @@ class SubmissionStep1Form(forms.ModelForm):
         :rtype: UploadedFile | None
         """
         file = self.cleaned_data.get("cover_letter_file")
-        if file:
-            allowed_extensions = [".pdf", ".docx", ".doc", ".odt", ".rtf"]
-            if not any(file.name.lower().endswith(ext) for ext in allowed_extensions):
-                raise forms.ValidationError("File extension not allowed.")
+        if file and not any(
+            file.name.lower().endswith(ext) for ext in ArticleSubmission.cover_letter_file_allowed_extension
+        ):
+            raise forms.ValidationError("File extension not allowed.")
         return file
 
     def save(self, commit=True):
@@ -209,8 +218,11 @@ class SubmissionStep1Form(forms.ModelForm):
         :rtype: object
         """
         try:
-            HandleArticleCreation(
-                user=self.user, form_data=self.cleaned_data, journal=self.journal, article=self.instance
+            self.instance = HandleArticleCreation(
+                user=self.user,
+                form_data=self.cleaned_data,
+                journal=self.journal,
+                article=self.instance,
             ).run()
         except ValidationError as e:
             self.add_error(None, e)
@@ -229,9 +241,12 @@ class SubmissionStep1Form(forms.ModelForm):
             file = core_files.save_file_to_article(
                 file_to_handle=self.cleaned_data["cover_letter_file"],
                 article=self.instance,
-                owner=self.user,  # FIXME: is this ALWAYS the case?
+                owner=self.user,  # FIXME: change owner when changing correspondence author
             )
+            file.privacy = "owner"
+            file.save()
             self.instance.submission_data.cover_letter_file = file
+            self.instance.submission_data.save()
 
         # Set the current step to 1 if it's the first time the article is saved, or keep the current one if we are
         # going back to the step 1 from a further one

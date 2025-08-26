@@ -57,9 +57,9 @@ ignore = [
     "PLR0915",
     "TRY003",
     "PGH004",
-    "PLR1702", # Too many nested blocks (7 > 5)
-    "PLR0912", # Too many branches (14 > 12)
-    "C901", # `import_keywords_from_wjapp` is too complex (13 > 10)
+    "PLR1702", # Too many nested blocks
+    "PLR0912", # Too many branches
+    "C901", # X is too complex
 ]
 
 fixable = ["ALL"]
@@ -73,6 +73,7 @@ extend-select = [
     "S101",
     "PLR0913", # Too many arguments in function definition
     "PLR0917", # Too many positional arguments
+    "ARG005", # Unused lambda argument: k
 ]
 
 

@@ -1,0 +1,22 @@
+[
+  {
+    "group": {
+      "name": "wjs_submission"
+    },
+    "setting": {
+      "description": "Toggle to enable/make required/disable the ArXiv field status. Allowed values: enabled, disabled, required.",
+      "is_translatable": false,
+      "name": "arxiv_field_status",
+      "pretty_name": "ArXiv field status",
+      "type": "select",
+      "choices": [
+        "enabled",
+        "disabled",
+        "required"
+      ]
+    },
+    "value": {
+      "default": "enabled"
+    }
+  }
+]

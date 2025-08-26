@@ -7,6 +7,7 @@
 function handleUseAiToggle() {
   // Find the input field by name
   const aiInput = document.querySelector("input[name=\"Use of AI\"]");
+  if (!aiInput) return;
   const aiLabel = document.querySelector(`label[for="${aiInput.id}"]`);
 
   aiInput.setAttribute("aria-hidden", "true");

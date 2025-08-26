@@ -25,6 +25,37 @@ function getSectionHeading(field) {
 }
 
 /**
+ * Remove all HTML tags from the provided string and return plain text.
+ *
+ * @param {string} html - The string containing HTML tags to be stripped.
+ * @return {string} The plain text with all HTML tags removed.
+ */
+function stripHtmlTags(html) {
+  // Create a temporary div element to parse HTML
+  const tempDiv = document.createElement("div");
+  tempDiv.innerHTML = html;
+
+  // Get text content (automatically strips HTML tags)
+  return tempDiv.textContent || tempDiv.innerText || "";
+}
+
+
+/**
+ * Check if the given field contains non-empty textual content, either as HTML field or TinyMCE editor.
+ *
+ * @param {Object} field - The Element object to evaluate.
+ * @return {boolean} Returns true if the field contains non-empty text content, otherwise false.
+ */
+function hasContent(field) {
+  const editor = tinymce.get(field.id);
+  const htmlContent = editor && editor.getContent() ? editor.getContent() : field.value;
+
+  // Get content and strip HTML
+  const textContent = stripHtmlTags(htmlContent);
+  return textContent.trim().length > 0;
+}
+
+/**
  * Checks if all the provided form fields are filled based on their types.
  * For radio inputs, it verifies if any option in the group is selected.
  * For checkboxes, it checks if the box is checked.
@@ -35,13 +66,17 @@ function getSectionHeading(field) {
  * @param {Array} fields - An array of form field elements to be checked.
  * @return {boolean} Returns true if all fields are considered filled, otherwise false.
  */
-function isFilled(form, fields) {
+function allFilled(form, fields) {
+
   return fields.every(field => {
     if (field.type === "radio") {
       return !!form.querySelector(`input[type="radio"][name="${field.name}"]:checked`);
     }
     if (field.type === "checkbox") return field.checked;
     if (field.tagName === "SELECT") return field.value !== "";
+    if (field.tagName === "TEXTAREA") {
+      return hasContent(field);
+    }
     return field.value?.trim() !== "";
   });
 }
@@ -64,7 +99,7 @@ function updateRequiredChecklist() {
     const fields = JSON.parse(fieldStatusItem.dataset.fields).map(field => {
       return document.getElementById(field);
     });
-    const filled = isFilled(form, fields);
+    const filled = allFilled(form, fields);
     if (filled) {
       fieldStatusItem.classList.add("wjs-submission-form__label--filled");
     } else {
@@ -77,10 +112,17 @@ function updateRequiredChecklist() {
 }
 
 
+/**
+ * Retrieve the list of required fields from a given form element.
+ * Filters out duplicate required radio groups to ensure only one entry for each group.
+ *
+ * @param {HTMLFormElement} form - The form element to inspect for required fields.
+ * @return {Array<Element>} The array of required field elements, including unique entries for radio groups.
+ */
 function getRequiredFields(form) {
   const radios = new Set();
 
-  return Array.from(form.querySelectorAll("[required]")).map(field => {
+  return Array.from(form.querySelectorAll("[required]:not([required=\"false\"]),[js_required]")).map(field => {
     if (field.type === "radio") {
       if (radios.has(field.name)) return;
       radios.add(field.name);
@@ -107,6 +149,29 @@ function setupRequiredChecklist() {
   populateRequiredChecklist(fieldsStatusList);
 }
 
+/**
+ * Adds a TinyMCE change event listener to a specified field's editor.
+ * The event listener triggers an update to the required checklist.
+ *
+ * @param {Object} field The field object containing the editor's id.
+ * @return {void}
+ */
+function addTinyMceListener(field) {
+  const editor = tinymce.get(field.id);
+  if (editor) {
+    editor.on("change", function() {
+      updateRequiredChecklist();
+    });
+  }
+}
+
+/**
+ * Populates the checklist of required fields for a given form and attaches event listeners to ensure
+ * the checklist updates dynamically upon changes.
+ *
+ * @param {HTMLElement} fieldsStatusList - The DOM element representing the checklist container where required fields will be rendered.
+ * @return {void} Does not return a value.
+ */
 function populateRequiredChecklist(fieldsStatusList) {
   const form = getForm();
   const sectionMap = new Map();
@@ -117,6 +182,7 @@ function populateRequiredChecklist(fieldsStatusList) {
       sectionMap.set(section, []);
     }
     sectionMap.get(section).push(field);
+    addTinyMceListener(field);
   });
 
   while (fieldsStatusList.firstChild) {

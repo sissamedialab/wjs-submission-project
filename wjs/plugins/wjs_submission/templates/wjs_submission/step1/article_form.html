@@ -3,20 +3,20 @@
 
 {% block submission_flow %}
   <div class="wjs-submission-form__intro">
-  <p><strong>Before you submit:</strong></p>
-      <p>To submit an article, <strong>all authors must</strong>:</p>
-      <ul>
-          <li><strong>Agree to the statements</strong> below</li>
-        <li>Provide all information marked as <strong>required</strong></li>
-      </ul>
-  <p>If these conditions are not met, you will not be able to proceed with your submission.</p>
+    <p><strong>Before you submit:</strong></p>
+    <p>To submit an article, <strong>all authors must</strong>:</p>
+    <ul>
+      <li><strong>Agree to the statements</strong> below</li>
+      <li>Provide all information marked as <strong>required</strong></li>
+    </ul>
+    <p>If these conditions are not met, you will not be able to proceed with your submission.</p>
   </div>
   <div class="wjs-submission-form__section wjs-submission-form__section--submission-checklist mb-5">
-    <h5 class="wjs-submission-form__form-label">Submission Checklist</h5>
+    <h5 class="wjs-submission-form__form-label">Submission checklist and declarations</h5>
     <div class="wjs-submission-form__section-content">
       {{ journal_settings.general.submission_checklist|safe }}
       {% bootstrap_field form.submission_requirements checkbox_style="switch" %}
-      {% bootstrap_field form.copyright_notice checkbox_style="switch" %}
+      {% if form.copyright_notice %}{% bootstrap_field form.copyright_notice checkbox_style="switch" %}{% endif %}
       {% for bound_field in form.visible_fields %}
         {% if bound_field.name not in form.Meta.fields %}
           {% bootstrap_field bound_field checkbox_style="switch" show_help=False %}
@@ -25,46 +25,45 @@
     </div>
   </div>
 
-  <div class="wjs-submission-form__section mb-5">
-    <h5 class="wjs-submission-form__form-label">ArXiv</h5>
-    <div class="wjs-submission-form__section-content">
-      <div class="mb-4">
-        Enter your preprint’s arXiv ID and validate it. The title, abstract, and manuscript will be imported
-        automatically and can be reviewed in the next steps.
-      </div>
-      <div class="wjs-submission-form__arxiv-validation-wrapper">
-        {# FIXME: Use django form fields #}
-        <input id="arxiv-id-input" name="arxiv_id" class="form-control" placeholder="Enter arXiv ID"
-               value="{{ form.initial.arxiv_id }}" />
-        {{ form.arxiv_article_id }}
+  {% if form.arxiv_id %}
+    <div class="wjs-submission-form__section mb-5">
+      <h5 class="wjs-submission-form__form-label">ArXiv</h5>
+      <div class="wjs-submission-form__section-content">
+        <div class="mb-4">
+          Enter your preprint’s arXiv ID and validate it. The title, abstract, and manuscript will be imported
+          automatically and can be reviewed in the next steps.
+        </div>
+        <div class="wjs-submission-form__arxiv-validation-wrapper">
+          {% bootstrap_field form.arxiv_id show_help=False show_label=False wrapper_class="" %}
+          {{ form.arxiv_article_id }}
 
-        {# FIXME: Use django form fields #}
-        <button
-          class="btn btn-primary"
-          id="js-arxiv-validation-btn"
-          hx-post="{% url 'arxiv_microservice' %}"
-          hx-include="#arxiv-id-input"
-          hx-target="#js-arxiv-validation-result"
-          disabled
-          aria-label="Validate ArXiv ID"
-          type="button"
-        >
-          Validate ArXiv ID
-        </button>
-      </div>
-      <div class="wjs-submission-form__arxiv-validation-messages-wrapper" tabindex="-1">
-        <div id="js-arxiv-validation-result" class="wjs-submission-form__arxiv-validation-result d-none" role="alert"
-             aria-live="assertive"></div>
-        <p id="js-arxiv-validation-suggestion" class="wjs-submission-form__arxiv-validation-suggestion d-none">
-          ArXiv ID must be in the following format: nnnn.nnnnn
-        </p>
-      </div>
-      <div id="js-arxiv-validation-loader" class="wjs-submission-form__arxiv-validation-loader d-none" role="status"
-           aria-live="polite">
-        <i class="wjs-submission-form__arxiv-validation-loader-icon bi bi-arrow-clockwise"></i> Validating...
+          <button
+            class="btn btn-primary"
+            id="js-arxiv-validation-btn"
+            hx-post="{% url 'arxiv_microservice' %}"
+            hx-include="#id_arxiv_id"
+            hx-target="#js-arxiv-validation-result"
+            disabled
+            aria-label="Validate ArXiv ID"
+            type="button"
+          >
+            Validate ArXiv ID
+          </button>
+        </div>
+        <div class="wjs-submission-form__arxiv-validation-messages-wrapper" tabindex="-1">
+          <div id="js-arxiv-validation-result" class="wjs-submission-form__arxiv-validation-result d-none" role="alert"
+               aria-live="assertive"></div>
+          <p id="js-arxiv-validation-suggestion" class="wjs-submission-form__arxiv-validation-suggestion d-none">
+            ArXiv ID must be in the following format: nnnn.nnnnn
+          </p>
+        </div>
+        <div id="js-arxiv-validation-loader" class="wjs-submission-form__arxiv-validation-loader d-none" role="status"
+             aria-live="polite">
+          <i class="wjs-submission-form__arxiv-validation-loader-icon bi bi-arrow-clockwise"></i> Validating...
+        </div>
       </div>
     </div>
-  </div>
+  {% endif %}
 
   <div class="wjs-submission-form__section mb-5">
     <h5 class="wjs-submission-form__form-label"> Conflict of interest</h5>
@@ -80,8 +79,8 @@
     <h5 class="wjs-submission-form__form-label"> Cover letter</h5>
     <div class="wjs-submission-form__section-content">
       <div class="mb-3">
-          You may enter a text and/or upload a file as cover letter for the Editor-in-charge.
-          The Editor may decide to share it with any selected reviewers.
+        You may enter a text and/or upload a file as cover letter for the Editor-in-charge.
+        The Editor may decide to share it with any selected reviewers.
       </div>
       {% bootstrap_field form.comments_editor show_help=False show_label=False %}
       {% bootstrap_field form.cover_letter_file show_help=False show_label=False %}

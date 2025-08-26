@@ -169,6 +169,9 @@ def fetch_arxiv_metadata(arxiv_id: str) -> tuple[dict, dict]:
     except defusedxml.ElementTree.ParseError as e:
         msg = f"XML parse error: {e}"
         raise ArXivQueryError(msg) from e
+    except ArXivQueryError:
+        # If exception is already a ArXivQueryError no need to wrap it around ArXivQueryError again
+        raise
     except Exception as e:
         raise ArXivQueryError(str(e)) from e
 
@@ -235,7 +238,6 @@ class ArXivToArticle:
     arxiv_id: str
     journal: Journal
     user: Account
-    check_unique: bool = True
 
     @staticmethod
     def _get_article_candidates(response_content: dict, journal: Journal) -> QuerySet:
@@ -260,7 +262,10 @@ class ArXivToArticle:
             article__isnull=False,
         ).values_list("article", flat=True)
         return Article.objects.filter(journal=journal).filter(
-            Q(title__iexact=response_content["title"], abstract__iexact=response_content["abstract"])
+            Q(
+                title__iexact=response_content["title"],
+                abstract__iexact=response_content["abstract"],
+            )
             | Q(pk__in=articles_by_identifier),
         )
 
@@ -289,7 +294,10 @@ class ArXivToArticle:
         #   See https://gitlab.sissamedialab.it/wjs/specs/-/issues/1809
 
         filtered_articles = cls._get_article_candidates(response_content, journal).exclude(
-            stage__in={STAGE_UNSUBMITTED, STAGE_REJECTED}, current_step=0
+            Q(stage__in={STAGE_UNSUBMITTED, STAGE_REJECTED})
+            |
+            # If current step is
+            Q(current_step=0),
         )
         if filtered_articles.exists():
             raise ArXivIDAlreadyUsedError
@@ -313,9 +321,8 @@ class ArXivToArticle:
         :raises KeyError: If required keys like "title", "abstract", "arxiv_id", or "category_term" are missing from
             the `response_content`.
         """
-        in_submission = self._get_article_candidates(response_content, self.journal).filter(
-            stage__in={STAGE_UNSUBMITTED}, current_step=0, owner=self.user
-        )
+        candidates = self._get_article_candidates(response_content, self.journal)
+        in_submission = candidates.filter(stage__in={STAGE_UNSUBMITTED}, owner=self.user)
         new_article = None
         if in_submission.exists():
             new_article = in_submission.first()
@@ -368,8 +375,7 @@ class ArXivToArticle:
                 )
                 raise ArXivConnectionError(msg) from e
 
-            if self.check_unique:
-                self._check_article_unique(result, self.journal)
+            self._check_article_unique(result, self.journal)
 
             article = self._get_or_create_article(result)
 
@@ -421,23 +427,29 @@ class HandleArticleCreation:
     article: Article | None = None
 
     def _create_article(self) -> Article:
-        new_article = Article.objects.create(
-            journal=self.journal,
-            title=self.form_data["title"],
-            abstract=self.form_data["abstract"],
-            correspondence_author=self.user,
-            owner=self.user,
-            stage=STAGE_UNSUBMITTED,
-            current_step=0,
+        base_data = {}
+        if self.article:
+            base_data = {k: v for k, v in self.article.__dict__.items() if k != "_state" and v}
+        base_data.update(
+            {
+                "journal": self.journal,
+                "title": self.form_data.get("title", ""),
+                "abstract": self.form_data.get("abstract", ""),
+                "correspondence_author": self.user,
+                "owner": self.user,
+                "stage": STAGE_UNSUBMITTED,
+                "current_step": 0,
+            }
         )
+        new_article = Article.objects.create(**base_data)
         new_article.authors.add(self.user)
         return new_article
 
-    def _set_metadata(self):
+    def _set_arxiv_metadata(self):
         Identifier.objects.get_or_create(
             # Here we don't use self.arxiv_id but we use the one we get from the API payload because the
             # latter contains also the version number
-            identifier=self.form_data["arxiv_id"],
+            identifier=self.form_data.get("arxiv_id"),
             article=self.article,
             id_type="arxiv",
         )
@@ -464,7 +476,8 @@ class HandleArticleCreation:
         if not self.user.check_role(self.journal, "author", staff_override=False):
             self.user.add_account_role("author", self.journal)
 
-        if not self.article:
+        if not self.article or not self.article.pk:
             self.article = self._create_article()
-        self._set_metadata()
+            if self.form_data.get("arxiv_id"):
+                self._set_arxiv_metadata()
         return self.article
