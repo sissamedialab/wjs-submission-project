@@ -2,5 +2,23 @@
 {% load django_bootstrap5 static field %}
 
 {% block submission_flow %}
-  Hello!
+  <ul>
+    {% for group in keyword_groups %}
+      <li>
+        {{ group }}
+        <ul>
+          {% for subgroup in group.keywordgroup_set.all %}
+            <li>
+              {{ subgroup }}
+              <ul>
+                {% for keyword in subgroup.keywords.all %}
+                  <li>{{ keyword }}</li>
+                {% endfor %}
+              </ul>
+            </li>
+          {% endfor %}
+        </ul>
+      </li>
+    {% endfor %}
+  </ul>
 {% endblock submission_flow %}
