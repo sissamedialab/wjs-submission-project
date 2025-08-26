@@ -10,6 +10,7 @@ from plugins.wjs_submission.step1 import SubmissionStep1View
 from plugins.wjs_submission.views import SubmissionLastStepRedirectView
 from plugins.wjs_submission.workflow import STEPS
 from submission.models import Article
+from utils.setting_handler import save_setting
 
 
 @pytest.mark.parametrize("skip", [True, False])
@@ -206,7 +207,7 @@ def test_submission_author_only(
     client: Client, article: Article, install_plugins: Callable, user: Account, fake_request, is_author: bool
 ):
     """
-    Submittion views are only accessible to authenticated users.
+    Submission views are only accessible to authenticated users.
 
     :param client: A test client instance
     :type client: Client
@@ -228,3 +229,32 @@ def test_submission_author_only(
         assert response.status_code == 200
     else:
         assert response.status_code == 404
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+@pytest.mark.django_db
+def test_submission_disabled(
+    client: Client, article: Article, install_plugins: Callable, user: Account, fake_request, enabled: bool
+):
+    """
+    Submission views are only accessible when submission is enabled.
+
+    :param client: A test client instance
+    :type client: Client
+    :param article: An instance of the article object.
+    :type article: Article
+    :param install_plugins: A callable function to set up required plugins for the journal test.
+    :type install_plugins: Callable
+    :param fake_request: Mock request
+    :type fake_request: HttpRequest]
+    :param enabled: If the submission is enabled or not
+    :type enabled: bool
+    """
+    save_setting("general", "disable_journal_submission", article.journal, not enabled)
+    client.force_login(article.owner)
+    response = client.get(reverse("wjs_submission_1", kwargs={"article_id": article.pk}))
+    if enabled:
+        assert response.status_code == 200
+    else:
+        assert response.status_code == 302
+        assert response.headers.get("Location") == reverse("wjs_submission_closed")

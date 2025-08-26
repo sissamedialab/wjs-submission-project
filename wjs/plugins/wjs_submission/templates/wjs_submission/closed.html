@@ -3,4 +3,7 @@
 
 
 {% block submission_flow %}
+  <p>{{ journal_settings.general.disable_journal_submission_message|safe }}</p>
 {% endblock submission_flow %}
+
+{% block submission_footer %}{% endblock submission_footer %}
