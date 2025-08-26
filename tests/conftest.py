@@ -4,7 +4,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import pytest
-from core.models import File, Role, SupplementaryFile
+from core.models import File, SupplementaryFile
 from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model
 from django.core import management
@@ -13,6 +13,7 @@ from django.utils import translation
 from django.utils.timezone import now
 from journal.models import Journal
 from plugins.wjs_submission import constants
+from plugins.wjs_submission.arxiv import fetch_arxiv_metadata
 from press.models import Press
 from submission import models as submission_models
 from submission.models import Article
@@ -24,6 +25,7 @@ from utils.install import (
 )
 from utils.management.commands.install_janeway import ROLES_RELATIVE_PATH
 
+from .helpers import DummyResponse, mock_requests_get
 from .utils import create_rich_fake_request
 
 Account = get_user_model()
@@ -70,7 +72,7 @@ def _journal_factory(
 
 
 @pytest.fixture
-def journal(press: Press) -> Journal:
+def journal(press: Press, roles) -> Journal:
     """Prepare a journal."""
     journal = _journal_factory(JOURNAL_CODE, press, domain="testserver.org")
     # This injects current journal code as prefix for all URLs in the current thread, ensuring reverse correctly
@@ -80,7 +82,6 @@ def journal(press: Press) -> Journal:
     return journal
 
 
-# TODO: refactor into fixture "press"?
 @pytest.fixture(autouse=True)
 def journal_config(settings: Callable):
     """
@@ -89,6 +90,12 @@ def journal_config(settings: Callable):
     This fixture ensures that setting is coherent with the current test configuration.
     """
     settings.URL_CONFIG = "path"
+
+
+@pytest.fixture
+def roles():
+    roles_path = Path(django_settings.BASE_DIR) / ROLES_RELATIVE_PATH
+    management.call_command("loaddata", roles_path)
 
 
 @pytest.fixture(autouse=True)
@@ -196,13 +203,6 @@ def _article(author, coauthor, journal, sections, submitted=False):
 
 
 @pytest.fixture
-def roles():
-    roles_path = Path(django_settings.BASE_DIR) / ROLES_RELATIVE_PATH
-    management.call_command("loaddata", roles_path)
-    Role.objects.create(name="Main Director", slug=constants.DIRECTOR_MAIN_ROLE)
-
-
-@pytest.fixture
 def sections(journal):
     with translation.override("en"):
         # we must explicitly determine the created sections because sections might be created by other fixtures
@@ -241,3 +241,44 @@ def article(author, coauthor, journal, sections) -> Article:
 def fake_request(journal, settings):
     """Create a fake_factory request suitable for rendering templates."""
     return create_rich_fake_request(journal, settings)
+
+
+@pytest.fixture
+def arxiv_fixtures() -> dict[str, bytes]:
+    """Return a dictionary of files suitable to simulate several arXiv response scenarios."""
+    base = Path(__file__).parent / "files"
+    return {
+        "xml": (base / "query.atom").open("rb").read(),
+        "src": (base / "arxiv_tex_sample.tar.gz").open("rb").read(),
+        "xml_empty": b"""<feed xmlns="http://www.w3.org/2005/Atom"></feed>""",
+    }
+
+
+@pytest.fixture
+def arxiv_metadata(arxiv_fixtures: dict[str, bytes], monkeypatch: Callable):
+    """
+    Fixture to mock and retrieve ArXiv metadata.
+
+    :param arxiv_fixtures: Dictionary containing byte fixtures for XML and source
+      data to be used in mocking ArXiv API responses.
+    :type arxiv_fixtures: dict[str, bytes]
+    :param monkeypatch: Function used to apply patches for mocking external
+      dependencies.
+    :type monkeypatch: Callable
+    :return: A callable function to fetch and return ArXiv metadata for a given
+      ArXiv ID.
+    :rtype: Callable[[str], dict]
+    :raises RuntimeError: If an error occurs during metadata fetching.
+    """
+
+    def inner(arxiv_id: str):
+        metadata_resp = DummyResponse(arxiv_fixtures["xml"], status_code=200, text=arxiv_fixtures["xml"].decode())
+        src_resp = DummyResponse(arxiv_fixtures["src"])
+        mock_requests_get(
+            monkeypatch,
+            responses={"api/query": metadata_resp, "/src/": src_resp},
+        )
+
+        return fetch_arxiv_metadata(arxiv_id)
+
+    return inner

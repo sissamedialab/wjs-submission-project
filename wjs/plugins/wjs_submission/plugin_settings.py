@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any
 
 from utils import plugins
+from utils.install import update_settings
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -37,6 +38,7 @@ class WJSSubmission(plugins.Plugin):
 def install():
     """Register the plugin instance."""
     WJSSubmission.install()
+    update_settings(file_path="plugins/wjs_submission/install/settings.json")
 
 
 def hook_registry() -> dict[str, Any]:

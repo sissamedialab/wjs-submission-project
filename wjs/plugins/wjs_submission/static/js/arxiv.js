@@ -6,10 +6,12 @@
  * @return {void} This method doesn't return a value; it sets up event listeners and modifies the DOM as necessary.
  */
 function setupArxivValidation() {
+  const arxivInput = document.getElementById("id_arxiv_id");
+  if (!arxivInput) return;
+
   const fieldsStatusListItem = Array.from(document.querySelectorAll("li[data-section]")).find(li =>
     li.dataset.section.toLowerCase().includes("arxiv"),
   );
-  const arxivInput = document.getElementById("arxiv-id-input");
   const arxivArticleId = document.getElementById("id_arxiv_article_id");
   const resultDiv = document.getElementById("js-arxiv-validation-result");
   const suggestionDiv = document.getElementById("js-arxiv-validation-suggestion");
@@ -34,22 +36,23 @@ function setupArxivValidation() {
    * @return {void} Does not return a value.
    */
   function validateInput() {
-    if(arxivInput.value) {
+    if (arxivInput.value) {
       const regex = /^\d{4}\.\d{5}(v\d{1,4})?$/;
       const isValid = regex.test(arxivInput.value);
       suggestionDiv.classList.toggle("d-none", arxivInput.value === "" || isValid);
       arxivValidationBtn.disabled = !isValid;
-      if(!isValid) {
+      if (!isValid) {
         arxivArticleId.value = "";
       }
 
       arxivInput.setAttribute("required", true);
       arxivArticleId.setAttribute("required", true);
-    }
-    else {
+    } else {
       arxivArticleId.value = "";
-      arxivInput.setAttribute("required", false);
-      arxivArticleId.setAttribute("required", false);
+      if (arxivInput.getAttribute("force_required") === null) {
+        arxivInput.removeAttribute("required");
+        arxivArticleId.removeAttribute("required");
+      }
     }
 
     populateRequiredChecklist(document.getElementById("wjs-submission-form__fields-list"));
@@ -93,7 +96,7 @@ function setupArxivValidation() {
       const res = JSON.parse(responseText);
       if (res.status === "success") {
         arxivArticleId.value = res.article_id;
-        validateInput()
+        validateInput();
       } else {
         console.log("Error fetching article: " + res.message);
       }
@@ -102,11 +105,11 @@ function setupArxivValidation() {
     }
   }
 
-  validateInput()
+  validateInput();
 
   arxivInput.addEventListener("input", function() {
     // Trigger validation on arvix id input fill
-    validateInput()
+    validateInput();
   });
 
   arxivInput.addEventListener("keydown", function(event) {

@@ -17,6 +17,7 @@ class ArticleSubmission(models.Model):
     cover_letter_file = models.ForeignKey(
         "core.File", null=True, blank=True, related_name="cover_letter_file", on_delete=models.SET_NULL
     )
+    cover_letter_file_allowed_extension = [".pdf", ".docx", ".doc", ".odt", ".rtf"]
 
     class Meta:
         verbose_name = _("Article submission")
