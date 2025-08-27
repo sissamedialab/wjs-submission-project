@@ -106,10 +106,8 @@ class SubmissionStep1Form(forms.ModelForm):
             self.fields["competing_interests"].widget.attrs["js_required"] = True
 
         if self.journal.submissionconfiguration.comments_to_the_editor:
-            self.fields["comments_editor"].required = True
             # Using a custom attribute to not trigger bootstrap validation as we use custom logic which checks tinymce
             self.fields["comments_editor"].widget.attrs["js_required"] = True
-            self.fields["cover_letter_file"].required = False
 
         arxiv_field_status = get_setting("wjs_submission", "arxiv_field_status", self.journal).processed_value
         if arxiv_field_status == "disabled":
@@ -164,6 +162,16 @@ class SubmissionStep1Form(forms.ModelForm):
         :rtype: dict
         """
         cleaned_data = super().clean()
+
+        if self.journal.submissionconfiguration.comments_to_the_editor:
+            cover_letter_file = self.cleaned_data.get("cover_letter_file")
+            comments_editor = self.cleaned_data.get("comments_editor")
+
+            if not cover_letter_file and not comments_editor:
+                self.add_error(
+                    "comments_editor",
+                    _("You must enter a cover letter or upload a file to proceed."),
+                )
 
         for element in self._additional_fields:
             name = element.name
