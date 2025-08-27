@@ -129,3 +129,49 @@ def test_clean_submission_requirements(
         assert form.errors == {"submission_requirements": ["This field is required."]}
     else:
         assert form.is_valid()
+
+
+@pytest.mark.parametrize(
+    ("text", "file"),
+    [
+        (
+            True,
+            False,
+        ),
+        (
+            True,
+            True,
+        ),
+        (
+            False,
+            True,
+        ),
+        (
+            False,
+            False,
+        ),
+    ],
+)
+@pytest.mark.django_db
+def test_clean_comments_editor_requirements(
+    journal: Journal, install_plugins: Callable, user: Account, text: bool, file: bool
+):
+    journal.submissionconfiguration.comments_to_the_editor = True
+    journal.submissionconfiguration.save()
+    data = {
+        "copyright_notice": True,
+        "comments_editor": "",
+        "competing_interests": "XXX",
+        "submission_requirements": "AAA",
+    }
+    files = None
+    if text:
+        data["comments_editor"] = "AAA"
+    if file:
+        files = {"cover_letter_file": SimpleUploadedFile("file.docx", b"file_content", content_type="image/jpeg")}
+    form = SubmissionStep1Form(data=data, journal=journal, user=user, files=files)
+    assert form.is_valid() is (file or text)
+    if not (file or text):
+        assert form.errors == {"comments_editor": ["You must enter a cover letter or upload a file to proceed."]}
+    else:
+        assert form.errors == {}
