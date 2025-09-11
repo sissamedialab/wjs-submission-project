@@ -3,7 +3,8 @@ from django.http import JsonResponse
 from django.urls import reverse
 from django.views import View
 from django.views.generic import DetailView, RedirectView, TemplateView
-from submission.models import Article
+from submission.models import Article, Keyword
+from submission.views import KeywordAutocomplete
 
 from .arxiv import ArXivToWjsArticle
 from .mixins import AuthorFilteringView, HtmxMixin
@@ -79,3 +80,26 @@ class ArxivMicroservice(HtmxMixin, AuthorFilteringView, View):
             )
         except Exception as e:  # noqa: BLE001
             return JsonResponse({"status": "error", "message": f"Error: {e}"})
+
+
+class FreeKeywordAutocomplete(KeywordAutocomplete):
+    """
+    The class is needed to add the group__isnull=True filter to the original KeywordAutocomplete queryset.
+
+    We override the original Janeway URL.
+    """
+
+    def get_queryset(self):
+        """
+        Return a queryset of available keywords.
+
+        If a search query (`self.q`) is provided, the queryset is filtered
+        to include only keywords whose `word` contains the query string
+        (case-insensitive) and that are not assigned to any group.
+
+        :return: A Django queryset of `Keyword` objects.
+        """
+        qs = Keyword.objects.all()
+        if self.q:
+            qs = qs.filter(word__icontains=self.q, group__isnull=True)
+        return qs

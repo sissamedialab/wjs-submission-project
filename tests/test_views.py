@@ -3,13 +3,15 @@ from unittest.mock import patch
 
 import pytest
 from core.models import Account
+from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.test import Client
 from django.urls import reverse
 from journal.models import Journal
 from plugins.wjs_submission.step1 import SubmissionStep1View
 from plugins.wjs_submission.views import SubmissionLastStepRedirectView
 from plugins.wjs_submission.workflow import STEPS
-from submission.models import Article
+from submission.models import Article, Keyword, KeywordArticle, KeywordGroup, SubmissionConfiguration
 from utils.setting_handler import save_setting
 
 
@@ -258,3 +260,126 @@ def test_submission_disabled(
     else:
         assert response.status_code == 302
         assert response.headers.get("Location") == reverse("wjs_submission_closed")
+
+
+@pytest.mark.parametrize(
+    ("post_data", "expected_keywords", "expect_error"),
+    [
+        ({"keyword_1_weight": ["25"], "keyword_2_weight": ["100"]}, {1: 25, 2: 100}, False),
+        ({"keyword_1_weight": ["123"]}, {}, True),
+        ({}, {}, False),
+        ({"keyword_x_weight": ["25"]}, {}, True),
+        ({"keyword_1_weight": ["abc"]}, {}, True),
+        ({"keyword_1_weight": ["25"], "keyword_2_weight": [""]}, {}, True),
+        ({"keyword_1_weight": ["25"], "alien": ["field"]}, {1: 25}, False),
+    ],
+)
+@pytest.mark.django_db
+def test_keyword_handling(client, article, post_data, expected_keywords, expect_error):
+    settings.WJS_KEYWORD_WEIGHT_VALIDATORS = {
+        "JQUANT": ("plugins.wjs_submission.logic.always_pass",),
+    }
+
+    Keyword.objects.create(pk=1, word="keyword1", journal=article.journal)
+    Keyword.objects.create(pk=2, word="keyword2", journal=article.journal)
+
+    client.force_login(article.owner)
+    url = reverse("wjs_submission_3", kwargs={"article_id": article.pk})
+
+    if expect_error:
+        with pytest.raises(ValidationError) as excinfo:
+            client.post(url, {**post_data})
+        exc_message = str(excinfo.value)
+        assert any(msg in exc_message for msg in ["Corrupted weight data", "Invalid keyword weight data"])
+        assert not KeywordArticle.objects.filter(article=article).exists()
+    else:
+        response = client.post(url, {**post_data})
+        assert response.status_code == 302
+        weights = {ka.keyword_id: ka.weight for ka in KeywordArticle.objects.filter(article=article)}
+        assert weights == expected_keywords
+
+
+@pytest.mark.django_db
+def test_context_contains_only_journal_keywords(client, article):
+    journal = article.journal
+
+    kw1 = Keyword.objects.create(word="kw1")
+    kw2 = Keyword.objects.create(word="kw2")
+    kw3 = Keyword.objects.create(word="kw3")
+
+    g1 = KeywordGroup.objects.create(name="group1")
+    g2 = KeywordGroup.objects.create(name="group2", parent_group=g1)
+    g3 = KeywordGroup.objects.create(name="group3")
+
+    kw1.group = g1
+    kw1.save()
+    kw2.group = g2
+    kw2.save()
+    kw3.group = g3
+    kw3.save()
+
+    journal.keywords.add(kw1, kw2)
+
+    client.force_login(article.owner)
+    url = reverse("wjs_submission_3", kwargs={"article_id": article.pk})
+    response = client.get(url)
+    groups = response.context["keyword_groups"]
+
+    assert g1 in groups
+    assert g2 not in groups
+    assert g3 not in groups
+
+
+@pytest.mark.django_db
+def test_keyword_article_order_preserved(client, article):
+    for i in range(1, 5):
+        Keyword.objects.create(word=f"kw{i}", journal=article.journal)
+
+    post_data = {
+        "keyword_1_weight": ["25"],
+        "keyword_2_weight": ["50"],
+        "keyword_3_weight": ["75"],
+        "keyword_4_weight": ["100"],
+    }
+
+    client.force_login(article.owner)
+    url = reverse("wjs_submission_3", kwargs={"article_id": article.pk})
+    client.post(url, post_data)
+
+    kws = list(KeywordArticle.objects.filter(article=article).order_by("order"))
+    assert [ka.keyword_id for ka in kws] == [1, 2, 3, 4]
+    assert [ka.weight for ka in kws] == [25, 50, 75, 100]
+    KeywordArticle.objects.all().delete()  # not usre why we need to delete them, but otherwise the test teardown fails
+
+
+@pytest.mark.django_db
+def test_free_text_keywords(client, article):
+    journal = article.journal
+    configuration = SubmissionConfiguration.objects.get(journal=journal)
+    configuration.autocomplete_keywords = True
+    configuration.save()
+
+    g1 = KeywordGroup.objects.create(name="group1")
+    g2 = KeywordGroup.objects.create(name="group2")
+    kw1 = Keyword.objects.create(word="kw1", journal=journal, group=g1)
+    kw2 = Keyword.objects.create(word="kw2", journal=journal, group=g2)
+    journal.keywords.add(kw1, kw2)
+
+    free_keywords = [Keyword.objects.create(word=f"free{i}", journal=journal) for i in range(3)]
+
+    post_data = {
+        "keywords": [str(kw.pk) for kw in free_keywords],
+        f"keyword_{kw1.pk}_weight": ["50"],
+        f"keyword_{kw2.pk}_weight": ["100"],
+    }
+
+    client.force_login(article.owner)
+    url = reverse("wjs_submission_3", kwargs={"article_id": article.pk})
+    response = client.post(url, post_data)
+    assert response.status_code == 302
+
+    kws = KeywordArticle.objects.filter(article=article)
+
+    created_ids = {ka.keyword_id for ka in kws}
+    expected_ids = {kw1.pk, kw2.pk} | {kw.pk for kw in free_keywords}
+    assert created_ids == expected_ids

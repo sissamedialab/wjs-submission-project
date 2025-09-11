@@ -98,6 +98,22 @@ def roles():
     management.call_command("loaddata", roles_path)
 
 
+@pytest.fixture
+def jquant_journal(press, roles) -> Journal:
+    """Create a journal with code JQUANT for tests."""
+    journal = _journal_factory("JQUANT", press, domain="jquant.testserver.org")
+    set_script_prefix(f"/{journal.code}")
+    return journal
+
+
+@pytest.fixture
+def jhep_journal(press, roles) -> Journal:
+    """Create a journal with code JHEP for tests."""
+    journal = _journal_factory("JHEP", press, domain="jhep.testserver.org")
+    set_script_prefix(f"/{journal.code}")
+    return journal
+
+
 @pytest.fixture(autouse=True)
 def clear_script_prefix_fix():
     """
