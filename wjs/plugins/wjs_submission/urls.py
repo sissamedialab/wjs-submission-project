@@ -4,6 +4,11 @@ from .plugin_settings import MANAGER_URL
 from .step1 import SubmissionStep1RedirectView, SubmissionStep1View
 from .step2 import SubmissionStep2View
 from .step3 import SubmissionStep3View
+from .step4 import SubmissionStep4View
+from .step5 import SubmissionStep5View
+from .step6 import SubmissionStep6View
+from .step7 import SubmissionStep7View
+from .step8 import SubmissionStep8View
 from .views import (
     ArxivMicroservice,
     ClosedSubmissionsView,
@@ -45,27 +50,27 @@ urlpatterns = [
     ),
     path(
         "submission/<int:article_id>/4/",
-        SubmissionStep3View.as_view(),
+        SubmissionStep4View.as_view(),
         name="wjs_submission_4",
     ),
     path(
         "submission/<int:article_id>/5/",
-        SubmissionStep3View.as_view(),
+        SubmissionStep5View.as_view(),
         name="wjs_submission_5",
     ),
     path(
         "submission/<int:article_id>/6/",
-        SubmissionStep3View.as_view(),
+        SubmissionStep6View.as_view(),
         name="wjs_submission_6",
     ),
     path(
         "submission/<int:article_id>/7/",
-        SubmissionStep3View.as_view(),
+        SubmissionStep7View.as_view(),
         name="wjs_submission_7",
     ),
     path(
         "submission/<int:article_id>/8/",
-        SubmissionStep3View.as_view(),
+        SubmissionStep8View.as_view(),
         name="wjs_submission_8",
     ),
     path(
