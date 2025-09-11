@@ -7,6 +7,7 @@ from .step3 import SubmissionStep3View
 from .views import (
     ArxivMicroservice,
     ClosedSubmissionsView,
+    FreeKeywordAutocomplete,
     Manager,
     RedirectToComplete,
     SubmissionLastStepRedirectView,
@@ -72,4 +73,5 @@ urlpatterns = [
         RedirectToComplete.as_view(),
         name="wjs_submission_0",
     ),
+    path("keyword-autocomplete/", FreeKeywordAutocomplete.as_view(), name="keyword-autocomplete"),
 ]
