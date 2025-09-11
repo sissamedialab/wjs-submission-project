@@ -32,4 +32,5 @@ class SubmissionStep2View(AuthorFilteringView, StepCheckView, UpdateView):
         kwargs["journal"] = self.request.journal
         kwargs["user"] = self.request.user
         kwargs["request"] = self.request
+        kwargs["step"] = self.step
         return kwargs

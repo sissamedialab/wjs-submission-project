@@ -22,7 +22,7 @@ class SubmissionStep3View(AuthorFilteringView, StepCheckView, UpdateView):
 
         :return: Next step URL.
         """
-        return reverse_lazy("wjs_submission_continue", kwargs={"article_id": self.object.pk})
+        return reverse_lazy("wjs_submission_4", kwargs={"article_id": self.object.pk})
 
     def get_context_data(self, **kwargs):
         """
@@ -48,4 +48,5 @@ class SubmissionStep3View(AuthorFilteringView, StepCheckView, UpdateView):
         kwargs = super().get_form_kwargs()
         kwargs["form_data"] = self.request.POST
         kwargs["instance"] = self.get_object()
+        kwargs["step"] = self.step
         return kwargs

@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.utils.module_loading import import_string
 from submission.models import Article, KeywordArticle
 
-from . import settings as submission_settings
+from .. import settings as submission_settings
 
 
 @dataclasses.dataclass
