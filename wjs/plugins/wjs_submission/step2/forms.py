@@ -55,6 +55,7 @@ class SubmissionStep2Form(forms.ModelForm):
         :param args: Positional arguments passed to the parent form.
         :param kwargs: Keyword arguments; must include 'journal' and 'user'.
         """
+        self.step = kwargs.pop("step")
         self.journal = kwargs.pop("journal")
         self.user = kwargs.pop("user")
         self.request = kwargs.pop("request")
@@ -78,7 +79,7 @@ class SubmissionStep2Form(forms.ModelForm):
         :return: The saved article instance
         :rtype: object
         """
-        self.instance.current_step = max(self.instance.current_step, 1)
+        self.instance.current_step = max(self.instance.current_step, self.step)
         obj = super().save(commit=commit)
         # Reset all links to any previously selected issue and clear the article primary issue
         # Note that in the submit_info view, after this form is saved, handle_assign_issue() is called,

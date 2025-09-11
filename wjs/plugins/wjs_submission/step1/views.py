@@ -105,6 +105,7 @@ class SubmissionStep1View(AuthorFilteringView, StepCheckView, CreateView):
         kwargs = super().get_form_kwargs()
         kwargs["journal"] = self.request.journal
         kwargs["user"] = self.request.user
+        kwargs["step"] = self.step
         return kwargs
 
     def get_initial(self):

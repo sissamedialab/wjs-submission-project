@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from submission.models import Article, KeywordArticle
 from utils.forms import KeywordModelForm
 
-from ..logic import HandleKeywordSelection
+from .logic import HandleKeywordSelection
 
 
 class SubmissionStep3Form(KeywordModelForm):
@@ -23,6 +23,7 @@ class SubmissionStep3Form(KeywordModelForm):
         :param args: Positional arguments passed to the parent form.
         :param kwargs: Keyword arguments must include 'form_data'
         """
+        self.step = kwargs.pop("step")
         self.form_data = kwargs.pop("form_data")
         super().__init__(*args, **kwargs)
         journal = self.instance.journal
@@ -47,7 +48,7 @@ class SubmissionStep3Form(KeywordModelForm):
             data=self.form_data,
         )
 
-    def save(self, commit=True):
+    def save(self, commit=True, *args, **kwargs):
         """
         Save the article and handle the creation of KeywordArticle with the weight selected by the author.
 
@@ -60,6 +61,7 @@ class SubmissionStep3Form(KeywordModelForm):
         :return: The saved article instance
         :rtype: object
         """
+        self.instance.current_step = max(self.instance.current_step, self.step)
         # This also takes care of clearing the existing relations
         KeywordModelForm.save(self, commit=commit)
         try:

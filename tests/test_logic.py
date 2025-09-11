@@ -127,7 +127,7 @@ def test_form_save_article_with_arxiv_id(
         "arxiv_article_id": article.pk,
         "arxiv_id": "2504.10562",
     }
-    form = SubmissionStep1Form(data=data, journal=journal, user=user, instance=article)
+    form = SubmissionStep1Form(data=data, journal=journal, user=user, instance=article, step=1)
     assert form.is_valid()
     form.save()
     article.refresh_from_db()

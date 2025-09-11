@@ -66,6 +66,7 @@ class SubmissionStep1Form(forms.ModelForm):
             context.
         :type kwargs: dict
         """
+        self.step = kwargs.pop("step")
         self.journal = kwargs.pop("journal")
         self.user = kwargs.pop("user")
         self._additional_fields = Field.objects.filter(journal=self.journal).order_by("order")
@@ -258,6 +259,6 @@ class SubmissionStep1Form(forms.ModelForm):
 
         # Set the current step to 1 if it's the first time the article is saved, or keep the current one if we are
         # going back to the step 1 from a further one
-        self.instance.current_step = max(self.instance.current_step, 1)
+        self.instance.current_step = max(self.instance.current_step, self.step)
 
         return super().save(commit=commit)

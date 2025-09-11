@@ -40,7 +40,7 @@ def test_clean_copyright_notice(
         "competing_interests": "AAA",
         "submission_requirements": True,
     }
-    form = SubmissionStep1Form(data=data, journal=journal, user=user)
+    form = SubmissionStep1Form(data=data, journal=journal, user=user, step=1)
     if enabled and not selected:
         assert not form.is_valid()
         assert form.errors == {"copyright_notice": ["This field is required."]}
@@ -78,7 +78,7 @@ def test_save_cover_letter_permission(
         "submission_requirements": True,
     }
     files = {"cover_letter_file": SimpleUploadedFile(f"file.{extension}", b"file_content", content_type="image/jpeg")}
-    form = SubmissionStep1Form(data=data, journal=journal, user=user, files=files)
+    form = SubmissionStep1Form(data=data, journal=journal, user=user, files=files, step=1)
     if not is_valid:
         assert not form.is_valid()
         assert form.errors == {"cover_letter_file": ["File extension not allowed."]}
@@ -123,7 +123,7 @@ def test_clean_submission_requirements(
         "competing_interests": "AAA",
         "submission_requirements": selected,
     }
-    form = SubmissionStep1Form(data=data, journal=journal, user=user)
+    form = SubmissionStep1Form(data=data, journal=journal, user=user, step=1)
     if enabled and not selected:
         assert not form.is_valid()
         assert form.errors == {"submission_requirements": ["This field is required."]}
@@ -169,7 +169,7 @@ def test_clean_comments_editor_requirements(
         data["comments_editor"] = "AAA"
     if file:
         files = {"cover_letter_file": SimpleUploadedFile("file.docx", b"file_content", content_type="image/jpeg")}
-    form = SubmissionStep1Form(data=data, journal=journal, user=user, files=files)
+    form = SubmissionStep1Form(data=data, journal=journal, user=user, files=files, step=1)
     assert form.is_valid() is (file or text)
     if not (file or text):
         assert form.errors == {"comments_editor": ["You must enter a cover letter or upload a file to proceed."]}
