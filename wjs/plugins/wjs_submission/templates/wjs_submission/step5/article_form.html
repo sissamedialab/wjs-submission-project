@@ -1,13 +1,44 @@
 {% extends "wjs_submission/base.html" %}
 {% load django_bootstrap5 static field %}
-{% block bootstrap5_extra_head %}
-  {{ block.super }}
-  {{ form.media.css }}
-{% endblock %}
 
 {% block submission_flow %}
-
+  <div class="wjs-submission-form__section mb-5">
+    <h5 class="wjs-submission-form__form-label-title">Metadata</h5>
+    <div class="wjs-submission-form__section-content">
+      <div class="mb-3">
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore
+        magna aliqua.
+        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+      </div>
+    </div>
+  </div>
+  <div class="wjs-submission-form__section mb-5">
+    <div class="wjs-submission-form__section-content">
+      {{ form.errors }}
+      {% bootstrap_field form.title label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" %}
+    </div>
+  </div>
+  <div class="wjs-submission-form__section mb-5">
+    <div class="wjs-submission-form__section-content">
+      {% bootstrap_field form.abstract label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" %}
+    </div>
+  </div>
+  {% if form.section or form.language %}
+    <div class="wjs-submission-form__section mb-5">
+      <div class="wjs-submission-form__section-content container">
+        <div class="row">
+          {% if form.section %}
+            <div class="col-6">
+              {% bootstrap_field form.section label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" %}
+            </div>
+          {% endif %}
+          {% if form.language %}
+            <div class="col-6">
+              {% bootstrap_field form.language label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" %}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  {% endif %}
 {% endblock submission_flow %}
-
-{% block js %}
-{% endblock %}

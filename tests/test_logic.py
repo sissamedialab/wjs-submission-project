@@ -70,6 +70,8 @@ def test_create_article_with_arxiv_id(
     :raises AssertionError: If article creation or validation of attributes fails
     """
     result, __ = arxiv_metadata("2504.10562v1")
+    original_title = result["title"]
+    result["title"] += "&<>"
 
     service = HandleArticleCreation(user, result, journal)
     article = service.run()
@@ -79,7 +81,7 @@ def test_create_article_with_arxiv_id(
     assert article.correspondence_author == user
     assert article.stage == STAGE_UNSUBMITTED
     assert article.current_step == 0
-    assert article.title == result["title"]
+    assert article.title == original_title + "&amp;&lt;&gt;"
     assert article.abstract == result["abstract"]
     assert Identifier.objects.get(
         identifier="2504.10562v1",

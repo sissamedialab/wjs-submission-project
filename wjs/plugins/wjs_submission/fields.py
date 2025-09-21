@@ -2,7 +2,9 @@ from pathlib import Path
 
 from core.model_utils import MiniHTMLFormField
 from django.core.files import File as DjangoFile
+from django.forms import TextInput
 from django.urls import reverse
+from django_bleach.forms import BleachField as BleachFormField
 from tinymce.widgets import TinyMCE
 
 
@@ -39,11 +41,31 @@ class CoreFileWrapper(DjangoFile):
         super().__init__(file_path.open("rb"), name=core_file.original_filename)
         self.url = reverse(
             "article_file_download",
-            kwargs={"identifier_type": "id", "identifier": core_file.article_id, "file_id": core_file.pk},
+            kwargs={
+                "identifier_type": "id",
+                "identifier": core_file.article_id,
+                "file_id": core_file.pk,
+            },
         )
 
 
+class WjsSimpleBleach(BleachFormField):
+    # TODO: Ported from jcom_profile wjs-production branch, jcom_profile will be refactored to use this instance when
+    #  deploying this to production
+    def __init__(self, *args, **kwargs):
+        """
+        Initialize the field.
+        """
+        super().__init__(*args, **kwargs)
+        self.widget = TextInput()
+        self.bleach_options["tags"] = []
+        self.bleach_options["attributes"] = {}
+        self.bleach_options["strip_comments"] = True  # Remove also html comments
+
+
 class WjsMiniHTMLFormField(MiniHTMLFormField):
+    # TODO: Ported from jcom_profile wjs-production branch, jcom_profile will be refactored to use this instance when
+    #  deploying this to production
     def __init__(self, *args, **kwargs):
         """
         Initialize the instance and configure default attributes and options for content sanitization.
