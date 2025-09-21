@@ -12,7 +12,7 @@
     <p>If these conditions are not met, you will not be able to proceed with your submission.</p>
   </div>
   <div class="wjs-submission-form__section wjs-submission-form__section--submission-checklist mb-5">
-    <h5 class="wjs-submission-form__form-label">Submission checklist and declarations</h5>
+    <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Submission checklist and declarations</h5>
     <div class="wjs-submission-form__section-content">
       {{ journal_settings.general.submission_checklist|safe }}
       {% bootstrap_field form.submission_requirements checkbox_style="switch" %}
@@ -27,7 +27,7 @@
 
   {% if form.arxiv_id %}
     <div class="wjs-submission-form__section mb-5">
-      <h5 class="wjs-submission-form__form-label">ArXiv</h5>
+      <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">ArXiv</h5>
       <div class="wjs-submission-form__section-content">
         <div class="mb-4">
           Enter your preprint’s arXiv ID and validate it. The title, abstract, and manuscript will be imported
@@ -66,7 +66,7 @@
   {% endif %}
 
   <div class="wjs-submission-form__section mb-5">
-    <h5 class="wjs-submission-form__form-label"> Conflict of interest</h5>
+    <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required"> Conflict of interest</h5>
     <div class="wjs-submission-form__section-content">
       <div class="mb-3">
         If you have any conflict of interests in the publication of this manuscript please state them here.
@@ -76,7 +76,7 @@
   </div>
 
   <div class="wjs-submission-form__section mb-5">
-    <h5 class="wjs-submission-form__form-label"> Cover letter</h5>
+    <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required"> Cover letter</h5>
     <div class="wjs-submission-form__section-content">
       <div class="mb-3">
         You may enter a text and/or upload a file as cover letter for the Editor-in-charge.

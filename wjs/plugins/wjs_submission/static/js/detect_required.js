@@ -3,7 +3,7 @@ function getForm() {
 }
 
 /**
- * Retrieves the text content of the nearest preceding element with wjs-submission-form__form-label class relative to a given field within a form.
+ * Retrieves the text content of the nearest preceding element with wjs-submission-form__form-label--required class relative to a given field within a form.
  *
  * @param {HTMLElement} field - The starting element to search upward from.
  * @return {string|undefined} The text content of the nearest H3 element if found, or undefined if no such element exists.
@@ -15,7 +15,7 @@ function getSectionHeading(field) {
   while (el && el !== form) {
     let sibling = el.previousElementSibling;
     while (sibling) {
-      if (sibling.classList.contains("wjs-submission-form__form-label")) {
+      if (sibling.classList.contains("wjs-submission-form__form-label--required")) {
         return sibling.textContent.trim();
       }
       sibling = sibling.previousElementSibling;

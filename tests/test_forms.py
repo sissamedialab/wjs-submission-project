@@ -5,6 +5,8 @@ from core.models import Account
 from django.core.files.uploadedfile import SimpleUploadedFile
 from journal.models import Journal
 from plugins.wjs_submission.step1.forms import SubmissionStep1Form
+from plugins.wjs_submission.step5.forms import SubmissionStep5Form
+from submission.models import Article
 
 
 @pytest.mark.parametrize(
@@ -30,7 +32,11 @@ from plugins.wjs_submission.step1.forms import SubmissionStep1Form
 )
 @pytest.mark.django_db
 def test_clean_copyright_notice(
-    journal: Journal, install_plugins: Callable, user: Account, enabled: bool, selected: bool
+    journal: Journal,
+    install_plugins: Callable,
+    user: Account,
+    enabled: bool,
+    selected: bool,
 ):
     journal.submissionconfiguration.copyright_notice = enabled
     journal.submissionconfiguration.save()
@@ -51,7 +57,11 @@ def test_clean_copyright_notice(
 @pytest.mark.parametrize(("extension", "is_valid"), [("jpg", False), ("pdf", True)])
 @pytest.mark.django_db
 def test_save_cover_letter_permission(
-    journal: Journal, install_plugins: Callable, user: Account, extension: str, is_valid: bool
+    journal: Journal,
+    install_plugins: Callable,
+    user: Account,
+    extension: str,
+    is_valid: bool,
 ):
     """
     Cover letter file is saved with the correct privacy setting and its extension is validated.
@@ -113,7 +123,11 @@ def test_save_cover_letter_permission(
 )
 @pytest.mark.django_db
 def test_clean_submission_requirements(
-    journal: Journal, install_plugins: Callable, user: Account, enabled: bool, selected: bool
+    journal: Journal,
+    install_plugins: Callable,
+    user: Account,
+    enabled: bool,
+    selected: bool,
 ):
     journal.submissionconfiguration.submission_check = enabled
     journal.submissionconfiguration.save()
@@ -175,3 +189,68 @@ def test_clean_comments_editor_requirements(
         assert form.errors == {"comments_editor": ["You must enter a cover letter or upload a file to proceed."]}
     else:
         assert form.errors == {}
+
+
+@pytest.mark.parametrize(
+    ("language", "section"),
+    [
+        (
+            True,
+            False,
+        ),
+        (
+            True,
+            True,
+        ),
+        (
+            False,
+            True,
+        ),
+        (
+            False,
+            False,
+        ),
+    ],
+)
+@pytest.mark.django_db
+def test_edit_metadata_form(
+    journal: Journal,
+    install_plugins: Callable,
+    user: Account,
+    article: Article,
+    fake_request,
+    language: bool,
+    section: bool,
+):
+    journal.submissionconfiguration.license = False
+    journal.submissionconfiguration.language = language
+    journal.submissionconfiguration.section = section
+    journal.submissionconfiguration.default_section = journal.section_set.last()
+    journal.submissionconfiguration.default_language = "eng"
+    journal.submissionconfiguration.save()
+    data = {"title": "<script>title</script>&<>", "abstract": "<b>abstract</b>&<>"}
+    if language:
+        data["language"] = "fra"
+    if section:
+        data["section"] = journal.section_set.first().pk
+    form = SubmissionStep5Form(data=data, journal=journal, instance=article, step=5)
+    if section:
+        assert "section" in form.fields
+    else:
+        assert "section" not in form.fields
+    if language:
+        assert "language" in form.fields
+    else:
+        assert "language" not in form.fields
+    assert form.is_valid()
+    instance = form.save(request=fake_request)
+    if language:
+        assert instance.language == "fra"
+    else:
+        assert instance.language == journal.submissionconfiguration.default_language
+    if section:
+        assert instance.section == journal.section_set.first()
+    else:
+        assert instance.section == journal.submissionconfiguration.default_section
+    assert instance.title == "title&amp;&lt;&gt;"
+    assert instance.abstract == "<b>abstract</b>&amp;&lt;&gt;"

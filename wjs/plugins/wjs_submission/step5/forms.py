@@ -1,0 +1,40 @@
+from django import forms
+from django.utils.translation import gettext_lazy as _
+from submission.forms import ArticleInfo
+
+from ..fields import WjsSimpleBleach
+
+
+class SubmissionStep5Form(ArticleInfo):
+    title = WjsSimpleBleach(
+        label=_("Title"),
+        max_length=255,
+        help_text=_("Required"),
+        widget=forms.TextInput(attrs={"placeholder": _("Title")}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        """
+        Initialise the ArticleInfo form and assign proper attributes to set required fields.
+        """
+        self.step = kwargs.pop("step")
+        super().__init__(*args, **kwargs)
+        if "language" in self.fields:
+            self.fields["language"].required = True
+        if "section" in self.fields:
+            self.fields["section"].label = _("Article type")
+            self.fields["section"].required = True
+
+        for field in self.fields:
+            if self.fields[field].required:
+                self.fields[field].widget.attrs["required"] = True
+                self.fields[field].help_text = _("Required")
+
+    def save(self, commit=True, request=None):
+        """
+        Set article current step to the form step.
+        """
+        self.instance.current_step = max(self.instance.current_step, self.step)
+        super().save(commit=commit, request=request)
+        self.instance.refresh_from_db()
+        return self.instance

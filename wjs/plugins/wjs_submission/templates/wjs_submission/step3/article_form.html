@@ -1,12 +1,12 @@
 {% extends "wjs_submission/base.html" %}
 {% load django_bootstrap5 static field %}
 {% block bootstrap5_extra_head %}
-{{ block.super }}
+  {{ block.super }}
   {{ form.media.css }}
 {% endblock %}
 {% block submission_flow %}
   <div class="wjs-submission-form__section mb-5">
-    <h5 class="wjs-submission-form__form-label">Keywords</h5>
+    <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Keywords</h5>
 
     <div class="wjs-submission-form__section-content">
       <input
@@ -116,21 +116,22 @@
         <div class="d-none wjs-submission-form__free-keywords-section" id="js-free-keyword-section">
           <div class="wjs-submission-form__free-keywords">
             <p class="wjs-submission-form__free-keywords-label">Add free kewords</p>
-            <p class="wjs-submission-form__free-keywords-intro">Lorem ipsum dolor sit amet consectetur. Sed vitae suspendisse rhoncus sed. Rhoncus pulvinar turpis arcu facilisi cras orci integer tellus id. Id massa phasellus elementum adipiscing. Urna sagittis condimentum ut nisl proin egestas. </p>
+            <p class="wjs-submission-form__free-keywords-intro">Lorem ipsum dolor sit amet consectetur. Sed vitae suspendisse rhoncus sed. Rhoncus pulvinar turpis arcu facilisi cras orci integer tellus id. Id massa phasellus elementum
+              adipiscing. Urna sagittis condimentum ut nisl proin egestas. </p>
             {{ form.keywords }}
           </div>
         </div>
 
         <div class="wjs-submission-form__keywords-weight">
-         <h5 class="wjs-submission-form__form-label d-none">Keywords weight</h5>
-         <input type="radio" required class="form-check-input d-none" name="keyword_weight_hidden" id="js-keywords-weight-hidden-required">
+          <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label--required d-none">Keywords weight</h5>
+          <input type="radio" required class="form-check-input d-none" name="keyword_weight_hidden" id="js-keywords-weight-hidden-required">
           <div class="wjs-submission-form__keywords-weight-info d-none">
             <p class="wjs-submission-form__keywords-requirements">Select keywords weight</p>
-              <p class="wjs-submission-form__keywords-intro-text">
-                Lorem ipsum dolor sit amet consectetur. Sed vitae suspendisse rhoncus sed.
-                Rhoncus pulvinar turpis arcu facilisi cras orci integer tellus id.
-                Id massa phasellus elementum adipiscing. Urna sagittis condimentum ut nisl proin egestas.
-              </p>
+            <p class="wjs-submission-form__keywords-intro-text">
+              Lorem ipsum dolor sit amet consectetur. Sed vitae suspendisse rhoncus sed.
+              Rhoncus pulvinar turpis arcu facilisi cras orci integer tellus id.
+              Id massa phasellus elementum adipiscing. Urna sagittis condimentum ut nisl proin egestas.
+            </p>
           </div>
 
           <div class="wjs-submission-form__keywords-weight-container"></div>
@@ -142,15 +143,15 @@
 {% endblock submission_flow %}
 
 {% block js %}
-   {{ block.super }}
-   <link rel="stylesheet" href="https://code.jquery.com/ui/1.11.0/themes/smoothness/jquery-ui.css">
-   <script type="text/javascript" src="{% static "admin/js/vendor/jquery/jquery.js" %}"></script>
-   <script src="{% static 'common/js/jq-ui.min.js' %}"></script>
-   <script src="{% static 'common/js/tagit.js' %}"></script>
-<script>
-$(document).ready(function () {
-    $("#id_keywords").tagit({allowSpaces: true});
-});
-</script>
-{{ form.media.js }}
+  {{ block.super }}
+  <link rel="stylesheet" href="https://code.jquery.com/ui/1.11.0/themes/smoothness/jquery-ui.css">
+  <script type="text/javascript" src="{% static "admin/js/vendor/jquery/jquery.js" %}"></script>
+  <script src="{% static 'common/js/jq-ui.min.js' %}"></script>
+  <script src="{% static 'common/js/tagit.js' %}"></script>
+  <script>
+    $(document).ready(function() {
+      $("#id_keywords").tagit({ allowSpaces: true });
+    });
+  </script>
+  {{ form.media.js }}
 {% endblock %}

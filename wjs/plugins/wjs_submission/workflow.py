@@ -216,7 +216,7 @@ STEPS = {
     ),
     5: Step(
         step_number=5,
-        label="data",
+        label="Metadata",
         step_view_name="wjs_submission_5",
         check_function=step_check_metadata,
         icon="bi-file-earmark-text",
