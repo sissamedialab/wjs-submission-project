@@ -95,13 +95,11 @@ upload-package:
     - .upload-package
 
 
-# deploy-to-dev:
-#   extends:
-#     - .deploy
-#   rules:
-#     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-#   variables:
-#     SERVER_IP: "$TEST_SERVER_IP"
-#     SERVER_USER: "$TEST_SERVER_USER"
-#     DEPLOY_CMD: "deploy-dev-wjs-submission:${CI_COMMIT_SHA}"
-#     # TODO: the deploy script does not yet know about "deploy-dev-wjs-submission"!
+deploy-to-dev:
+  extends:
+    - .deploy
+  when: manual
+  variables:
+    SERVER_IP: "$TEST_SERVER_IP"
+    SERVER_USER: "$TEST_SERVER_USER"
+    DEPLOY_CMD: "deploy-dev-wjs-submission:${CI_COMMIT_SHA}"
