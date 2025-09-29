@@ -19,7 +19,7 @@
       {% if form.copyright_notice %}{% bootstrap_field form.copyright_notice checkbox_style="switch" %}{% endif %}
       {% for bound_field in form.visible_fields %}
         {% if bound_field.name not in form.Meta.fields %}
-          {% bootstrap_field bound_field checkbox_style="switch" show_help=False %}
+          {% bootstrap_field bound_field checkbox_style="switch" show_help=True %}
         {% endif %}
       {% endfor %}
     </div>

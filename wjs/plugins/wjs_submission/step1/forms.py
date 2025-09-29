@@ -140,6 +140,8 @@ class SubmissionStep1Form(forms.ModelForm):
 
                 self.fields[element.name].help_text = element.help_text
                 self.fields[element.name].label = element.name
+                if element.required:
+                    self.fields[element.name].help_text = _("Required")
 
                 if self.instance:
                     try:

@@ -9,11 +9,13 @@ function handleUseAiToggle() {
   const aiInput = document.querySelector("input[name=\"Use of AI\"]");
   if (!aiInput) return;
   const aiLabel = document.querySelector(`label[for="${aiInput.id}"]`);
+  const aiHelpText = document.querySelector(`div[id="${aiInput.id}_helptext"]`);
 
   aiInput.setAttribute("aria-hidden", "true");
   aiInput.classList.add("d-none");
   aiLabel.setAttribute("aria-hidden", "true");
   aiLabel.classList.add("d-none");
+  aiHelpText.classList.add("d-none");
 
   // Create the Bootstrap switch
   const switchAI = document.createElement("div");
@@ -41,8 +43,10 @@ function handleUseAiToggle() {
     aiInput.checked = this.checked;
     if (this.checked) {
       aiInput.classList.remove("d-none");
+      aiHelpText.classList.remove("d-none");
     } else {
       aiInput.classList.add("d-none");
+      aiHelpText.classList.add("d-none");
     }
   });
 
