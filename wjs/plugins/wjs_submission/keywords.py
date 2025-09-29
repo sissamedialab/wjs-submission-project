@@ -22,7 +22,12 @@ def get_keywords_by_journal(journal: Journal, arxiv_category: str | None = None)
     if journal.submissionconfiguration.hierarchical_keywords:
         groups_all = KeywordGroup.objects.filter(keywords__journal=journal)
         filter_by_keyword = Q(keywordgroup__in=groups_all) | Q(keywords__journal=journal)
-        return KeywordGroup.objects.filter(parent_group__isnull=True).filter(filter_by_keyword).distinct()
+        return (
+            KeywordGroup.objects.filter(parent_group__isnull=True)
+            .filter(filter_by_keyword)
+            .distinct()
+            .order_by("parent_group", "order")
+        )
     return Keyword.objects.filter(journal=journal).distinct()
 
 

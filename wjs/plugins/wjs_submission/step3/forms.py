@@ -1,5 +1,6 @@
 from django import forms
 from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
 from submission.models import Article, KeywordArticle
 from utils.forms import KeywordModelForm
 
@@ -40,6 +41,8 @@ class SubmissionStep3Form(KeywordModelForm):
                 ka.keyword_id: ka.weight
                 for ka in KeywordArticle.objects.filter(article=self.instance, keyword__group__isnull=False)
             }
+        if journal and not journal.submissionconfiguration.autocomplete_keywords:
+            self.fields["keywords"] = forms.CharField(required=False, help_text=_("Hit Enter to add a new keyword."))
 
     def get_logic_instance(self):
         """Instantiate :py:class:`HandleKeywordSelection` class."""
