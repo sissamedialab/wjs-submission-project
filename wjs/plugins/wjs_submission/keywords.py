@@ -19,9 +19,11 @@ def get_keywords_by_journal(journal: Journal, arxiv_category: str | None = None)
     """
     # TODO: This is a limited implementation of the keyword filtering logic.
     #  It should be extended to support arbitrary keyword groups depth.
-    groups_all = KeywordGroup.objects.filter(keywords__journal=journal)
-    filter_by_keyword = Q(keywordgroup__in=groups_all) | Q(keywords__journal=journal)
-    return KeywordGroup.objects.filter(parent_group__isnull=True).filter(filter_by_keyword).distinct()
+    if journal.submissionconfiguration.hierarchical_keywords:
+        groups_all = KeywordGroup.objects.filter(keywords__journal=journal)
+        filter_by_keyword = Q(keywordgroup__in=groups_all) | Q(keywords__journal=journal)
+        return KeywordGroup.objects.filter(parent_group__isnull=True).filter(filter_by_keyword).distinct()
+    return Keyword.objects.filter(journal=journal).distinct()
 
 
 def get_keywords_by_journal_and_arxiv_category(journal, arxiv_category=None):

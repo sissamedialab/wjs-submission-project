@@ -300,6 +300,37 @@ def test_keyword_handling(client, article, post_data, expected_keywords, expect_
 
 
 @pytest.mark.django_db
+def test_context_contains_only_journal_keyword_groups(hierarchical_keywords, client, article):
+    journal = article.journal
+
+    kw1 = Keyword.objects.create(word="kw1")
+    kw2 = Keyword.objects.create(word="kw2")
+    kw3 = Keyword.objects.create(word="kw3")
+
+    g1 = KeywordGroup.objects.create(name="group1")
+    g2 = KeywordGroup.objects.create(name="group2", parent_group=g1)
+    g3 = KeywordGroup.objects.create(name="group3")
+
+    kw1.group = g1
+    kw1.save()
+    kw2.group = g2
+    kw2.save()
+    kw3.group = g3
+    kw3.save()
+
+    journal.keywords.add(kw1, kw2)
+
+    client.force_login(article.owner)
+    url = reverse("wjs_submission_3", kwargs={"article_id": article.pk})
+    response = client.get(url)
+    groups = response.context["keywords_list"]
+
+    assert g1 in groups
+    assert g2 not in groups
+    assert g3 not in groups
+
+
+@pytest.mark.django_db
 def test_context_contains_only_journal_keywords(client, article):
     journal = article.journal
 
@@ -323,11 +354,11 @@ def test_context_contains_only_journal_keywords(client, article):
     client.force_login(article.owner)
     url = reverse("wjs_submission_3", kwargs={"article_id": article.pk})
     response = client.get(url)
-    groups = response.context["keyword_groups"]
+    keywords = response.context["keywords_list"]
 
-    assert g1 in groups
-    assert g2 not in groups
-    assert g3 not in groups
+    assert kw1 in keywords
+    assert kw2 in keywords
+    assert kw3 not in keywords
 
 
 @pytest.mark.django_db
