@@ -36,7 +36,7 @@ class SubmissionStep3View(AuthorFilteringView, StepCheckView, UpdateView):
 
         filter_path = submission_settings.KEYWORD_FILTERS.get(journal, submission_settings.KEYWORD_FILTERS.get(None))
         filter_fn = import_string(filter_path)
-        context["keyword_groups"] = filter_fn(journal, arxiv_category)
+        context["keywords_list"] = filter_fn(journal, arxiv_category)
         return context
 
     def get_form_kwargs(self):

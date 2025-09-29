@@ -99,10 +99,21 @@ def roles():
 
 
 @pytest.fixture
+def hierarchical_keywords(journal):
+    """Set journal to use hierarchical keywords."""
+    journal.submissionconfiguration.hierarchical_keywords = True
+    journal.submissionconfiguration.autocomplete_keywords = True
+    journal.submissionconfiguration.save()
+
+
+@pytest.fixture
 def jquant_journal(press, roles) -> Journal:
     """Create a journal with code JQUANT for tests."""
     journal = _journal_factory("JQUANT", press, domain="jquant.testserver.org")
     set_script_prefix(f"/{journal.code}")
+    journal.submissionconfiguration.hierarchical_keywords = True
+    journal.submissionconfiguration.autocomplete_keywords = True
+    journal.submissionconfiguration.save()
     return journal
 
 
@@ -111,6 +122,9 @@ def jhep_journal(press, roles) -> Journal:
     """Create a journal with code JHEP for tests."""
     journal = _journal_factory("JHEP", press, domain="jhep.testserver.org")
     set_script_prefix(f"/{journal.code}")
+    journal.submissionconfiguration.hierarchical_keywords = True
+    journal.submissionconfiguration.autocomplete_keywords = True
+    journal.submissionconfiguration.save()
     return journal
 
 
