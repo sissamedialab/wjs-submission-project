@@ -13,8 +13,15 @@ def import_keywords_from_wjapp(journal_code: str, clear_existing: bool, dry_run:
         try:
             # Clear existing data if requested
             if clear_existing and not dry_run:
-                Keyword.objects.all().delete()
-                KeywordGroup.objects.all().delete()
+                groups = list(
+                    KeywordGroup.objects.filter(keywords__journal=journal).values_list("pk", flat=True).distinct()
+                )
+                parent_groups = list(
+                    KeywordGroup.objects.filter(keywordgroup__pk__in=groups).values_list("pk", flat=True).distinct()
+                )
+                Keyword.objects.filter(journal=journal).delete()
+                KeywordGroup.objects.filter(pk__in=groups).delete()
+                KeywordGroup.objects.filter(pk__in=parent_groups).delete()
 
             # Statistics counters
             groups_created = 0
