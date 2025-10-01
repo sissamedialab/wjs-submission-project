@@ -33,6 +33,8 @@ function setupArxivValidation() {
    *
    * When the ArXiv input is empty the fields are set as non required and frontend required check passes.
    *
+   * It calls the populateRequiredChecklist function to update the required fields checklist.
+   *
    * @return {void} Does not return a value.
    */
   function validateInput() {
