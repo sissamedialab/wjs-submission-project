@@ -116,6 +116,9 @@ function updateRequiredChecklist() {
  * Retrieve the list of required fields from a given form element.
  * Filters out duplicate required radio groups to ensure only one entry for each group.
  *
+ * This is meant to be called multiple times as it must be called any time the required status of a field changes to
+ * ensure the required checklist is updated correctly.
+ *
  * @param {HTMLFormElement} form - The form element to inspect for required fields.
  * @return {Array<Element>} The array of required field elements, including unique entries for radio groups.
  */
@@ -168,6 +171,9 @@ function addTinyMceListener(field) {
 /**
  * Populates the checklist of required fields for a given form and attaches event listeners to ensure
  * the checklist updates dynamically upon changes.
+ *
+ * This is meant to be called multiple times as it must be called any time the required status of a field changes to
+ * ensure the required checklist is updated correctly.
  *
  * @param {HTMLElement} fieldsStatusList - The DOM element representing the checklist container where required fields will be rendered.
  * @return {void} Does not return a value.
