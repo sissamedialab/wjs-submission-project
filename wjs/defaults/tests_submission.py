@@ -12,6 +12,7 @@ from core.janeway_global_settings import *  # noqa: F403
 from django.db import connection
 
 from .settings_submission import INSTALLED_APPS as CUSTOM_APPS
+from .settings_submission import SUBMISSION_ARTICLE_LANGUAGES  # noqa: F401
 
 with contextlib.suppress(ImportError):
     # Non committed local settings may non exists (eg: in the CI)

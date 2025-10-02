@@ -140,7 +140,7 @@ YAKUNIN_URL = "http://janeway-services.ud.sissamedialab.it:1235/watermark/"
 BOOTSTRAP5 = {"css_url": "/static/JCOM-theme/css/wjs_review.css"}
 
 
-WJS_ARTICLE_LANGUAGES = {
+SUBMISSION_ARTICLE_LANGUAGES = {
     None: [("eng", _("English"))],
     "JCOM": [
         (
@@ -154,11 +154,4 @@ WJS_ARTICLE_LANGUAGES = {
         ("ita", _("Italian")),
     ],
     "JCOMAL": [("spa", _("Spanish")), ("por", _("Portuguese"))],
-}
-
-WJS_ARTICLE_KEYWORDS_LIMITS = {
-    None: {
-        "min": 1,
-        "max": 3,
-    },
 }

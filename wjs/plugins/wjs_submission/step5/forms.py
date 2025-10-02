@@ -3,6 +3,7 @@ from django.utils.translation import gettext_lazy as _
 from submission.forms import ArticleInfo
 
 from ..fields import WjsSimpleBleach
+from ..settings_helpers import get_article_language_choices
 
 
 class SubmissionStep5Form(ArticleInfo):
@@ -21,6 +22,7 @@ class SubmissionStep5Form(ArticleInfo):
         super().__init__(*args, **kwargs)
         if "language" in self.fields:
             self.fields["language"].required = True
+            self.fields["language"].choices = get_article_language_choices(self.instance.journal)
         if "section" in self.fields:
             self.fields["section"].label = _("Article type")
             self.fields["section"].required = True
