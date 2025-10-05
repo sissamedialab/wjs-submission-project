@@ -89,6 +89,15 @@ class FreeKeywordAutocomplete(KeywordAutocomplete):
     We override the original Janeway URL.
     """
 
+    @property
+    def create_field(self):
+        """
+        Always allow the creation of new keywords.
+
+        :return: The field name to use for creating new keywords.
+        """
+        return "word"
+
     def get_queryset(self):
         """
         Return a queryset of available keywords.

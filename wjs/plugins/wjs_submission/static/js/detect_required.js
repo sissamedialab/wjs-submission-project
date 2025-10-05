@@ -1,3 +1,10 @@
+/**
+ * Set true to enable debugging messages.
+ *
+ * @type {boolean}
+ */
+const debug = false;
+
 function getForm() {
   return document.querySelector(".wjs-submission-form");
 }
@@ -72,6 +79,9 @@ function allFilled(form, fields) {
     if (field.type === "radio") {
       return !!form.querySelector(`input[type="radio"][name="${field.name}"]:checked`);
     }
+    if (field.dataset.type === "radio-select") {
+      return !!form.querySelector(`input[type="radio"][name="${field.dataset.name}"]:checked`);
+    }
     if (field.type === "checkbox") return field.checked;
     if (field.tagName === "SELECT") return field.value !== "";
     if (field.tagName === "TEXTAREA") {
@@ -100,6 +110,8 @@ function updateRequiredChecklist() {
       return document.getElementById(field);
     });
     const filled = allFilled(form, fields);
+    if (debug)
+      console.log("Filled", fieldStatusItem, fields, filled);
     if (filled) {
       fieldStatusItem.classList.add("wjs-submission-form__label--filled");
     } else {
@@ -120,17 +132,22 @@ function updateRequiredChecklist() {
  * ensure the required checklist is updated correctly.
  *
  * @param {HTMLFormElement} form - The form element to inspect for required fields.
- * @return {Array<Element>} The array of required field elements, including unique entries for radio groups.
+ * @return {Array<Element>} The array of required field elements, with radio groups represented by a single element.
  */
 function getRequiredFields(form) {
   const radios = new Set();
 
-  return Array.from(form.querySelectorAll("[required]:not([required=\"false\"]),[js_required]")).map(field => {
+  // Use .filter() to create an array of required fields. This avoids including
+  // `undefined` elements, which was the issue with the previous .map() implementation.
+  return Array.from(form.querySelectorAll("[required]:not([required=\"false\"]),[js_required]")).filter(field => {
+    // For radio buttons, we only want to include one field from each named group.
     if (field.type === "radio") {
-      if (radios.has(field.name)) return;
+      if (radios.has(field.name)) {
+        return false; // Exclude this field as its group is already included.
+      }
       radios.add(field.name);
     }
-    return field;
+    return true; // Include all other required fields.
   });
 }
 
@@ -160,10 +177,18 @@ function setupRequiredChecklist() {
  * @return {void}
  */
 function addTinyMceListener(field) {
+  // Guard against undefined/null field object to prevent runtime errors.
+  if (!field || !field.id) {
+    return;
+  }
+
   const editor = tinymce.get(field.id);
+
   if (editor) {
     editor.on("change", function() {
-      updateRequiredChecklist();
+      if (typeof updateRequiredChecklist === "function") {
+        updateRequiredChecklist();
+      }
     });
   }
 }
@@ -194,7 +219,6 @@ function populateRequiredChecklist(fieldsStatusList) {
   while (fieldsStatusList.firstChild) {
     fieldsStatusList.removeChild(fieldsStatusList.firstChild);
   }
-
   // For each section pick all required fields and listen for change event to trigger rerendering of
   // required fields list
   sectionMap.forEach((fields, section) => {
@@ -225,10 +249,11 @@ function attachEventListener(form, fields) {
       form
         .querySelectorAll(`input[type="radio"][name="${field.name}"]`)
         .forEach(radio => radio.addEventListener("change", updateRequiredChecklist));
+    } else if (["text", "textarea"].includes(field.type)) {
+      // we can validate text fields on each keystroke
+      field.addEventListener("input", updateRequiredChecklist);
     } else {
-      ["input", "change"].forEach(event => {
-        field.addEventListener(event, updateRequiredChecklist);
-      });
+      field.addEventListener("change", updateRequiredChecklist);
     }
   });
 }

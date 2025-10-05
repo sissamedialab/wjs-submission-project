@@ -4,7 +4,8 @@ from .plugin_settings import MANAGER_URL
 from .step1 import SubmissionStep1RedirectView, SubmissionStep1View
 from .step2 import SubmissionStep2View
 from .step3 import SubmissionStep3View
-from .step4 import SubmissionStep4View
+from .step4 import AddAuthorView, SubmissionStep4View
+from .step4.views import AddCollaborationView
 from .step5 import SubmissionStep5View
 from .step6 import SubmissionStep6View
 from .step7 import SubmissionStep7View
@@ -79,4 +80,6 @@ urlpatterns = [
         name="wjs_submission_0",
     ),
     path("keyword-autocomplete/", FreeKeywordAutocomplete.as_view(), name="keyword-autocomplete"),
+    path("add-author/", AddAuthorView.as_view(), name="add-author"),
+    path("add-collaboration/", AddCollaborationView.as_view(), name="add-collaboration"),
 ]

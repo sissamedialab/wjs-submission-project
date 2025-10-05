@@ -87,3 +87,15 @@
     </div>
   </div>
 {% endblock submission_flow %}
+
+{% block js %}
+  {{ block.super }}
+  <script src="{% static "js/ai_field.js" %}"></script>
+  <script src="{% static "js/arxiv.js" %}"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      setupArxivValidation();
+      handleUseAiToggle();
+    });
+  </script>
+{% endblock js %}

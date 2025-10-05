@@ -2,17 +2,27 @@ from collections.abc import Callable
 from unittest.mock import patch
 
 import pytest
-from core.models import Account
+from core.models import Account, Country
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.test import Client
 from django.urls import reverse
 from journal.models import Journal
+from plugins.wjs_submission.models import ArticleCollaboration, Collaboration
 from plugins.wjs_submission.step1 import SubmissionStep1View
 from plugins.wjs_submission.views import SubmissionLastStepRedirectView
 from plugins.wjs_submission.workflow import STEPS
-from submission.models import Article, Keyword, KeywordArticle, KeywordGroup, SubmissionConfiguration
+from submission.models import (
+    Article,
+    ArticleAuthorOrder,
+    Keyword,
+    KeywordArticle,
+    KeywordGroup,
+    SubmissionConfiguration,
+)
 from utils.setting_handler import save_setting
+
+from .conftest import _user
 
 
 @pytest.mark.parametrize("skip", [True, False])
@@ -414,3 +424,56 @@ def test_free_text_keywords(client, article):
     created_ids = {ka.keyword_id for ka in kws}
     expected_ids = {kw1.pk, kw2.pk} | {kw.pk for kw in free_keywords}
     assert created_ids == expected_ids
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("collaboration_relation", "expect_clear"),
+    [
+        ("none", True),
+        ("on_behalf_of", False),
+    ],
+)
+def test_submission_step4_form_saves_country_and_authors(client, article, collaboration_relation, expect_clear):
+    author1 = _user("author1")
+    author2 = _user("author2")
+    article.owner = _user("owner")
+    article.save()
+
+    ArticleAuthorOrder.objects.create(article=article, author=author1, order=1)
+    ArticleAuthorOrder.objects.create(article=article, author=author2, order=2)
+
+    article.correspondence_author = author1
+    article.save()
+    country = Country.objects.create(code="ABC", name="ABCountry")
+    post_data = {
+        "country": str(country.pk),
+        "correspondence_author": str(author1.pk),
+        "collaboration_relation": collaboration_relation,
+    }
+    collaboration = Collaboration.objects.create(name="Collab 1")
+    ArticleCollaboration.objects.create(
+        article=article,
+        collaboration=collaboration,
+        relation="by",
+        order=Collaboration.next_collaboration_sort(article),
+    )
+    client.force_login(article.owner)
+    url = reverse("wjs_submission_4", kwargs={"article_id": article.pk})
+    response = client.post(url, post_data)
+    assert response.status_code == 302
+
+    article.refresh_from_db()
+    article.submission_data.refresh_from_db()
+
+    assert article.correspondence_author == author1
+    assert Article.objects.get(pk=article.pk).submission_data.affiliation_country == country
+
+    ids_in_order = set(ArticleAuthorOrder.objects.filter(article=article).values_list("author_id", flat=True))
+    ids_on_article = set(article.authors.values_list("id", flat=True))
+    assert ids_in_order == ids_on_article
+
+    if expect_clear:
+        assert article.collaborations.count() == 0
+    else:
+        assert article.collaborations.count() == 1
