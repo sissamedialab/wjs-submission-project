@@ -13,7 +13,7 @@ from django.db import transaction
 from django.db.models import Q, QuerySet
 from identifiers.models import Identifier
 from journal.models import Journal
-from submission.models import STAGE_REJECTED, STAGE_UNSUBMITTED, Article
+from submission.models import STAGE_REJECTED, STAGE_UNSUBMITTED, Article, ArticleAuthorOrder
 from utils.setting_handler import get_setting
 
 ARXIV_API_URL = "https://export.arxiv.org/api/query?id_list={}"
@@ -442,6 +442,11 @@ class HandleArticleCreation:
             }
         )
         new_article = Article.objects.create(**base_data)
+        ArticleAuthorOrder.objects.get_or_create(
+            article=new_article,
+            author=self.user,
+            defaults={"order": 0},
+        )
         new_article.authors.add(self.user)
         return new_article
 
