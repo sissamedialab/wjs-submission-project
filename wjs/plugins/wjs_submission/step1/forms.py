@@ -1,6 +1,7 @@
 from core import files as core_files
 from django import forms
 from django.core.exceptions import ValidationError
+from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 from submission.models import Article, Field, FieldAnswer
 from utils.setting_handler import get_setting
@@ -27,7 +28,8 @@ class SubmissionStep1Form(forms.ModelForm):
         label=_("Competing interests"),
         height="15rem",
         help_text=_(
-            "If you have any conflict of interests in the publication of this article please state them here."
+            "Please disclose any relevant financial or personal relationships that could be viewed as inappropriately "
+            "influencing your work or hindering transparency."
         ),
         required=False,
     )
@@ -84,11 +86,13 @@ class SubmissionStep1Form(forms.ModelForm):
             pass
         super().__init__(*args, **kwargs)
 
-        copyright_label = get_setting(
-            "general",
-            "copyright_submission_label",
-            self.journal,
-        ).processed_value
+        copyright_label = mark_safe(  # noqa S308
+            get_setting(
+                "general",
+                "copyright_submission_label",
+                self.journal,
+            ).processed_value
+        )
         self.fields["copyright_notice"].label = copyright_label
         if self.journal.submissionconfiguration.copyright_notice:
             self.fields["copyright_notice"].required = True
