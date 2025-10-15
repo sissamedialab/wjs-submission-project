@@ -3,13 +3,7 @@
 
 {% block submission_flow %}
   <div class="wjs-submission-form__intro">
-    <p><strong>Before you submit:</strong></p>
-    <p>To submit an article, <strong>all authors must</strong>:</p>
-    <ul>
-      <li><strong>Agree to the statements</strong> below</li>
-      <li>Provide all information marked as <strong>required</strong></li>
-    </ul>
-    <p>If these conditions are not met, you will not be able to proceed with your submission.</p>
+    {{ journal_settings.general.submission_intro_text|safe }}
   </div>
   <div class="wjs-submission-form__section wjs-submission-form__section--submission-checklist mb-5">
     <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Submission checklist and declarations</h5>

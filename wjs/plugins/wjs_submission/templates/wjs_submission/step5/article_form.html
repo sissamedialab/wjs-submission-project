@@ -18,11 +18,13 @@
       {% bootstrap_field form.title label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" %}
     </div>
   </div>
-  <div class="wjs-submission-form__section mb-5">
-    <div class="wjs-submission-form__section-content">
-      {% bootstrap_field form.abstract label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" %}
+  {% if form.abstract %}
+    <div class="wjs-submission-form__section mb-5">
+      <div class="wjs-submission-form__section-content">
+        {% bootstrap_field form.abstract label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" %}
+      </div>
     </div>
-  </div>
+  {% endif %}
   {% if form.section or form.language %}
     <div class="wjs-submission-form__section mb-5">
       <div class="wjs-submission-form__section-content container">
