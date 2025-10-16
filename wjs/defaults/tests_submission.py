@@ -4,22 +4,32 @@ Merge janeway_global_settings and custom settings for pytest.
 isort:skip_file
 """  # noqa: INP001
 
-import contextlib
 from collections.abc import Mapping
+from copy import copy
 from typing import Any
 
 from core.janeway_global_settings import *  # noqa: F403
 from django.db import connection
 
-from .settings_submission import INSTALLED_APPS as CUSTOM_APPS
+from .settings_submission import INSTALLED_APPS as SUBMISSION_APPS
 from .settings_submission import SUBMISSION_ARTICLE_LANGUAGES  # noqa: F401
 
-with contextlib.suppress(ImportError):
+# CLone Janeway INSTALLED_APPS / MIDDLEWARE to merge with ones defined in wjs.default.settings which are imported below
+JANEWAY_INSTALLED_APPS = copy(INSTALLED_APPS)  # noqa: F405
+JANEWAY_MIDDLEWARE = copy(MIDDLEWARE)  # noqa: F405
+
+try:
     # Non committed local settings may non exists (eg: in the CI)
     from core.settings import *  # noqa: F403
 
+    # Merge Janeway, wjs defaults and submission INSTALLED_APPS preserving the order but removing the duplicates
+    INSTALLED_APPS = list(dict.fromkeys(JANEWAY_INSTALLED_APPS + INSTALLED_APPS + SUBMISSION_APPS))  # noqa: F405
+    # Merge Janeway, wjs defaults MIDDLEWARE
+    MIDDLEWARE = JANEWAY_MIDDLEWARE + MIDDLEWARE  # noqa: F405
+except ImportError:
+    # Merge Janeway and submission INSTALLED_APPS preserving the order but removing the duplicates
+    INSTALLED_APPS = list(dict.fromkeys(JANEWAY_INSTALLED_APPS + SUBMISSION_APPS))
 
-INSTALLED_APPS.extend(CUSTOM_APPS)  # noqa: F405
 
 # Check wjs-profile-project wjs.defaults files if you need to manage django apps or middleware.
 
@@ -68,3 +78,4 @@ CACHES = {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
     },
 }
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
