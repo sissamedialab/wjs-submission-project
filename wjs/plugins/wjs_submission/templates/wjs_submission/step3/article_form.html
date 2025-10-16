@@ -144,9 +144,27 @@
       <div class="wjs-submission-form__keywords-section">
         <div class="wjs-submission-form__keywords">
           <p class="wjs-submission-form__keywords-label">Add keywords</p>
-          <p class="wjs-submission-form__keywords-intro">Lorem ipsum dolor sit amet consectetur. Sed vitae suspendisse rhoncus sed. Rhoncus pulvinar turpis arcu facilisi cras orci integer tellus id. Id massa phasellus elementum
-            adipiscing. Urna sagittis condimentum ut nisl proin egestas. </p>
-          {{ form.keywords }}
+          <p class="wjs-submission-form__keywords-intro">
+            Lorem ipsum dolor sit amet consectetur. Sed vitae suspendisse rhoncus sed.
+            Rhoncus pulvinar turpis arcu facilisi cras orci integer tellus id. Id massa phasellus elementum
+            adipiscing. Urna sagittis condimentum ut nisl proin egestas.
+          </p>
+          <input type="checkbox" id="js-keywords-hidden-required" class="d-none" required>
+          <div class="wjs-submission-form__keywords-list wjs-submission-form__keywords-list--has-keywords d-flex flex-wrap gap-2">
+            {% for keyword in keywords_list %}
+            <div class="form-check wjs-submission-form__keywords-list-item">
+              <input class="wjs-submission-form__keywords-checkbox form-check-input"
+                     type="checkbox"
+                     name="keywords"
+                     value="{{ keyword.id }}"
+                     id="keyword{{ keyword.id }}"
+                     {% if keyword.id in form.selected_grouped_keywords or keyword.id in form.initial.keywords %}checked{% endif %}>
+              <label class="form-check-label wjs-submission-form__keywords-checkbox-label" for="keyword{{ keyword.id }}">
+                {{ keyword }}
+              </label>
+            </div>
+            {% endfor %}
+          </div>
         </div>
       </div>
     {% endif %}

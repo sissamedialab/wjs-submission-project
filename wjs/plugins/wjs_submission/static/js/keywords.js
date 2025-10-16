@@ -31,7 +31,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function updateKeywordSelectionState() {
-    const keywordCheckboxes = document.querySelectorAll('input[type="checkbox"][name="keyword"]');
+    const keywordCheckboxes = document.querySelectorAll('input[type="checkbox"][name="keywords"], input[type="checkbox"][name="keyword"]');
     const submitBtn = document.querySelector('button[type="submit"]');
 
     const checkedCount = Array.from(keywordCheckboxes).filter((cb) => cb.checked).length;
@@ -65,7 +65,7 @@ document.addEventListener("DOMContentLoaded", function () {
    * When four keywords are checked, remaining unchecked boxes are disabled.
    */
   function disableCbMaxSelected() {
-    const keywordCheckboxes = document.querySelectorAll('input[type="checkbox"][name="keyword"]');
+    const keywordCheckboxes = document.querySelectorAll('input[type="checkbox"][name="keywords"], input[type="checkbox"][name="keyword"]');
     const checkedCount = Array.from(keywordCheckboxes).filter(cb => cb.checked).length;
     const disable = checkedCount >= 4;
 
@@ -252,6 +252,10 @@ if (jsonScript) {
       updateKeywordSelectionState();
       disableCbMaxSelected();
       addKeywordWeightList();
+    }
+    if (event.target.matches('input[type="checkbox"][name="keywords"]')) {
+      updateKeywordSelectionState();
+      disableCbMaxSelected();
     }
 
     if (event.target.matches('.wjs-submission-form__keyword-weight-item input[type="radio"]') ||
