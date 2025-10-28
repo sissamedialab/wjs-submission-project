@@ -11,6 +11,7 @@ from django.core.files import File
 from django.core.files.base import ContentFile
 from django.db import transaction
 from django.db.models import Q, QuerySet
+from django.utils.translation import gettext_lazy as _
 from identifiers.models import Identifier
 from journal.models import Journal
 from submission.models import STAGE_REJECTED, STAGE_UNSUBMITTED, Article, ArticleAuthorOrder
@@ -32,14 +33,18 @@ class ArXivQueryError(Exception):
         :param message: The error message detailing the query issue.
         :type message: str
         """
-        super().__init__(f"ArXiv query error: {message}")
+        super().__init__(f"{message}")
         self.message = message
 
 
 class ArXivIDAlreadyUsedError(ArXivQueryError):
     """Raised when and Article with the same arXiv ID or with the same metadata already exists."""
 
-    def __init__(self, message: str = "The arXiv ID must not already be in use."):
+    def __init__(
+        self,
+        message: str = "this preprint has already been submitted to the Journal. Please contact the "
+        "Editorial Office from the article web page for assistance.",
+    ):
         """
         Initialize the exception with a default or custom message.
 
@@ -54,7 +59,7 @@ class ArXivIDNotFoundError(ArXivQueryError):
 
     def __init__(
         self,
-        message: str = "The arXiv id you have entered cannot be found on arxiv.org",
+        message: str = "the arXiv id you have entered cannot be found on arxiv.org",
     ):
         """
         Initialize a custom exception used for handling cases where an arXiv ID cannot be found on arxiv.org.
@@ -68,7 +73,7 @@ class ArXivIDNotFoundError(ArXivQueryError):
 class ArXivConnectionError(ArXivQueryError):
     """Raised when connection to the arXiv API fails (timeout, DNS, etc)."""
 
-    def __init__(self, message: str = "Connection to arXiv could not be established."):
+    def __init__(self, message: str = "connection to arXiv could not be established."):
         """
         Represent an exception raised when a connection to arXiv could not be established.
 
@@ -80,6 +85,32 @@ class ArXivConnectionError(ArXivQueryError):
         :param message: The error message describing the connection failure (default is
             "Connection to arXiv could not be established.").
         :type message: str
+        """
+        super().__init__(message=message)
+
+
+class ArXivCorruptedDataError(ArXivQueryError):
+    """Raised when the arXiv API returns corrupted data."""
+
+    def __init__(self, message: str | None = None):
+        """
+        Represent an exception that is raised when corrupted data from arXiv is encountered.
+
+        :param message: A message indicating the reason for the exception.
+        :type message: str
+        """
+        super().__init__(message=message)
+
+
+class GenericArxivError(ArXivQueryError):
+    """Raised when an unexpected error occurs while fetching metadata from the arXiv API."""
+
+    def __init__(self, message: str | None = None):
+        """
+        Represent a mechanism to initialize an object with an optional message.
+
+        :param message: An optional string that represents the message for this instance.
+        :type message: str, optional
         """
         super().__init__(message=message)
 
@@ -154,10 +185,8 @@ def fetch_arxiv_metadata(arxiv_id: str) -> tuple[dict, dict]:
         result["arxiv_id"] = full_id.rsplit("/", 1)[-1]
         if doi_elem is not None:
             result["doi_link"] = defusedxml.ElementTree.tostring(doi_elem, encoding="unicode")
-
-    except AttributeError as e:
-        msg = f"Missing expected element in arXiv response: {e}"
-        raise ArXivQueryError(msg) from e
+    except (AttributeError, defusedxml.ElementTree.ParseError) as e:
+        raise ArXivCorruptedDataError from e
     except requests.exceptions.RequestException as e:
         # The following error will never be shown by the microservice because It's overriden with a message
         # containing the Journal's email and information for the user
@@ -166,14 +195,11 @@ def fetch_arxiv_metadata(arxiv_id: str) -> tuple[dict, dict]:
         else:
             msg = f"Connection to arXiv could not be established: {e!s}"
         raise ArXivConnectionError(msg) from e
-    except defusedxml.ElementTree.ParseError as e:
-        msg = f"XML parse error: {e}"
-        raise ArXivQueryError(msg) from e
     except ArXivQueryError:
         # If exception is already a ArXivQueryError no need to wrap it around ArXivQueryError again
         raise
     except Exception as e:
-        raise ArXivQueryError(str(e)) from e
+        raise GenericArxivError from e
 
     # ATM we take only the source file so we don't really need a dictionary for file and errors, on the other hand in
     # this way of handling could be helpful if in the future we want to handle multiple files
@@ -368,13 +394,23 @@ class ArXivToArticle:
             try:
                 result, file_errors = fetch_arxiv_metadata(self.arxiv_id)
             except ArXivConnectionError as e:
-                from_email = get_setting("general", "main_contact", self.journal).processed_value
+                from_email = get_setting("general", "support_email", self.journal).processed_value
                 msg = (
-                    f"Connection to arXiv could not be established. "
-                    f"Please try again or contact {from_email} for assistance"
+                    _(
+                        "connection to arXiv could not be established. Please try again later or "
+                        "contact %s for assistance"
+                    )
+                    % from_email
                 )
                 raise ArXivConnectionError(msg) from e
-
+            except ArXivCorruptedDataError as e:
+                from_email = get_setting("general", "support_email", self.journal).processed_value
+                msg = _("corrupted data from arXiv. Contact the Journal for assistance (%s)") % from_email
+                raise ArXivConnectionError(msg) from e
+            except GenericArxivError as e:
+                from_email = get_setting("general", "support_email", self.journal).processed_value
+                msg = _("please contact the Journal for assistance (%s)") % from_email
+                raise GenericArxivError(msg) from e
             self._check_article_unique(result, self.journal)
 
             article = self._get_or_create_article(result)

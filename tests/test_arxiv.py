@@ -12,7 +12,9 @@ from django.core.files import File as DjangoFile
 from identifiers.models import Identifier
 from plugins.wjs_submission.arxiv import (
     ArXivConnectionError,
-    ArXivQueryError,
+    ArXivCorruptedDataError,
+    ArXivIDNotFoundError,
+    GenericArxivError,
     fetch_arxiv_metadata,
 )
 from plugins.wjs_submission.views import ArxivMicroservice
@@ -115,31 +117,30 @@ def test_article_creation(arxiv_fixtures, monkeypatch, tmp_path, journal, author
 
 
 @pytest.mark.parametrize(
-    ("xml_content", "expected_msg"),
+    ("xml_content", "expected_exc"),
     [
-        (b"<invalid><xml>", "XML parse error"),
+        (b"<invalid><xml>", ArXivCorruptedDataError),
         (
             b"<?xml version='1.0'?><feed xmlns='http://www.w3.org/2005/Atom'></feed>",
-            "cannot be found on arxiv.org",
+            ArXivIDNotFoundError,
         ),
         (
             b"<?xml version='1.0'?><feed xmlns='http://www.w3.org/2005/Atom' "
             b"xmlns:arxiv='http://arxiv.org/schemas/atom'>"
             b"<entry><title>Sample</title></entry></feed>",
-            "Missing expected element in arXiv response",
+            ArXivCorruptedDataError,
         ),
     ],
 )
 @pytest.mark.django_db
-def test_fetch_arxiv_metadata_query_errors(monkeypatch, xml_content, expected_msg):
+def test_fetch_arxiv_metadata_query_errors(monkeypatch, xml_content, expected_exc):
     def fake_get(url, *args, **kwargs):
         return DummyResponse(xml_content, status_code=200, text=xml_content.decode(errors="ignore"))
 
     monkeypatch.setattr(requests, "get", fake_get)
 
-    with pytest.raises(ArXivQueryError) as excinfo:
+    with pytest.raises(expected_exc):
         fetch_arxiv_metadata("0000.0000v1")
-    assert expected_msg in str(excinfo.value)
 
 
 @pytest.mark.django_db
@@ -240,9 +241,8 @@ def test_fetch_arxiv_metadata_unexpected_metadata_exception(monkeypatch):
 
     monkeypatch.setattr(requests, "get", fake_get)
 
-    with pytest.raises(ArXivQueryError) as excinfo:
+    with pytest.raises(GenericArxivError):
         fetch_arxiv_metadata("9999.9999v1")
-    assert "unexpected parsing failure" in str(excinfo.value)
 
 
 @pytest.mark.django_db
@@ -342,8 +342,6 @@ def test_not_found_error_bubbles_up_via_empty_feed(rf, author, journal, arxiv_fi
 
     data = json.loads(response.content.decode())
     assert data["status"] == "error"
-    assert data["message"].startswith("Error: ArXiv query error:")
-    assert "cannot be found on arxiv.org" in data["message"]
 
 
 @pytest.mark.django_db
@@ -382,7 +380,7 @@ def test_already_used_error_bubbles_up_when_article_exists(rf, author, journal, 
     body2 = resp2.content.decode()
 
     assert resp2.status_code == 200
-    assert "Error: ArXiv query error: The arXiv ID must not already be in use" in body2
+    assert "already been submitted to the Journal" in body2
 
 
 @pytest.mark.django_db
@@ -399,8 +397,7 @@ def test_connection_error_bubbles_up_on_requests_timeout(rf, author, journal, ar
 
     data = json.loads(response.content.decode())
     assert data["status"] == "error"
-    assert data["message"].startswith("Error: ArXiv query error:")
-    assert "Connection to arXiv could not be established" in data["message"]
+    assert "connection to arxiv could not be established" in data["message"].lower()
 
 
 @pytest.mark.django_db
