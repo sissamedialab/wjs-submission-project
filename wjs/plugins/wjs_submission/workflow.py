@@ -45,7 +45,7 @@ class Step:
     A generic function to check the availability of a single step for an article
     """
 
-    def get_next_step(self, article: Article) -> str:
+    def get_incomplete_step_url(self, article: Article) -> str:
         """
         Return the url of the next step for the given article.
 

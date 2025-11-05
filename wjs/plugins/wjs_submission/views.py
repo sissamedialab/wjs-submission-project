@@ -53,7 +53,7 @@ class SubmissionLastStepRedirectView(AuthorFilteringView, RedirectView):
         article = Article.objects.get(pk=kwargs["article_id"])
         step = STEPS.get(article.current_step)
 
-        return step.get_next_step(article)
+        return step.get_incomplete_step_url(article)
 
 
 class ArxivMicroservice(HtmxMixin, AuthorFilteringView, View):
