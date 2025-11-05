@@ -37,6 +37,7 @@ class AuthorFilteringView(UserPassesTestMixin):
             super()
             .get_queryset()
             .filter(Q(owner=self.request.user) | Q(correspondence_author=self.request.user), stage=STAGE_UNSUBMITTED)
+            .filter(journal=self.request.journal)
         )
 
 

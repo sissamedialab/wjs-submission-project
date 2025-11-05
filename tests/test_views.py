@@ -22,7 +22,42 @@ from submission.models import (
 )
 from utils.setting_handler import save_setting
 
-from .conftest import _user
+from .conftest import _journal_factory, _user
+
+
+@pytest.mark.parametrize("same_journal", [True, False])
+@pytest.mark.django_db
+def test_journal_check_step_1(
+    journal: Journal, install_plugins: Callable, article: Article, fake_request, same_journal: bool
+):
+    """
+    Queryset filter articles by current journal.
+
+    :param journal: An instance of the Journal object that represents the context for
+        evaluating step states.
+    :type journal: Journal
+    :param install_plugins: A callable function to set up required plugins for the journal test.
+    :type install_plugins: Callable
+    :param article: Submitted article
+    :type article: Article
+    :param fake_request: Mock request
+    :type fake_request: HttpRequest
+    :param same_journal: If the article is submitted to the same journal as the one in the queryset
+    :type same_journal: bool
+    """
+    if not same_journal:
+        journal2 = _journal_factory("MIJ", journal.press, domain="testserver2.org")
+        article.journal = journal2
+        article.save()
+
+    fake_request.user = article.owner
+    view_obj = SubmissionStep1View()
+    view_obj.kwargs = {"article_id": article.pk}
+    view_obj.request = fake_request
+    if not same_journal:
+        assert not view_obj.get_queryset().exists()
+    else:
+        assert view_obj.get_queryset().exists()
 
 
 @pytest.mark.parametrize("skip", [True, False])
