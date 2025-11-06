@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import ArticleCollaboration, ArticleSubmission, Collaboration
+from .models import AccessMode, AccessModeJournal, ArticleCollaboration, ArticleSubmission, Collaboration
 
 
 @admin.register(ArticleSubmission)
@@ -27,3 +27,15 @@ class ArticleCollaborationAdmin(admin.ModelAdmin):
     )
     raw_id_fields = ("article", "collaboration")
     ordering = ("article", "order")
+
+
+class AccessModeJournalInlineAdmin(admin.TabularInline):
+    model = AccessModeJournal
+    extra = 0
+
+
+@admin.register(AccessMode)
+class AccessModeAdmin(admin.ModelAdmin):
+    list_display = ("name", "code")
+    search_fields = ("name", "code")
+    inlines = [AccessModeJournalInlineAdmin]

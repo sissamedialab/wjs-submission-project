@@ -1,15 +1,22 @@
 from collections.abc import Callable
 from itertools import product
+from unittest.mock import patch
 
 import pytest
-from core.models import Account
+from core.models import Account, Country
+from django import forms
 from django.core.files.uploadedfile import SimpleUploadedFile
 from journal.models import Journal
-from plugins.wjs_submission.models import ArticleSubmission
+from plugins.wjs_submission.access_mode import AccessModeConfiguration, get_access_mode_configuration
+from plugins.wjs_submission.events import SubmissionEvent
+from plugins.wjs_submission.models import AccessMode, ArticleSubmission
+from plugins.wjs_submission.settings import OA_CODE
 from plugins.wjs_submission.step1.forms import SubmissionStep1Form
 from plugins.wjs_submission.step5.forms import SubmissionStep5Form
 from plugins.wjs_submission.step6.forms import SubmissionStep6Form
-from submission.models import Article
+from plugins.wjs_submission.step7.forms import SubmissionStep7Form
+from pytest_django.asserts import assertQuerysetEqual
+from submission.models import Article, Licence
 
 
 @pytest.mark.parametrize(
@@ -312,3 +319,147 @@ def test_cas_das_url_error_form(
         instance = form.save()
         assert instance.submission_data.cas == cas
         assert instance.submission_data.das == das
+
+
+@pytest.mark.parametrize(
+    "access_mode_fixed",
+    [
+        True,
+        False,
+    ],
+)
+@pytest.mark.django_db
+def test_access_mode_form(
+    journal: Journal,
+    install_plugins: Callable,
+    user: Account,
+    article: Article,
+    fake_request,
+    access_mode_fixed: bool,
+):
+    """
+    Form is configured according to the access mode calculated by article country.
+    """
+    with (
+        patch("plugins.wjs_submission.access_mode.ACCESS_MODE_COUNTRIES") as ACCESS_MODE_COUNTRIES,  # noqa: N806
+        patch("plugins.wjs_submission.access_mode.ACCESS_MODE_CONTROL_FUNCTION") as ACCESS_MODE_CONTROL_FUNCTION,  # noqa: N806
+    ):
+        ACCESS_MODE_CONTROL_FUNCTION.get.return_value = (
+            "plugins.wjs_submission.access_mode.get_oa_transformative_agreement"
+        )
+        ACCESS_MODE_COUNTRIES.get.return_value = ["fr", "it", "gb"]
+        if access_mode_fixed:
+            country, __ = Country.objects.get_or_create(code="it", name="Italy")
+        else:
+            country, __ = Country.objects.get_or_create(code="ru", name="Russia")
+        article.submission_data.affiliation_country = country
+        article.submission_data.save()
+        configuration = get_access_mode_configuration(user, article)
+        form = SubmissionStep7Form(
+            journal=journal,
+            instance=article,
+            step=7,
+            configuration=configuration,
+            initial={},
+        )
+        if access_mode_fixed:
+            assert not configuration.is_default
+            assert isinstance(form.fields["license"].widget, forms.HiddenInput)
+            assert isinstance(form.fields["rights"].widget, forms.HiddenInput)
+            assert isinstance(form.fields["access_mode"].widget, forms.HiddenInput)
+            assertQuerysetEqual(
+                form.fields["access_mode"].queryset,
+                AccessMode.objects.filter(parameters__journal=article.journal, user_selectable=False),
+            )
+            assert form.initial["access_mode"] == configuration.access_mode
+            assert form.initial["rights"] == configuration.copyright_text
+            assert form.initial["license"] == configuration.license
+        else:
+            assert configuration.is_default
+            assert isinstance(form.fields["rights"].widget, forms.HiddenInput)
+            assertQuerysetEqual(
+                form.fields["access_mode"].queryset,
+                AccessMode.objects.filter(parameters__journal=article.journal, user_selectable=True),
+            )
+            assert form.initial["access_mode"] == configuration.access_mode
+            assert form.initial["rights"] == configuration.copyright_text
+            assert form.initial["license"] == configuration.license
+
+
+@pytest.mark.parametrize(
+    "access_mode_fixed",
+    [
+        True,
+        False,
+    ],
+)
+@pytest.mark.django_db
+def test_access_mode_form_data(
+    journal: Journal,
+    install_plugins: Callable,
+    user: Account,
+    article: Article,
+    fake_request,
+    access_mode_fixed: bool,
+):
+    """
+    Values derived from access mode configuration are preserved on submission and stored in the submission data.
+
+    Event is also raised.
+    """
+    with patch("plugins.wjs_submission.step7.forms.events_logic.Events.raise_event") as raise_event:
+        oa = AccessMode.objects.get(code=OA_CODE)
+        other = AccessMode.objects.exclude(code=OA_CODE).first()
+        licence = Licence.objects.create(short_name="random", name="Random", journal=journal)
+        journal_parameters = oa.parameters.get(journal=article.journal)
+
+        if access_mode_fixed:
+            configuration = AccessModeConfiguration(
+                access_mode=oa,
+                license=journal_parameters.licence,
+                copyright_text=journal_parameters.copyright,
+                is_default=False,
+            )
+        else:
+            configuration = AccessModeConfiguration(
+                access_mode=oa,
+                license=journal_parameters.licence,
+                copyright_text=journal_parameters.copyright,
+                is_default=True,
+            )
+        form = SubmissionStep7Form(
+            data={
+                "license": licence,
+                "rights": "random text",
+                "access_mode": other,
+            },
+            journal=journal,
+            instance=article,
+            step=7,
+            configuration=configuration,
+            initial={},
+        )
+        if access_mode_fixed:
+            form.is_valid()
+            assert form.cleaned_data["access_mode"] == configuration.access_mode
+            assert form.cleaned_data["rights"] == configuration.copyright_text
+            assert form.cleaned_data["license"] == configuration.license
+        else:
+            form.is_valid()
+            assert form.cleaned_data["access_mode"] == other
+            assert form.cleaned_data["rights"] == "random text"
+            assert form.cleaned_data["license"] == licence
+        form.save()
+        article.refresh_from_db()
+        article.submission_data.refresh_from_db()
+        if access_mode_fixed:
+            assert article.submission_data.access_mode == configuration.access_mode
+            assert article.rights == configuration.copyright_text
+            assert article.license == configuration.license
+        else:
+            assert article.submission_data.access_mode == other
+            assert article.rights == "random text"
+            assert article.license == licence
+        raise_event.assert_called_once_with(
+            SubmissionEvent.ON_ACCESS_MODE_SELECTION, article=article, submission_data=article.submission_data
+        )

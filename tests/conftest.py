@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from core.models import File, SupplementaryFile
+from django.apps import apps
 from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model
 from django.core import management
@@ -14,6 +15,9 @@ from django.utils.timezone import now
 from journal.models import Journal
 from plugins.wjs_submission import constants
 from plugins.wjs_submission.arxiv import fetch_arxiv_metadata
+from plugins.wjs_submission.data import create_access_mode
+from plugins.wjs_submission.models import AccessMode
+from plugins.wjs_submission.settings import OA_CODE
 from press.models import Press
 from submission import models as submission_models
 from submission.models import Article
@@ -79,6 +83,8 @@ def journal(press: Press, roles) -> Journal:
     # generates URLs with the journal code as prefix
     # This is the same code run by `core.middleware.SiteSettingsMiddleware` ensuring the same behavior in the tests
     set_script_prefix(f"/{journal.code}")
+    create_access_mode(apps=apps, schema_editor=None)
+    AccessMode.objects.filter(code=OA_CODE).update(user_selectable=False)
     return journal
 
 

@@ -1,13 +1,68 @@
 {% extends "wjs_submission/base.html" %}
-{% load django_bootstrap5 static field %}
-{% block bootstrap5_extra_head %}
-  {{ block.super }}
-  {{ form.media.css }}
-{% endblock %}
+{% load django_bootstrap5 field hooks static wjs_articles %}
 
 {% block submission_flow %}
-
+  <div class="wjs-submission-form__section mb-5">
+    <h5 class="wjs-submission-form__form-label-title">Access mode</h5>
+    <div class="wjs-submission-form__section-content">
+      {% if settings.DEBUG %}{{ form.errors }}{% endif %}
+      <div class="mb-3">
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore
+        magna aliqua.
+        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+      </div>
+    </div>
+  </div>
+  {% if view.access_mode_configuration.is_default %}
+    <div class="wjs-submission-form__section mb-5">
+      <div class="wjs-submission-form__section-content">
+        {{ form.errors }}
+        <p>Please select the way your paper will be published, if accepted:</p>
+        {% bootstrap_field form.access_mode label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" %}
+        {% bootstrap_field form.license label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" %}
+      </div>
+      <div id="js-access-mode-message" class="wjs-submission-form__alert-message-box wjs-submission-form__alert-message-box--warning d-none d-flex">
+        <i class="bi bi-exclamation-triangle"></i>
+        Pay attention! By selecting this option you will have to pay. Lorem ipsum dolor sit amet consectetur.
+      </div>
+    </div>
+    <div class="wjs-submission-form__section mb-5">
+      <div class="wjs-submission-form__section-content">
+        {% bootstrap_field form.rights label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" %}
+      </div>
+    </div>
+  {% else %}
+    <div class="wjs-submission-form__section mb-5">
+      <div class="wjs-submission-form__section-content">
+        {{ form.errors }}
+        If accepted, your paper will be published {{ view.access_mode_configuration.access_mode }}, copyright "{{ view.access_mode_configuration.copyright_text }}", licence {{ view.access_mode_configuration.license.short_name }}.
+      </div>
+    </div>
+  {% endif %}
+  <div class="wjs-submission-form__section mb-5">
+    <div class="wjs-submission-form__section-content">
+      {% bootstrap_field form.special_request label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" %}
+    </div>
+  </div>
 {% endblock submission_flow %}
 
 {% block js %}
-{% endblock %}
+  {{ block.super }}
+  <script>
+    function checkAccessMode(value) {
+      if (value === "1") {
+        document.getElementById("js-access-mode-message").classList.remove("d-none");
+      } else {
+        document.getElementById("js-access-mode-message").classList.add("d-none");
+      }
+    }
+
+    const selector = document.getElementById("id_access_mode");
+    document.addEventListener("DOMContentLoaded", function() {
+      checkAccessMode(selector.value);
+      selector.addEventListener("change", function(event) {
+        checkAccessMode(event.target.value);
+      });
+    });
+  </script>
+{% endblock js %}
