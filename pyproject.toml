@@ -60,6 +60,7 @@ ignore = [
     "PLR1702", # Too many nested blocks
     "PLR0912", # Too many branches
     "C901", # X is too complex
+    "PLR6201", # Use a set literal when testing for membership
 ]
 
 fixable = ["ALL"]

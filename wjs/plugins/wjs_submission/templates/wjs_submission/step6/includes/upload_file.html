@@ -1,0 +1,43 @@
+{% load django_bootstrap5 static wjs_review %}
+<div class="modal-header">
+  <h5 class="modal-title" id="htmxModalLabel">{% translate "Upload file" %}</h5>
+  {% bootstrap_button button_class="btn-close" data_bs_dismiss="modal" button_type="submit" aria_label=close_label content="" %}
+</div>
+<div class="modal-body">
+  {% url "wjs_submission_6_upload" article_id=form.instance.pk file_type=form.prefix as upload_files %}
+  <form novalidate enctype="multipart/form-data" hx-post="{{ upload_files }}" hx-target="#htmxModalContent">
+    {% csrf_token %}
+    <div class="mb-3">
+      {% bootstrap_field form.label show_help=True %}
+      {% bootstrap_field form.file show_help=True %}
+      {% bootstrap_field form.source_format show_help=True %}
+      {% bootstrap_field form.tex_engine wrapper_class="wjs-submission-form__form-label-wrapper d-none" %}
+      {% bootstrap_field form.tex_master wrapper_class="wjs-submission-form__form-label-wrapper d-none" %}
+      {% bootstrap_button button_class="btn-primary" button_type="submit" aria_label="Upload" content="Upload" %}
+    </div>
+  </form>
+</div>
+
+<script>
+  function texSelectedCheck(value) {
+    const fields = [
+      document.getElementById(`{{ form.tex_engine.auto_id }}`).closest(".wjs-submission-form__form-label-wrapper"),
+      document.getElementById(`{{ form.tex_master.auto_id }}`).closest(".wjs-submission-form__form-label-wrapper"),
+    ];
+    fields.forEach(field => {
+      if (field) {
+        if (value === "latex") {
+          field.classList.remove("d-none");
+        } else {
+          field.classList.add("d-none");
+        }
+      }
+    });
+  }
+
+  texSelectedCheck(document.querySelector("#{{ form.source_format.auto_id }}")?.value);
+  document.querySelector("#{{ form.source_format.auto_id }}").addEventListener("change", function(event) {
+    texSelectedCheck(event.target.value);
+  })
+  ;
+</script>

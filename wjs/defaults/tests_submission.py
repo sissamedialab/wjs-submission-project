@@ -79,3 +79,15 @@ CACHES = {
     },
 }
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
+
+REDIS_QCLUSTER_URL = os.environ.get("REDIS_QCLUSTER_URL", "redis://localhost:6379/10")  # noqa: F405
+
+Q_CLUSTER = {
+    "name": "wjs-janeway",
+    "label": "Task WJS",
+    "workers": 1,
+    "sync": True,
+    "redis": REDIS_QCLUSTER_URL,
+    "retry": 90,
+    "timeout": 60,
+}

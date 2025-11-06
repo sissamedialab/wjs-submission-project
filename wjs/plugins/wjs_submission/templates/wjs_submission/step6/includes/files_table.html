@@ -1,0 +1,73 @@
+{% load django_bootstrap5 static wjs_review %}
+<div id="files_table_{{ file_type }}" class="mt-3">
+  {% url "wjs_submission_6_upload" article_id=article.pk file_type=file_type as upload_files %}
+  {% if show_conversion and files_list.exists %}
+    {% bootstrap_button button_class="btn btn-outline-primary" type="button" disabled="disabled" name=button_name data_bs_toggle="modal" data_bs_target="#htmxModal" hx_trigger="click" hx_get=upload_files hx_target="#htmxModalContent" content="<i class='bi bi-cloud-arrow-up-fill'></i> Upload" %}
+  {% else %}
+    {% bootstrap_button button_class="btn btn-outline-primary" type="button" name=button_name data_bs_toggle="modal" data_bs_target="#htmxModal" hx_trigger="click" hx_get=upload_files hx_target="#htmxModalContent" content="<i class='bi bi-cloud-arrow-up-fill'></i> Upload" %}
+  {% endif %}
+  <table id="id_{{ file_type }}" class="table mt-2">
+    <thead>
+    <tr>
+      <th scope="col" width="20%">Title</th>
+      <th scope="col" width="40%">Filename</th>
+      {% if show_conversion %}
+        <th scope="col" width="25%">Conversion status</th>
+      {% else %}
+        <th scope="col" width="25%"></th>
+      {% endif %}
+      <th scope="col" width="15%">Actions</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for file in files_list.all %}
+      {% if show_conversion %}<input type="hidden" id="{{ file_type }}_id" name="{{ file_type }}" value="{{ file.pk }}" required="">{% endif %}
+      <tr>
+        <td>{{ file.label }}</td>
+        <td>{{ file.original_filename }}</td>
+        {% if show_conversion %}
+          <td>
+            {% if failed_conversion_log %}
+              <div class="d-flex align-items-center gap-2">
+                <span class="dot bg-error"></span>
+                <span class="content text-error">Error</span>
+              </div>
+            {% else %}
+              <div id="conversion-status" class="d-flex align-items-center gap-2 {% if file.mime_type != "application/pdf" %}d-none{% endif %}">
+                <span class="dot bg-success"></span>
+                <span class="content text-success">Success</span>
+              </div>
+            {% endif %}
+          </td>
+        {% else %}
+          <th></th>
+        {% endif %}
+        <td>
+          {% with container_id="#files_table_"|add:file_type %}
+            {% url 'wjs_submission_6_delete' article.pk file_type file.pk as delete_url %}
+            {% url 'wjs_submission_6_render' article.pk file_type as render_url %}
+            {% url "article_file_download" identifier_type="id" identifier=file.article_id file_id=file.pk as download_url %}
+            {% bootstrap_button button_class="btn btn-sm btn-outline" type="button" hx_post=delete_url hx_target=container_id hx_confirm="Are you sure you wish to delete the file?" content="<i class='bi bi-trash3'></i>" title="Delete" %}
+            {% if settings.DEBUG %}
+              {% bootstrap_button button_class="btn btn-sm btn-outline js-refresh" type="button" hx_get=render_url hx_target=container_id content="<i class='bi bi-arrow-clockwise'></i>" title="DEBUG: Reload table" %}
+            {% endif %}
+            <a class="btn btn-sm btn-outline" href="{{ download_url }}" title="Download"><i class="bi bi-cloud-arrow-down"></i></a>
+          {% endwith %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if show_conversion %}
+    <div id="js-conversion-message" class="wjs-submission-form__alert-message-box wjs-submission-form__alert-message-box--warning d-none d-flex">
+      <i class="bi bi-exclamation-triangle"></i>
+      <div id="conversion-message"></div>
+      {% if failed_conversion_log %}
+        <div>
+          {% url "article_file_download" identifier_type="id" identifier=failed_conversion_log.article_id file_id=failed_conversion_log.pk as download_url %}
+          Download the file to see details: <a href="{{ download_url }}">download</a>
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
