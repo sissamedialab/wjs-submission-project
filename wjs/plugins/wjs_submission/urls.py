@@ -7,7 +7,7 @@ from .step3 import SubmissionStep3View
 from .step4 import AddAuthorView, SubmissionStep4View
 from .step4.views import AddCollaborationView
 from .step5 import SubmissionStep5View
-from .step6 import SubmissionStep6View
+from .step6 import DeleteSubmissionFile, RenderSubmissionFile, SubmissionStep6View, UploadSubmissionFile
 from .step7 import SubmissionStep7View
 from .step8 import SubmissionStep8View
 from .views import (
@@ -63,6 +63,21 @@ urlpatterns = [
         "submission/<int:article_id>/6/",
         SubmissionStep6View.as_view(),
         name="wjs_submission_6",
+    ),
+    path(
+        "submission/<int:article_id>/6/upload/<str:file_type>/",
+        UploadSubmissionFile.as_view(),
+        name="wjs_submission_6_upload",
+    ),
+    path(
+        "submission/<int:article_id>/6/delete/<str:file_type>/<int:file_id>/",
+        DeleteSubmissionFile.as_view(),
+        name="wjs_submission_6_delete",
+    ),
+    path(
+        "submission/<int:article_id>/6/render/<str:file_type>/",
+        RenderSubmissionFile.as_view(),
+        name="wjs_submission_6_render",
     ),
     path(
         "submission/<int:article_id>/7/",

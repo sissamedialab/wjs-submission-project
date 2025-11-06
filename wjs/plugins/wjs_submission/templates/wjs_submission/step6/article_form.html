@@ -1,13 +1,85 @@
 {% extends "wjs_submission/base.html" %}
-{% load django_bootstrap5 static field %}
-{% block bootstrap5_extra_head %}
-  {{ block.super }}
-  {{ form.media.css }}
-{% endblock %}
+{% load django_bootstrap5 static %}
 
 {% block submission_flow %}
-
+  <div class="wjs-submission-form__section mb-5">
+    <h5 class="wjs-submission-form__form-label-title ">Files upload</h5>
+    <div class="wjs-submission-form__section-content">
+      <div class="mb-3">
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore
+        magna aliqua.
+        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+      </div>
+    </div>
+  </div>
+  <div class="wjs-submission-form__section mb-5">
+    <div class="wjs-submission-form__section-content">
+      <h5 class="wjs-submission-form__form-label wjs-submission-form__form-label--required">Manuscript file</h5>
+      {% include "wjs_submission/step6/includes/files_table.html" with files_list=article.manuscript_files show_conversion=True button_name="trigger_manuscript" file_type="manuscript" %}
+    </div>
+  </div>
+  <div class="wjs-submission-form__section mb-5">
+    <div class="wjs-submission-form__section-content">
+      <h5 class="wjs-submission-form__form-label">Electronic Supplementary Material file</h5>
+      {% include "wjs_submission/step6/includes/files_table.html" with files_list=article.data_figure_files button_name="trigger_data" file_type="data" %}
+    </div>
+  </div>
+  <div class="wjs-submission-form__section mb-5">
+    <div class="wjs-submission-form__section-content">
+      <h5 class="wjs-submission-form__form-label">Administrative file</h5>
+      {% include "wjs_submission/step6/includes/files_table.html" with files_list=article.submission_data.administrative_files button_name="trigger_administrative" file_type="administrative" %}
+    </div>
+  </div>
+  <div class="wjs-submission-form__section mb-5">
+    <div class="wjs-submission-form__section-content">
+      <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Data Availability Statement</h5>
+      <div class="mb-3">
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore
+        magna aliqua.
+        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+      </div>
+      {% bootstrap_field form.das label_class="d-none" %}
+      {% bootstrap_field form.das_url label_class="d-none" wrapper_class="wjs-submission-form__form-label-wrapper d-none" %}
+    </div>
+  </div>
+  <div class="wjs-submission-form__section mb-5">
+    <div class="wjs-submission-form__section-content">
+      <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Code Availability Statement</h5>
+      <div class="mb-3">
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore
+        magna aliqua.
+        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+      </div>
+      {% bootstrap_field form.cas label_class="d-none" %}
+      {% bootstrap_field form.cas_url label_class="d-none" wrapper_class="wjs-submission-form__form-label-wrapper d-none" %}
+    </div>
+  </div>
 {% endblock submission_flow %}
 
 {% block js %}
-{% endblock %}
+  {{ block.super }}
+  <script src="{% static "js/conversion_websocket.js" %}"></script>
+  <script src="{% static "js/cas_das.js" %}"></script>
+  <script>
+
+    document.body.addEventListener("closeModal", function(evt) {
+      const modal = bootstrap.Modal.getInstance(document.getElementById("htmxModal"));
+      modal.hide();
+    });
+    document.addEventListener("DOMContentLoaded", function() {
+      conversion_websocket_connect("{{ feedback_ws_url }}");
+      urlSelectedCheck("cas", document.querySelector("input[name=cas]:checked")?.value);
+      urlSelectedCheck("das", document.querySelector("input[name=das]:checked")?.value);
+      document.querySelectorAll("input[name=cas]").forEach((button) => {
+        button.addEventListener("change", function(event) {
+          urlSelectedCheck("cas", event.target.value);
+        });
+      });
+      document.querySelectorAll("input[name=das]").forEach((button) => {
+        button.addEventListener("change", function(event) {
+          urlSelectedCheck("das", event.target.value);
+        });
+      });
+    });
+  </script>
+{% endblock js %}

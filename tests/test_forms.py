@@ -1,11 +1,14 @@
 from collections.abc import Callable
+from itertools import product
 
 import pytest
 from core.models import Account
 from django.core.files.uploadedfile import SimpleUploadedFile
 from journal.models import Journal
+from plugins.wjs_submission.models import ArticleSubmission
 from plugins.wjs_submission.step1.forms import SubmissionStep1Form
 from plugins.wjs_submission.step5.forms import SubmissionStep5Form
+from plugins.wjs_submission.step6.forms import SubmissionStep6Form
 from submission.models import Article
 
 
@@ -254,3 +257,58 @@ def test_edit_metadata_form(
         assert instance.section == journal.submissionconfiguration.default_section
     assert instance.title == "title&amp;&lt;&gt;"
     assert instance.abstract == "<b>abstract</b>&amp;&lt;&gt;"
+
+
+@pytest.mark.parametrize(
+    ("cas", "das"),
+    list(product(ArticleSubmission.CasDeclaration.values, ArticleSubmission.DasDeclaration.values)),
+)
+@pytest.mark.django_db
+def test_cas_das_url_form(
+    journal: Journal,
+    install_plugins: Callable,
+    user: Account,
+    article: Article,
+    fake_request,
+    cas: bool,
+    das: bool,
+):
+    data = {
+        "das": das,
+        "das_url": "http://example.com" if das == "url" else "",
+        "cas": cas,
+        "cas_url": "http://example.com" if cas == "url" else "",
+    }
+    form = SubmissionStep6Form(data=data, journal=journal, instance=article, step=6, initial={})
+    assert form.is_valid()
+    instance = form.save()
+    assert instance.submission_data.cas == cas
+    assert instance.submission_data.das == das
+
+
+@pytest.mark.parametrize(
+    ("cas", "das"),
+    list(product(ArticleSubmission.CasDeclaration.values, ArticleSubmission.DasDeclaration.values)),
+)
+@pytest.mark.django_db
+def test_cas_das_url_error_form(
+    journal: Journal,
+    install_plugins: Callable,
+    user: Account,
+    article: Article,
+    fake_request,
+    cas: bool,
+    das: bool,
+):
+    data = {
+        "das": das,
+        "cas": cas,
+    }
+    form = SubmissionStep6Form(data=data, journal=journal, instance=article, step=6, initial={})
+    if das == "url" or cas == "url":
+        assert not form.is_valid()
+    else:
+        assert form.is_valid()
+        instance = form.save()
+        assert instance.submission_data.cas == cas
+        assert instance.submission_data.das == das

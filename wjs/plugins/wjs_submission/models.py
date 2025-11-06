@@ -7,6 +7,27 @@ from .signals import *  # noqa: F403
 
 
 class ArticleSubmission(models.Model):
+    class CasDeclaration(models.TextChoices):
+        NO = "no", _("My article has no associated code or the code will not be deposited")
+        ESM = "esm", _("My article has code included as electronic supplementary material")
+        URL = "url", _("My article has associated code in a data repository")
+
+    class DasDeclaration(models.TextChoices):
+        NO = "no", _("My article has no associated data or the data will not be deposited")
+        ESM = "esm", _("My article has data included as electronic supplementary material")
+        URL = "url", _("My article has associated data in a data repository")
+
+    class ManuscriptSourceFormat(models.TextChoices):
+        AUTO = "auto", _("Auto")
+        LATEX = "latex", _("tex/latex")
+        DOC = "doc", _("odt/docx")
+
+    class TexEngine(models.TextChoices):
+        TEX = "tex", _("Tex")
+        LATEX = "latex", _("LaTex")
+        PDFLATEX = "pdflatex", _("PdflLaTex")
+        XELATEX = "xelatex", _("XeLaTex")
+
     article = models.OneToOneField(
         Article,
         verbose_name=_("Article"),
@@ -18,6 +39,18 @@ class ArticleSubmission(models.Model):
     cover_letter_file = models.ForeignKey(
         "core.File", null=True, blank=True, related_name="cover_letter_file", on_delete=models.SET_NULL
     )
+    cas = models.CharField(
+        max_length=255, verbose_name=_("CAS declaration"), choices=CasDeclaration.choices, default=""
+    )
+    cas_url = models.URLField(verbose_name=_("CAS URL"), default="")
+    das = models.CharField(
+        max_length=255, verbose_name=_("DAS declaration"), choices=DasDeclaration.choices, default=""
+    )
+    das_url = models.URLField(verbose_name=_("DAS URL"), default="")
+    administrative_files = models.ManyToManyField(
+        "core.File", null=True, blank=True, related_name="administrative_files"
+    )
+
     cover_letter_file_allowed_extension = [".pdf", ".docx", ".doc", ".odt", ".rtf"]
 
     affiliation_country = models.ForeignKey(
