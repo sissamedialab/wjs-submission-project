@@ -1,5 +1,6 @@
 from core.models import Account, Country
 from django.db import models
+from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 from submission.models import Article
 
@@ -50,6 +51,8 @@ class ArticleSubmission(models.Model):
     administrative_files = models.ManyToManyField(
         "core.File", null=True, blank=True, related_name="administrative_files"
     )
+    access_mode = models.ForeignKey("AccessMode", on_delete=models.SET_NULL, null=True, blank=True)
+    special_request = models.TextField(verbose_name=_("Special request"), blank=True, default="")
 
     cover_letter_file_allowed_extension = [".pdf", ".docx", ".doc", ".odt", ".rtf"]
 
@@ -147,3 +150,39 @@ class ArticleCollaboration(models.Model):
 
     def __str__(self):
         return f"{self.relation} {self.collaboration}"
+
+
+class AccessMode(models.Model):
+    name = models.CharField(_("Name"), max_length=255)
+    code = models.SlugField(_("Code"), max_length=255)
+    user_selectable = models.BooleanField(_("User selectable"), default=True)
+
+    class Meta:
+        verbose_name = _("Access mode")
+        verbose_name_plural = _("Access modes")
+        ordering = ("name",)
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        """
+        Populate code field if empty.
+        """
+        if not self.code:
+            self.code = slugify(self.name)
+        return super().save(*args, **kwargs)
+
+
+class AccessModeJournal(models.Model):
+    access_mode = models.ForeignKey(AccessMode, on_delete=models.CASCADE, related_name="parameters")
+    journal = models.ForeignKey("journal.Journal", on_delete=models.CASCADE, related_name="access_mode_parameters")
+    licence = models.ForeignKey("submission.Licence", on_delete=models.CASCADE, related_name="access_mode_parameters")
+    copyright = models.CharField(_("Copyright declaration"), max_length=255, blank=True, default="")
+
+    class Meta:
+        verbose_name = _("Journal / Access mode connection")
+        verbose_name_plural = _("Journal / Access mode connections")
+
+    def __str__(self):
+        return f"{self.access_mode} / {self.journal}"

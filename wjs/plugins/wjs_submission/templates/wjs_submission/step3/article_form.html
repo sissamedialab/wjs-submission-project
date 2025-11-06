@@ -10,6 +10,7 @@
 
     {% if journal.submissionconfiguration.hierarchical_keywords %}
       <div class="wjs-submission-form__section-content">
+        {% if settings.DEBUG %}{{ form.errors }}{% endif %}
         <input
           type="checkbox"
           id="js-keywords-hidden-required"
@@ -142,6 +143,7 @@
       </div>
     {% else %}
       <div class="wjs-submission-form__keywords-section">
+        {% if settings.DEBUG %}{{ form.errors }}{% endif %}
         <div class="wjs-submission-form__keywords">
           <p class="wjs-submission-form__keywords-label">Add keywords</p>
           <p class="wjs-submission-form__keywords-intro">

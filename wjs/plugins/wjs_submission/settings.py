@@ -21,9 +21,29 @@ DEFAULT_ARTICLE_LANGUAGES = {
     None: [("eng", _("English"))],
 }
 
+DEFAULT_ACCESS_MODE_CONTROL_FUNCTION = {
+    None: "plugins.wjs_submission.access_mode.noop",
+    "JQUANT": "plugins.wjs_submission.access_mode.get_oa_transformative_agreement",
+}
+
+DEFAULT_ACCESS_MODE_COUNTRIES = {
+    None: [],
+    "JQUANT": ["FR", "IT", "GB"],
+}
+
 
 KEYWORD_VALIDATORS = getattr(settings, "SUBMISSION_KEYWORD_VALIDATORS", DEFAULT_KEYWORD_VALIDATORS)
 KEYWORD_FILTERS = getattr(settings, "SUBMISSION_KEYWORD_VALIDATORS", DEFAULT_KEYWORD_FILTERS)
 ARTICLE_LANGUAGES = getattr(settings, "SUBMISSION_ARTICLE_LANGUAGES", DEFAULT_ARTICLE_LANGUAGES)
+
+SIMULATE_YAKUNIN = getattr(settings, "SUBMISSION_SIMULATE_YAKUNIN", False)
+
+ACCESS_MODE_COUNTRIES = getattr(settings, "SUBMISSION_ACCESS_MODE_COUNTRIES", DEFAULT_ACCESS_MODE_COUNTRIES)
+ACCESS_MODE_CONTROL_FUNCTION = getattr(
+    settings,
+    "SUBMISSION_ACCESS_MODE_CONTROL_FUNCTION",
+    DEFAULT_ACCESS_MODE_CONTROL_FUNCTION,
+)
+OA_CODE = getattr(settings, "SUBMISSION_OA_CODE", "oa-transformative-agreement")
 
 SIMULATE_YAKUNIN = getattr(settings, "SUBMISSION_SIMULATE_YAKUNIN", False)
