@@ -1,5 +1,6 @@
 from django.contrib import admin
 
+from .advanced_admin import advanced_admin  # noqa: F401
 from .models import AccessMode, AccessModeJournal, ArticleCollaboration, ArticleSubmission, Collaboration
 
 
