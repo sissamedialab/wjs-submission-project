@@ -10,10 +10,7 @@ DEBUG = True
 
 # Plugins is installed by Janeway, not Django!
 # No: INSTALLED_APPS = ["wjs_submission",]  # noqa: ERA001
-INSTALLED_APPS = [
-    "django_bootstrap5",
-    "wjs.themes",
-]
+INSTALLED_APPS = ["django_bootstrap5", "wjs.themes", "wjs.advanced_admin"]
 
 # This is the default redirect if no other sites are found.
 DEFAULT_HOST = "https://www.example.org"
