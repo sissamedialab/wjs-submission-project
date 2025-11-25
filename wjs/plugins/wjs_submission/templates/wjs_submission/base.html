@@ -3,9 +3,6 @@
 {% load django_bootstrap5 static field %}
 
 {% block content %}
-  <div id="js-loading-spinner" class="wjs-loading-spinner">
-    <span class="spinner-border text-primary"></span>
-  </div>
   <div class="wjs-submission-container">
     <form method="post" action="" class="wjs-submission-form" enctype="multipart/form-data">
       {% csrf_token %}
@@ -38,20 +35,6 @@
   <script>
     document.addEventListener("DOMContentLoaded", function() {
       setupRequiredChecklist();
-    });
-
-    const spinner = document.getElementById('js-loading-spinner');
-
-    document.body.addEventListener('htmx:beforeRequest', function(event) {
-      var triggeringElement = event.detail.elt;
-      var hxTarget = triggeringElement.getAttribute('hx-target');
-      if (hxTarget !== '#js-arxiv-validation-result') {
-        spinner.style.display = 'flex';
-      }
-    });
-
-    document.body.addEventListener('htmx:afterRequest', function() {
-      spinner.style.display = 'none';
     });
   </script>
 {% endblock js %}

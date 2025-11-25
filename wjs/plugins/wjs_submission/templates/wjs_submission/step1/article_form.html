@@ -33,7 +33,7 @@
           {{ form.arxiv_article_id }}
 
           <button
-            class="btn btn-primary"
+            class="btn btn-primary js-no-spinner"
             id="js-arxiv-validation-btn"
             hx-post="{% url 'arxiv_microservice' %}"
             hx-include="#id_arxiv_id"
