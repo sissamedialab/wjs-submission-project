@@ -369,6 +369,8 @@ class ArXivToArticle:
             article,
             self.user,
         )
+        for f in article.source_files.all():
+            f.delete()
         article.source_files.add(file_instance)
 
     def run(self):
