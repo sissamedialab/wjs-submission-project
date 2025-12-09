@@ -32,6 +32,19 @@ DEFAULT_ACCESS_MODE_COUNTRIES = {
 }
 
 
+DEFAULT_SUBMISSION_FILE_TYPES = {
+    None: ("text/x-tex", "application/zip", "application/gzip"),
+    "JCOM": (
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document;",
+        "application/vnd.oasis.opendocument.text;",
+    ),
+    "JCOMAL": (
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document;",
+        "application/vnd.oasis.opendocument.text;",
+    ),
+}
+
+
 KEYWORD_VALIDATORS = getattr(settings, "SUBMISSION_KEYWORD_VALIDATORS", DEFAULT_KEYWORD_VALIDATORS)
 KEYWORD_FILTERS = getattr(settings, "SUBMISSION_KEYWORD_VALIDATORS", DEFAULT_KEYWORD_FILTERS)
 ARTICLE_LANGUAGES = getattr(settings, "SUBMISSION_ARTICLE_LANGUAGES", DEFAULT_ARTICLE_LANGUAGES)
@@ -45,5 +58,4 @@ ACCESS_MODE_CONTROL_FUNCTION = getattr(
     DEFAULT_ACCESS_MODE_CONTROL_FUNCTION,
 )
 OA_CODE = getattr(settings, "SUBMISSION_OA_CODE", "oa-transformative-agreement")
-
-SIMULATE_YAKUNIN = getattr(settings, "SUBMISSION_SIMULATE_YAKUNIN", False)
+SUBMISSION_FILE_TYPES = getattr(settings, "SUBMISSION_FILE_TYPES", DEFAULT_SUBMISSION_FILE_TYPES)
