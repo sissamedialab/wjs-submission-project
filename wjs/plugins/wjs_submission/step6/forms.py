@@ -4,6 +4,7 @@ from django.utils.translation import gettext_lazy as _
 from submission.models import Article
 
 from ..models import ArticleSubmission
+from ..settings import SUBMISSION_FILE_TYPES
 
 
 class SubmissionStep6Form(forms.ModelForm):
@@ -11,12 +12,12 @@ class SubmissionStep6Form(forms.ModelForm):
         choices=ArticleSubmission.DasDeclaration.choices,
         widget=forms.RadioSelect(attrs={"data-name": "das", "data-type": "radio-select"}),
     )
-    das_url = forms.URLField(required=False, label="Please insert URL")
+    das_url = forms.URLField(required=False, label="Please insert URL", help_text=_("Required"))
     cas = forms.ChoiceField(
         choices=ArticleSubmission.CasDeclaration.choices,
         widget=forms.RadioSelect(attrs={"data-name": "das", "data-type": "radio-select"}),
     )
-    cas_url = forms.URLField(required=False, label="Please insert URL")
+    cas_url = forms.URLField(required=False, label="Please insert URL", help_text=_("Required"))
 
     class Meta:
         model = Article
@@ -76,6 +77,7 @@ class UploadArticleForm(forms.Form):
     source_format = forms.ChoiceField(
         label=_("Source format"),
         choices=ArticleSubmission.ManuscriptSourceFormat.choices,
+        required=False,
         help_text=_("Manually set your sources format ( tex or odt ) if the system cannot determine it automatically"),
     )
     tex_engine = forms.ChoiceField(
@@ -106,6 +108,19 @@ class UploadArticleForm(forms.Form):
             self.fields["source_format"].widget = forms.HiddenInput()
             self.fields["tex_engine"].widget = forms.HiddenInput()
             self.fields["tex_master"].widget = forms.HiddenInput()
+        for field in self.fields:
+            if self.fields[field].required:
+                self.fields[field].widget.attrs["required"] = True
+                self.fields[field].help_text = _("Required")
+
+    def clean_file(self):
+        """Validate file mime according to journal and file type form."""
+        cleaned_data = super().clean()
+        if self.file_type == "manuscript":
+            permitted_mime_types = SUBMISSION_FILE_TYPES.get(self.instance.journal.code, SUBMISSION_FILE_TYPES[None])
+            if cleaned_data["file"].content_type not in permitted_mime_types:
+                raise forms.ValidationError("File type not allowed.")
+        return cleaned_data["file"]
 
     def clean(self):
         """
