@@ -6,7 +6,7 @@
     {{ journal_settings.general.submission_intro_text|safe }}
   </div>
   <div class="wjs-submission-form__section wjs-submission-form__section--submission-checklist mb-5">
-    <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Submission checklist and declarations</h5>
+    <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required"  id="submission-checklist">Submission checklist and declarations</h5>
     <div class="wjs-submission-form__section-content">
       {% if settings.DEBUG %}{{ form.errors }}{% endif %}
       {{ journal_settings.general.submission_checklist|safe }}
@@ -21,7 +21,7 @@
   </div>
 
   {% if form.arxiv_id %}
-    <div class="wjs-submission-form__section mb-5">
+    <div class="wjs-submission-form__section mb-5" id="arxiv_id-section">
       <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">ArXiv</h5>
       <div class="wjs-submission-form__section-content">
         <div class="mb-4">
@@ -60,7 +60,7 @@
     </div>
   {% endif %}
 
-  <div class="wjs-submission-form__section mb-5">
+  <div class="wjs-submission-form__section mb-5" id="competing_interests-section">
     <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required"> Conflict of interest</h5>
     <div class="wjs-submission-form__section-content">
       <div class="mb-3">
@@ -70,7 +70,7 @@
     </div>
   </div>
 
-  <div class="wjs-submission-form__section mb-5">
+  <div class="wjs-submission-form__section mb-5" id="cover_letter-section">
     <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required"> Cover letter</h5>
     <div class="wjs-submission-form__section-content">
       <div class="mb-3">

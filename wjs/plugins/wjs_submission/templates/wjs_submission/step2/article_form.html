@@ -2,7 +2,7 @@
 {% load django_bootstrap5 static field %}
 
 {% block submission_flow %}
-  <div class="wjs-submission-form__section mb-5">
+  <div class="wjs-submission-form__section mb-5" id="issue-section">
     <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Select Issue of publication</h5>
     <div class="wjs-submission-form__section-content">
       {% if settings.DEBUG %}{{ form.errors }}{% endif %}
