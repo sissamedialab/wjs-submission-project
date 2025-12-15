@@ -61,9 +61,16 @@ class SubmissionStep6Form(forms.ModelForm):
         self.instance.current_step = max(self.instance.current_step, self.step)
         instance = super().save(commit=commit)
         instance.submission_data.das = self.cleaned_data["das"]
-        instance.submission_data.das_url = self.cleaned_data["das_url"]
+        if instance.submission_data.das == ArticleSubmission.DasDeclaration.URL:
+            instance.submission_data.das_url = self.cleaned_data["das_url"]
+        else:
+            instance.submission_data.das_url = ""
+        instance.submission_data.save()
         instance.submission_data.cas = self.cleaned_data["cas"]
-        instance.submission_data.cas_url = self.cleaned_data["cas_url"]
+        if instance.submission_data.cas == ArticleSubmission.CasDeclaration.URL:
+            instance.submission_data.cas_url = self.cleaned_data["cas_url"]
+        else:
+            instance.submission_data.cas_url = ""
         instance.submission_data.save()
         return instance
 
