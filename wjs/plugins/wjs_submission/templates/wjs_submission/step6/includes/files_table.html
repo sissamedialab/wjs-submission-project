@@ -23,16 +23,16 @@
     </thead>
     <tbody>
     {% for file in files_list.all %}
-      {% if show_conversion %}<input type="hidden" id="{{ file_type }}_id" name="{{ file_type }}" value="{{ file.pk }}" required="">{% endif %}
+      {% if show_conversion %}<input class="js-converted-file" type="hidden" id="{{ file_type }}_id" name="{{ file_type }}" value="{% if not failed_conversion_log %}{{ file.pk }}{% endif %}" required="">{% endif %}
       <tr>
         <td>{{ file.label }}</td>
         <td>{{ file.original_filename }}</td>
         {% if show_conversion %}
           <td>
             {% if failed_conversion_log %}
-              <div class="d-flex align-items-center gap-2">
-                <span class="dot bg-error"></span>
-                <span class="content text-error">Error</span>
+              <div id="conversion-status" class="d-flex align-items-center gap-2">
+                <span class="dot bg-danger"></span>
+                <span class="content text-danger">Error</span>
               </div>
             {% else %}
               <div id="conversion-status" class="d-flex align-items-center gap-2 {% if file.mime_type != "application/pdf" %}d-none{% endif %}">
@@ -48,7 +48,7 @@
           {% with container_id="#files_table_"|add:file_type %}
             {% url 'wjs_submission_6_delete' article.pk file_type file.pk as delete_url %}
             {% url 'wjs_submission_6_render' article.pk file_type as render_url %}
-            {% url "article_file_download" identifier_type="id" identifier=file.article_id file_id=file.pk as download_url %}
+            {% url "download_single_file" article_id=file.article_id file_id=file.pk as download_url %}
             {% if not read_only %}
               {% bootstrap_button button_class="btn btn-sm btn-outline" type="button" hx_post=delete_url hx_target=container_id hx_confirm="Are you sure you wish to delete the file?" content="<i class='bi bi-trash3'></i>" title="Delete" %}
               {% if settings.DEBUG %}
@@ -59,19 +59,24 @@
           {% endwith %}
         </td>
       </tr>
+    {% empty %}
+      {% if show_conversion %}<input class="js-converted-file" type="hidden" id="{{ file_type }}_id" name="{{ file_type }}" value="" required="">{% endif %}
     {% endfor %}
     </tbody>
   </table>
   {% if show_conversion %}
-    <div id="js-conversion-message" class="wjs-submission-form__alert-message-box wjs-submission-form__alert-message-box--warning d-none d-flex">
+    <div id="js-conversion-message" class="wjs-submission-form__alert-message-box wjs-submission-form__alert-message-box--warning d-none d-flex flex-column">
       <i class="bi bi-exclamation-triangle"></i>
       <div id="conversion-message"></div>
-      {% if failed_conversion_log %}
-        <div>
-          {% url "article_file_download" identifier_type="id" identifier=failed_conversion_log.article_id file_id=failed_conversion_log.pk as download_url %}
-          Download the file to see details: <a href="{{ download_url }}">download</a>
-        </div>
-      {% endif %}
+      <div id="js-conversion-log" class="d-none">
+        Download the file to see details: <a id="js-conversion-log-url" href="">download</a>
+      </div>
     </div>
   {% endif %}
 </div>
+
+<script>
+  document.body.addEventListener("htmx:afterSwap", function(evt) {
+    updateRequiredChecklist();
+  });
+</script>

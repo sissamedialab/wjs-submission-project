@@ -68,7 +68,7 @@ class ArxivMicroservice(HtmxMixin, AuthorFilteringView, View):
         :return: JsonResponse indicating the success or failure of the operation.
         """
         arxiv_id = request.POST.get("arxiv_id", "").strip()
-        service = ArXivToWjsArticle(arxiv_id=arxiv_id, journal=self.request.journal, user=self.request.user)
+        service = ArXivToWjsArticle(arxiv_id=arxiv_id, request=self.request)
         try:
             article = service.run()
             return JsonResponse(

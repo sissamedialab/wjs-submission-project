@@ -10,47 +10,50 @@
 function show_feedback(data) {
 
   if (data.status) {
-    const el = document.getElementById("conversion-status");
-    const refresh = document.querySelector(".js-refresh");
+    const conversionStatusContainer = document.getElementById("conversion-status");
 
     console.log("show_feedback", data);
     switch (data.status) {
       case "completed": {
         console.log("Status: completed");
-        el.classList.remove("d-none");
-        el.querySelector(".dot").className = "dot bg-success";
-        el.querySelector(".content").className = "content text-success";
-        el.querySelector(".content").textContent = "Success";
-        setTimeout(() => {
-          // refresh.click();
-        }, 500);
+        conversionStatusContainer.classList.remove("d-none");
+        conversionStatusContainer.querySelector(".dot").className = "dot bg-success";
+        conversionStatusContainer.querySelector(".content").className = "content text-success";
+        conversionStatusContainer.querySelector(".content").textContent = "Success";
         break;
       }
       case "running": {
         console.log("Status: running");
-        el.classList.remove("d-none");
-        el.querySelector(".dot").className = "dot bg-running";
-        el.querySelector(".content").className = "content text-running";
-        el.querySelector(".content").textContent = "Running";
+        conversionStatusContainer.classList.remove("d-none");
+        conversionStatusContainer.querySelector(".dot").className = "dot bg-running";
+        conversionStatusContainer.querySelector(".content").className = "content text-running";
+        conversionStatusContainer.querySelector(".content").textContent = "Running";
         break;
       }
       case "error": {
         console.log("Status: error");
-        el.classList.remove("d-none");
-        el.querySelector(".dot").className = "dot bg-danger";
-        el.querySelector(".content").className = "content text-danger";
-        setTimeout(() => {
-          refresh.click();
-        }, 500);
+        conversionStatusContainer.classList.remove("d-none");
+        conversionStatusContainer.querySelector(".dot").className = "dot bg-danger";
+        conversionStatusContainer.querySelector(".content").className = "content text-danger";
+        conversionStatusContainer.querySelector(".content").textContent = "Error";
         if (data.status_log) {
-          const el = document.getElementById("conversion-message");
+          const convertedFile = document.querySelector(".js-converted-file");
+          convertedFile.value = null;
+          const conversionStatusMessage = document.getElementById("conversion-message");
           const warningContainer = document.getElementById("js-conversion-message");
-          if (el) el.textContent = data.status_log;
-          if (el) el.textContent.length > 0 ? warningContainer.classList.remove("d-none") : warningContainer.classList.add("d-none");
+          const conversionLogContainer = document.getElementById("js-conversion-log");
+          const conversionLogContainerUrl = document.getElementById("js-conversion-log-url");
+          if (conversionStatusMessage) conversionStatusMessage.textContent = data.status_log;
+          if (conversionStatusMessage) conversionStatusMessage.textContent.length > 0 ? warningContainer.classList.remove("d-none") : warningContainer.classList.add("d-none");
+          if (conversionLogContainer && data.log_file) {
+            conversionLogContainer.classList.remove("d-none");
+            conversionLogContainerUrl.href = data.log_file;
+          }
         }
         break;
       }
     }
+    updateRequiredChecklist();
   }
 }
 

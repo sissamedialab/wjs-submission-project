@@ -167,7 +167,7 @@ class UploadArticleForm(forms.Form):
                 label=label,
             )
             if file_type == "manuscript":
-                self.instance.manuscript_files.set([new_file])
+                self.instance.source_files.set([new_file])
             elif file_type == "data":
                 self.instance.data_figure_files.add(new_file)
             elif file_type == "administrative":
