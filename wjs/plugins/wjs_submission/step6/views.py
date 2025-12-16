@@ -79,9 +79,13 @@ class TableRenderingContext:
         context["article"] = self._article
         if self.kwargs["file_type"] == "manuscript":
             context["show_conversion"] = True
-            context["files_list"] = context["article"].manuscript_files
+            context["files_list"] = (
+                context["article"].manuscript_files
+                if context["article"].manuscript_files.exists()
+                else context["article"].source_files
+            )
             context["failed_conversion_log"] = core_models.File.objects.filter(
-                article_id=context["article"].pk, label="Failed conversion log"
+                article_id=context["article"].pk, label="Failed conversion log ConvertManuscriptToPdf"
             ).first()
         elif self.kwargs["file_type"] == "data":
             context["files_list"] = context["article"].data_figure_files

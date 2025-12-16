@@ -1,7 +1,4 @@
 import dataclasses
-import io
-import tarfile
-from pathlib import Path
 
 import defusedxml
 import requests
@@ -11,11 +8,15 @@ from django.core.files import File
 from django.core.files.base import ContentFile
 from django.db import transaction
 from django.db.models import Q, QuerySet
+from django.http import HttpRequest
 from django.utils.translation import gettext_lazy as _
+from events import logic as event_logic
 from identifiers.models import Identifier
 from journal.models import Journal
 from submission.models import STAGE_REJECTED, STAGE_UNSUBMITTED, Article, ArticleAuthorOrder
 from utils.setting_handler import get_setting
+
+from .step6.views import get_feedback_ws_name, get_feedback_ws_url
 
 ARXIV_API_URL = "https://export.arxiv.org/api/query?id_list={}"
 
@@ -217,48 +218,6 @@ def fetch_arxiv_metadata(arxiv_id: str) -> tuple[dict, dict]:
     return result, errors
 
 
-class MockExternalPDFService:
-    """
-    Mock external PDF generation service.
-
-    This class simulates an external service that processes a source archive
-    (tar.gz) bytes and returns a dummy PDF stored in the project.
-    """
-
-    def __init__(self, dummy_pdf_path: str):
-        """
-        Initialize an instance with a provided path to a dummy PDF.
-
-        The provided path is used to manage or reference a dummy PDF file
-        for specific operations.
-
-        :param dummy_pdf_path: The file system path to the dummy PDF.
-        :type dummy_pdf_path: str
-        """
-        self.dummy_pdf_path = Path(dummy_pdf_path)
-
-    def process_archive(self, archive_content: bytes) -> bytes:
-        """
-        Process the given source archive content and return PDF content.
-
-        :param archive_content: Bytes of the .tar.gz archive
-        :return: Bytes of the dummy PDF file.
-        """
-        try:
-            with tarfile.open(fileobj=io.BytesIO(archive_content), mode="r:gz"):
-                pass
-        except Exception as e:
-            msg = f"Invalid archive provided: {e}"
-            raise ValueError(msg) from e
-
-        try:
-            with self.dummy_pdf_path.open("rb") as pdf_file:
-                return pdf_file.read()
-        except FileNotFoundError as e:
-            msg = f"Dummy PDF not found at {self.dummy_pdf_path}"
-            raise FileNotFoundError(msg) from e
-
-
 @dataclasses.dataclass
 class ArXivToArticle:
     arxiv_id: str
@@ -428,17 +387,21 @@ class ArXivToArticle:
 @dataclasses.dataclass
 class ArXivToWjsArticle:
     arxiv_id: str
-    journal: Journal
-    user: Account
+    request: HttpRequest
 
-    @staticmethod
-    def _convert_source_archive(source_file_bytes: bytes) -> bytes:
-        base_dir = Path(__file__).parent
-        dummy_pdf_path = base_dir / "files" / "arxiv_pdf_sample.pdf"
-        # TODO: this is just an example mock, the real implementation won't return anything since It will be
-        #   asynchronous
-        service = MockExternalPDFService(dummy_pdf_path=str(dummy_pdf_path))
-        return service.process_archive(source_file_bytes)
+    def _convert_source_archive(self, article: Article):
+        feedback_ws_name = get_feedback_ws_name(article.pk, self.request.user.pk)
+        feedback_ws_url = get_feedback_ws_url(self.request, article.pk, self.request.user.pk)
+        event_logic.Events.raise_event(
+            event_logic.Events.ON_ARTICLE_FILE_UPLOAD,
+            request=self.request,
+            file_id=article.source_files.first().pk,
+            original_filename=article.source_files.first().original_filename,
+            file_type="manuscript:async",
+            article=article,
+            feedback_ws_url=feedback_ws_url,
+            feedback_ws_name=feedback_ws_name,
+        )
 
     def run(self):
         """
@@ -450,10 +413,9 @@ class ArXivToWjsArticle:
         :return: Returns the processed article object.
         :rtype: Article
         """
-        article = ArXivToArticle(arxiv_id=self.arxiv_id, journal=self.journal, user=self.user).run()
-        if source_file := article.source_files.first():
-            self._convert_source_archive(source_file.get_file(article, as_bytes=True))
-
+        article = ArXivToArticle(arxiv_id=self.arxiv_id, journal=self.request.journal, user=self.request.user).run()
+        if article.source_files.first():
+            self._convert_source_archive(article)
         return article
 
 

@@ -49,11 +49,11 @@ class Command(BaseCommand):
         group_name = f"group_{ws_name}"
         channel_layer = get_channel_layer()
         steps = [
-            {"status": "started", "status_log": "Started correctly"},
-            {"status": "running", "status_log": "Conversion in progress"},
-            {"status": "debug", "status_log": "Conversion in progress"},
-            {"status": "completed", "status_log": "Conversion completed without errors"},
-            {"status": "error", "status_log": "Conversion completed without errors"},
+            {"status": "started", "text": "Started correctly"},
+            {"status": "running", "text": "Conversion in progress"},
+            {"status": "debug", "text": "Conversion in progress"},
+            {"status": "completed", "text": "Conversion completed without errors"},
+            {"status": "error", "text": "Conversion completed without errors"},
         ]
 
         for step in steps:

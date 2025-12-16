@@ -40,10 +40,9 @@ class CoreFileWrapper(DjangoFile):
         file_path = Path(core_file.self_article_path())
         super().__init__(file_path.open("rb"), name=core_file.original_filename)
         self.url = reverse(
-            "article_file_download",
+            "download_single_file",
             kwargs={
-                "identifier_type": "id",
-                "identifier": core_file.article_id,
+                "article_id": core_file.article_id,
                 "file_id": core_file.pk,
             },
         )
