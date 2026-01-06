@@ -2,6 +2,10 @@
  * Displays feedback based on the provided data's status.
  * Updates the visual indicators such as message and status dot.
  *
+ * When the status is set to completed, the refresh button is clicked to refresh (via HTMX) the file listing to provide
+ * proper rendering of the newly converted file with correct link, filename and status, which are not available to
+ * the websocket payload.
+ *
  * @param {Object} data - The data object containing feedback information.
  * @param {string} data.status - The current status, which can be "success", "working", or "error".
  * @param {string} [data.status_log] - Optional log message associated with the "error" status.
@@ -11,6 +15,7 @@ function show_feedback(data) {
 
   if (data.status) {
     const conversionStatusContainer = document.getElementById("conversion-status");
+    const refresh = document.querySelector(".js-refresh");
 
     console.log("show_feedback", data);
     switch (data.status) {
@@ -20,6 +25,9 @@ function show_feedback(data) {
         conversionStatusContainer.querySelector(".dot").className = "dot bg-success";
         conversionStatusContainer.querySelector(".content").className = "content text-success";
         conversionStatusContainer.querySelector(".content").textContent = "Success";
+        setTimeout(() => {
+          refresh.click();
+        }, 500);
         break;
       }
       case "running": {
