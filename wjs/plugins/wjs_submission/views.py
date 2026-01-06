@@ -1,8 +1,9 @@
 from django.contrib.auth.mixins import UserPassesTestMixin
-from django.http import JsonResponse
+from django.db.models import Q, QuerySet
+from django.http import HttpResponseBase, JsonResponse
 from django.urls import reverse
 from django.views import View
-from django.views.generic import DetailView, RedirectView, TemplateView
+from django.views.generic import RedirectView, TemplateView
 from submission.models import Article, Keyword
 from submission.views import KeywordAutocomplete
 
@@ -21,13 +22,36 @@ class Manager(UserPassesTestMixin, TemplateView):
         return self.request.user.is_authenticated and (self.request.user.is_staff or self.request.user.is_superuser)
 
 
-class RedirectToComplete(AuthorFilteringView, DetailView):
+class RedirectToComplete(AuthorFilteringView, RedirectView):
     """Redirect to the article submission complete page."""
 
     model = Article
     pk_url_kwarg = "article_id"
 
-    def get_redirect_url(self, *args, **kwargs):
+    def get_queryset(self) -> QuerySet:
+        """
+        Filter the base queryset to include only articles for which the current user is owner or correspondence author.
+
+        :return: Queryset of articles.
+        :rtype: QuerySet[Article]
+        """
+        return self.model.objects.filter(
+            Q(owner=self.request.user) | Q(correspondence_author=self.request.user)
+        ).filter(journal=self.request.journal)
+
+    def get_object(self, queryset=None) -> Article:
+        """Get current article from URL parameter."""
+        return self.get_queryset().get(pk=self.kwargs["article_id"])
+
+    def get(self, request, *args, **kwargs) -> HttpResponseBase:
+        """Handle get request to redirect or send to error page if article is not accessible."""
+        try:
+            self.object = self.get_object()
+            return super().get(request, *args, **kwargs)
+        except Article.DoesNotExist:
+            return self.handle_no_permission()
+
+    def get_redirect_url(self, *args, **kwargs) -> str:
         """
         Calculate the redirect URL for the given article.
         """
