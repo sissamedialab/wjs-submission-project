@@ -2,9 +2,9 @@ from core.models import Account, Country
 from django.db import models
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
-from submission.models import Article
+from submission.models import Article, ArticleAuthorOrder
 
-from .signals import *  # noqa
+from .signals import *  # noqa: F403
 
 
 class ArticleSubmission(models.Model):
@@ -82,6 +82,12 @@ class ArticleSubmission(models.Model):
         return f"ArticleSubmission for {self.article}"
 
 
+class CollaborationRelation(models.TextChoices):
+    BY = "by", _("by a collaboration")
+    ON_BEHALF_OF = "on_behalf_of", _("on behalf of a collaboration")
+    NONE = "none", _("No collaboration involved")
+
+
 class Collaboration(models.Model):
     name = models.CharField(max_length=255)
     institutional_email = models.EmailField(blank=True, help_text=_("If available"))
@@ -124,29 +130,26 @@ class Collaboration(models.Model):
         return self.name
 
     @staticmethod
-    def next_collaboration_sort(article: Article) -> int:
+    def next_collaboration_sort(article: Article, revision: bool = False) -> int:
         """
         Use to get the correct value for the order field when a new collaboration is created.
 
         Similar to Janeway's "next_author_sort()".
         """
-        current_orders = ArticleCollaboration.objects.filter(article=article).values_list("order", flat=True)
-        if not current_orders:
-            return 0
-        return max(current_orders) + 1
+        model = RevisionArticleCollaboration if revision else ArticleCollaboration
+        filters = (
+            {"revision_storage": RevisionStorage.objects.get(article=article)} if revision else {"article": article}
+        )
+        current_orders = model.objects.filter(**filters).values_list("order", flat=True)
+        return (max(current_orders) + 1) if current_orders else 0
 
 
 class ArticleCollaboration(models.Model):
-    class Relations(models.TextChoices):
-        BY = "by", _("by a collaboration")
-        ON_BEHALF_OF = "on_behalf_of", _("on behalf of a collaboration")
-        NONE = "none", _("No collaboration involved")
-
     article = models.ForeignKey(Article, on_delete=models.CASCADE, related_name="collaborations")
     collaboration = models.ForeignKey(Collaboration, on_delete=models.CASCADE, related_name="articles")
     relation = models.CharField(
         max_length=32,
-        choices=Relations.choices,
+        choices=CollaborationRelation.choices,
         default="by",
         help_text=_("Indicates whether the article was written by or on behalf of the collaboration"),
     )
@@ -238,3 +241,52 @@ class RevisionStorage(models.Model):
 
     def __str__(self):
         return f"Revision storage for {self.article.journal.code}_{self.article.id}"
+
+
+class RevisionArticleAuthorOrder(models.Model):
+    revision_storage = models.ForeignKey(
+        RevisionStorage,
+        on_delete=models.CASCADE,
+    )
+    author = models.ForeignKey(
+        "core.Account",
+        on_delete=models.CASCADE,
+    )
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ("order",)
+
+    def __str__(self):
+        return f"{self.revision_storage.article} {self.author}"
+
+
+class RevisionArticleCollaboration(models.Model):
+    revision_storage = models.ForeignKey(RevisionStorage, on_delete=models.CASCADE, related_name="collaborations")
+    collaboration = models.ForeignKey(Collaboration, on_delete=models.CASCADE, related_name="revision_storages")
+    relation = models.CharField(
+        max_length=32,
+        choices=CollaborationRelation.choices,
+        default="by",
+        help_text=_("Indicates whether the article was written by or on behalf of the collaboration"),
+    )
+    order = models.PositiveIntegerField(
+        default=0, help_text=_("Order of this collaboration in the author/collaboration list")
+    )
+
+    class Meta:
+        ordering = ("order",)
+        unique_together = ("revision_storage", "collaboration")
+
+    def __str__(self):
+        return f"{self.relation} {self.collaboration}"
+
+
+def next_author_sort(self, revision: bool = False, *args, **kwargs) -> int:
+    model = RevisionArticleAuthorOrder if revision else ArticleAuthorOrder
+    filters = {"revision_storage": RevisionStorage.objects.get(article=self)} if revision else {"article": self}
+    current_orders = model.objects.filter(**filters).values_list("order", flat=True)
+    return (max(current_orders) + 1) if current_orders else 0
+
+
+Article.next_author_sort = next_author_sort

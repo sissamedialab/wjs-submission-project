@@ -2,15 +2,24 @@ from core import files as core_files
 from core.models import Account, Country
 from django import forms
 from django.utils.translation import gettext_lazy as _
+from review.models import RevisionRequest
 from submission.models import Article, ArticleAuthorOrder
 
-from ..models import ArticleCollaboration, Collaboration
+from ..fields import WjsMiniHTMLFormField
+from ..models import (
+    ArticleCollaboration,
+    Collaboration,
+    CollaborationRelation,
+    RevisionArticleAuthorOrder,
+    RevisionArticleCollaboration,
+    RevisionStorage,
+)
 
 
 class SubmissionStep4Form(forms.ModelForm):
     country = forms.ModelChoiceField(queryset=Country.objects.all())
     collaboration_relation = forms.ChoiceField(
-        choices=ArticleCollaboration.Relations.choices,
+        choices=CollaborationRelation.choices,
         widget=forms.RadioSelect(
             attrs={"class": "form-check-input", "data-name": "collaboration_relation", "data-type": "radio-select"}
         ),
@@ -33,10 +42,9 @@ class SubmissionStep4Form(forms.ModelForm):
         :param args: Positional arguments passed to the parent form.
         :param kwargs: Keyword arguments; none mandatory;
         """
+        self.step = kwargs.pop("step", None)
         super().__init__(*args, **kwargs)
 
-        if self.instance.correspondence_author:
-            self.fields["correspondence_author"].initial = self.instance.correspondence_author
         qs = Account.objects.filter(
             id__in=ArticleAuthorOrder.objects.filter(article=self.instance).values_list("author_id", flat=True)
         )
@@ -55,6 +63,10 @@ class SubmissionStep4Form(forms.ModelForm):
         if self.instance.correspondence_author:
             self.fields["correspondence_author"].initial = self.instance.correspondence_author
             self.fields["country"].initial = self.instance.correspondence_author.country
+
+        self.fields["collaboration_relation"].initial = (
+            ArticleCollaboration.objects.filter(article=self.instance).values_list("relation", flat=True).first()
+        ) or CollaborationRelation.NONE
 
     def save(self, commit: bool = True) -> Account:
         """
@@ -94,6 +106,7 @@ class AddAuthorForm(forms.ModelForm):
         :param kwargs: Keyword arguments; must include 'article_id'.
         """
         article_id = kwargs.pop("article_id")
+        self.is_revision = kwargs.pop("is_revision", False)
         self.article = Article.objects.get(pk=article_id)
         super().__init__(*args, **kwargs)
 
@@ -112,17 +125,22 @@ class AddAuthorForm(forms.ModelForm):
         :return: The saved Account instance.
         """
         instance = super().save()
-        ArticleAuthorOrder.objects.get_or_create(
-            article=self.article,
+        model, fk = (
+            (RevisionArticleAuthorOrder, {"revision_storage": RevisionStorage.objects.get(article=self.article)})
+            if self.is_revision
+            else (ArticleAuthorOrder, {"article": self.article})
+        )
+        model.objects.get_or_create(
+            **fk,
             author=instance,
-            defaults={"order": self.article.next_author_sort()},
+            defaults={"order": self.article.next_author_sort(revision=self.is_revision)},
         )
         return instance
 
 
 class AddCollaborationForm(forms.ModelForm):
     collaboration_relation = forms.ChoiceField(
-        choices=ArticleCollaboration.Relations.choices,
+        choices=CollaborationRelation.choices,
         widget=forms.HiddenInput,
         required=True,
         label="This article is written",
@@ -155,6 +173,7 @@ class AddCollaborationForm(forms.ModelForm):
                        'collaboration_relation', and 'user'.
         """
         article_id = kwargs.pop("article_id")
+        self.is_revision = kwargs.pop("is_revision", False)
         self.article = Article.objects.get(pk=article_id)
         self.collaboration_relation = kwargs.pop("collaboration_relation")
         self.user = kwargs.pop("user")
@@ -182,12 +201,84 @@ class AddCollaborationForm(forms.ModelForm):
             instance.logo = file
             instance.save()
 
-        ArticleCollaboration.objects.get_or_create(
-            article=self.article,
+        model, fk = (
+            (RevisionArticleCollaboration, {"revision_storage": RevisionStorage.objects.get(article=self.article)})
+            if self.is_revision
+            else (ArticleCollaboration, {"article": self.article})
+        )
+
+        model.objects.get_or_create(
+            **fk,
             collaboration=instance,
             defaults={
                 "relation": self.cleaned_data["collaboration_relation"],
-                "order": instance.next_collaboration_sort(article=self.article),
+                "order": instance.next_collaboration_sort(article=self.article, revision=self.is_revision),
             },
         )
         return instance
+
+
+class RevisionStep4Form(SubmissionStep4Form):
+    authors_contributions = WjsMiniHTMLFormField(
+        label=_("Authors contributions"),
+        height="15rem",
+        help_text=_("missing help text"),
+        required=False,
+    )
+
+    def __init__(self, *args, **kwargs):
+        """
+        Initialize a custom form with pre-filled initial data based on revision storage.
+
+        The constructor fetches the associated `RevisionStorage` object for the given `Article` instance
+        and initializes specific form fields using data from the `RevisionStorage`. Additionally, it
+        filters the queryset for the `correspondence_author` field based on author IDs retrieved
+        from the `RevisionArticleAuthorOrder`.
+
+        :param args: Positional arguments passed to the superclass initializer.
+        :type args: tuple
+        :param kwargs: Keyword arguments passed to the superclass initializer. It must contain the key
+            `instance`, which refers to an `Article` instance.
+        :type kwargs: dict
+        """
+        revision_storage = RevisionStorage.objects.get(article=kwargs["instance"])
+        kwargs.setdefault("initial", {})
+        kwargs["initial"]["collaboration_relation"] = revision_storage.data.get("collaboration_relation")
+        super().__init__(*args, **kwargs)
+        qs = Account.objects.filter(
+            id__in=RevisionArticleAuthorOrder.objects.filter(revision_storage=revision_storage).values_list(
+                "author_id", flat=True
+            )
+        )
+        self.fields["correspondence_author"].queryset = qs
+
+    def save(self, commit: bool = True):
+        """
+        Override save method to store field values in RevisionStorage JSON field.
+
+        For FileFields, saves the file using core.files.save_file_to_article() and stores
+        the File object's pk in the JSON data.
+
+        :param commit: A boolean indicating whether to commit (not used in this override).
+        :type commit: bool
+        :return: The instance without saving.
+        :rtype: Article
+        """
+        revision_storage = RevisionStorage.objects.get(article=self.instance)
+        revision_storage.revision_step = max(revision_storage.revision_step, self.step)
+
+        revision_storage.data["affiliation_country"] = self.cleaned_data.get("country").pk
+
+        author_ids = ArticleAuthorOrder.objects.filter(article=self.instance).values_list("author_id", flat=True)
+        revision_storage.data["article_authors"] = list(author_ids)
+        revision_storage.save()
+        if self.cleaned_data.get("collaboration_relation") == "none":
+            RevisionArticleCollaboration.objects.filter(revision_storage=revision_storage).delete()
+
+        if self.cleaned_data.get("authors_contributions"):
+            revision_request = RevisionRequest.objects.get(article=self.instance)
+            revision_request.editorrevisionrequest.authors_contributions = self.cleaned_data.get(
+                "authors_contributions"
+            )
+            revision_request.editorrevisionrequest.save()
+        return revision_storage.article
