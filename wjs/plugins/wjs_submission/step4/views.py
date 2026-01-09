@@ -2,12 +2,18 @@ from core.models import Account
 from django.core.exceptions import ValidationError
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, UpdateView
-from submission.models import Article, ArticleAuthorOrder
+from submission.models import STAGE_UNDER_REVISION, Article, ArticleAuthorOrder
 
 from ..mixins import AuthorFilteringView, HtmxMixin, StepCheckView
-from ..models import ArticleCollaboration, Collaboration
-from .forms import AddAuthorForm, AddCollaborationForm, SubmissionStep4Form
-from .logic import TableMoveDeleteHandler
+from ..models import (
+    ArticleCollaboration,
+    Collaboration,
+    RevisionArticleAuthorOrder,
+    RevisionArticleCollaboration,
+    RevisionStorage,
+)
+from .forms import AddAuthorForm, AddCollaborationForm, RevisionStep4Form, SubmissionStep4Form
+from .logic import TableMoveDeleteHandler, has_author_list_changed
 
 
 class SubmissionStep4View(HtmxMixin, AuthorFilteringView, StepCheckView, UpdateView):
@@ -17,10 +23,36 @@ class SubmissionStep4View(HtmxMixin, AuthorFilteringView, StepCheckView, UpdateV
     step = 4
     form_class = SubmissionStep4Form
 
+    @property
+    def is_revision(self) -> bool:
+        """
+        Determine if this is a revision, in contrast to a first submission.
+
+        This is useful if one wants to use the submission plugins to manage revision-submissions
+        and customize the logic. See also get_form_class().
+
+        :return: True if the article exists and its stage is not "Unsubmitted", False otherwise.
+        :rtype: bool
+        """
+        return self.article is not None and self.article.stage == STAGE_UNDER_REVISION
+
+    def get_form_class(self):
+        """
+        Return the form class to use based on whether this is a revision.
+
+        :return: Form class to use.
+        :rtype: django.forms.Form
+        """
+        if self.is_revision:
+            return RevisionStep4Form
+        return SubmissionStep4Form
+
     def setup(self, request, *args, **kwargs):
         """Initialize view and retrieve the article object."""
         super().setup(request, *args, **kwargs)
         self.article = self.get_object()
+        if self.is_revision:
+            self.revision_storage = RevisionStorage.objects.get(article=self.article)
 
     def get_success_url(self):
         """
@@ -37,10 +69,31 @@ class SubmissionStep4View(HtmxMixin, AuthorFilteringView, StepCheckView, UpdateV
         :return: Context.
         """
         context = super().get_context_data(**kwargs)
-        context["authors_order"] = ArticleAuthorOrder.objects.filter(article=self.article)
         context["is_htmx"] = self.htmx
-        context["articles_collaborations"] = ArticleCollaboration.objects.filter(article=self.article)
+        fk_field = {"revision_storage": self.revision_storage} if self.is_revision else {"article": self.article}
+        context["authors_order"] = (
+            RevisionArticleAuthorOrder if self.is_revision else ArticleAuthorOrder
+        ).objects.filter(**fk_field)
+        context["articles_collaborations"] = (
+            RevisionArticleCollaboration if self.is_revision else ArticleCollaboration
+        ).objects.filter(**fk_field)
+        context["correspondence_author"] = (
+            Account.objects.get(pk=self.revision_storage.data["correspondence_author"])
+            if self.is_revision and self.revision_storage
+            else self.article.correspondence_author
+        )
+        context["show_special_fragment"] = has_author_list_changed(self.article)
         return context
+
+    def get_form_kwargs(self):
+        """
+        Inject journal and user into the form.
+
+        :return: Form kwargs.
+        """
+        kwargs = super().get_form_kwargs()
+        kwargs["step"] = self.step
+        return kwargs
 
     def get_template_names(self):
         """Return template based on HTMX trigger."""
@@ -58,6 +111,27 @@ class SubmissionStep4View(HtmxMixin, AuthorFilteringView, StepCheckView, UpdateV
             if self.request.headers.get("Hx-Target") == "selected-authors-wrapper":
                 return ["wjs_submission/step4/selected_authors.html"]
         return ["wjs_submission/step4/article_form.html"]
+
+    def get(self, request, *args, **kwargs):
+        """
+        Handle GET requests and triggers an HX update fragment event if the author list has changed.
+
+        Provides a response enriched with the necessary HX-Trigger header.
+
+        :param request: The HTTP request object containing all HTTP request details.
+        :type request: django.http.HttpRequest
+        :param args: Positional arguments passed to the handler.
+        :type args: list
+        :param kwargs: Keyword argument parameters passed to the handler.
+        :type kwargs: dict
+        :return: The HTTP response object, possibly containing an HX-Trigger header
+                 indicating whether the fragment update is required.
+        :rtype: django.http.HttpResponse
+        """
+        response = super().get(request, *args, **kwargs)
+        show_fragment = has_author_list_changed(self.article)
+        response["HX-Trigger"] = f"update-fragment:{int(show_fragment)}"
+        return response
 
     def post(self, request, *args, **kwargs):
         """
@@ -79,44 +153,74 @@ class SubmissionStep4View(HtmxMixin, AuthorFilteringView, StepCheckView, UpdateV
         hx_trigger = request.headers.get("Hx-Trigger")
         if self.htmx:
             if hx_trigger == "id_author_id":
-                ArticleAuthorOrder.objects.get_or_create(
-                    article=self.article,
+                model, fk = (
+                    (
+                        RevisionArticleAuthorOrder,
+                        {"revision_storage": RevisionStorage.objects.get(article=self.article)},
+                    )
+                    if self.is_revision
+                    else (ArticleAuthorOrder, {"article": self.article})
+                )
+                model.objects.get_or_create(
+                    **fk,
                     author_id=request.POST.get("author_id"),
-                    defaults={"order": self.article.next_author_sort()},
+                    defaults={"order": self.article.next_author_sort(revision=self.is_revision)},
                 )
             elif hx_trigger == "id_correspondence_author":
-                self.article.correspondence_author = Account.objects.get(id=request.POST.get("correspondence_author"))
-                self.article.save()
+                if self.is_revision:
+                    self.revision_storage.data["correspondence_author"] = request.POST.get("correspondence_author")
+                    self.revision_storage.save()
+                else:
+                    self.article.correspondence_author = Account.objects.get(
+                        id=request.POST.get("correspondence_author")
+                    )
+                    self.article.save()
             elif hx_trigger == "id_collaboration_id":
                 collaboration = Collaboration.objects.get(id=request.POST.get("collaboration_id"))
-                ArticleCollaboration.objects.get_or_create(
-                    article=self.article,
+                model, fk = (
+                    (
+                        RevisionArticleCollaboration,
+                        {"revision_storage": RevisionStorage.objects.get(article=self.article)},
+                    )
+                    if self.is_revision
+                    else (ArticleCollaboration, {"article": self.article})
+                )
+                model.objects.get_or_create(
+                    **fk,
                     collaboration=collaboration,
                     defaults={
                         "relation": self.request.POST.get("collaboration_relation"),
-                        "order": collaboration.next_collaboration_sort(article=self.article),
+                        "order": collaboration.next_collaboration_sort(
+                            article=self.article, revision=self.is_revision
+                        ),
                     },
                 )
             else:
                 entity_type = request.POST.get("entity")
                 action = request.POST.get("action")
+                parent_field = "revision_storage" if self.is_revision else "article"
+                parent_obj = self.article if not self.is_revision else self.revision_storage
                 if entity_type == "author":
+                    model = RevisionArticleAuthorOrder if self.is_revision else ArticleAuthorOrder
                     handler = TableMoveDeleteHandler(
-                        model=ArticleAuthorOrder,
+                        model=model,
                         entity_id=request.POST.get("author_id"),
                         item_field="author",
                         order_field="order",
                         action=action,
-                        article=self.article,
+                        parent_obj=parent_obj,
+                        parent_field=parent_field,
                     )
                 elif entity_type == "collaboration":
+                    model = RevisionArticleCollaboration if self.is_revision else ArticleCollaboration
                     handler = TableMoveDeleteHandler(
-                        model=ArticleCollaboration,
+                        model=model,
                         entity_id=request.POST.get("collaboration_id"),
                         item_field="collaboration",
                         order_field="order",
                         action=action,
-                        article=self.article,
+                        parent_obj=parent_obj,
+                        parent_field=parent_field,
                     )
                 else:
                     msg = f"Unsupported entity type: {entity_type}"
@@ -172,6 +276,19 @@ class ModalRenderingMixin(HtmxMixin, AuthorFilteringView, CreateView):
         self.article = Article.objects.get(pk=request.GET.get("article_id") or request.POST.get("article_id"))
         return super().setup(request, *args, **kwargs)
 
+    @property
+    def is_revision(self) -> bool:
+        """
+        Determine if this is a revision, in contrast to a first submission.
+
+        This is useful if one wants to use the submission plugins to manage revision-submissions
+        and customize the logic. See also get_form_class().
+
+        :return: True if the article exists and its stage is not "Unsubmitted", False otherwise.
+        :rtype: bool
+        """
+        return self.article is not None and self.article.stage == STAGE_UNDER_REVISION
+
     def get_context_data(self, **kwargs):
         """Add article_id to context."""
         context = super().get_context_data(**kwargs)
@@ -184,8 +301,15 @@ class ModalRenderingMixin(HtmxMixin, AuthorFilteringView, CreateView):
         """Save form and redirect via HTMX."""
         form.save()
         self.render_table = True
-        response = self.render_to_response(self.get_context_data())
-        response["HX-Trigger"] = "close-active-modal"
+        form = (
+            SubmissionStep4Form(instance=self.article)
+            if not self.is_revision
+            else RevisionStep4Form(instance=self.article)
+        )
+        context = self.get_context_data(form=form)
+        response = self.render_to_response(context)
+        show_fragment = has_author_list_changed(self.article)
+        response["HX-Trigger"] = f"close-active-modal,update-fragment:{int(show_fragment)}"
         return response
 
     def form_invalid(self, form):
@@ -223,6 +347,7 @@ class AddAuthorView(ModalRenderingMixin):
         """
         kwargs = super().get_form_kwargs()
         kwargs["article_id"] = self.article.pk
+        kwargs["is_revision"] = self.is_revision
         return kwargs
 
     def get_context_data(self, **kwargs):
@@ -239,7 +364,16 @@ class AddAuthorView(ModalRenderingMixin):
         :rtype: dict
         """
         context = super().get_context_data(**kwargs)
-        context["authors_order"] = ArticleAuthorOrder.objects.filter(article=self.article)
+        revision_storage = RevisionStorage.objects.filter(article=self.article).first()
+        context["correspondence_author"] = (
+            Account.objects.get(pk=revision_storage.data["correspondence_author"])
+            if self.is_revision and revision_storage
+            else self.article.correspondence_author
+        )
+        fk_field = {"revision_storage": revision_storage} if self.is_revision else {"article": self.article}
+        context["authors_order"] = (
+            RevisionArticleAuthorOrder if self.is_revision else ArticleAuthorOrder
+        ).objects.filter(**fk_field)
         return context
 
 
@@ -272,6 +406,7 @@ class AddCollaborationView(ModalRenderingMixin):
         kwargs["user"] = self.request.user
         kwargs["article_id"] = self.article.pk
         kwargs["collaboration_relation"] = self.request.GET.get("collaboration_relation")
+        kwargs["is_revision"] = self.is_revision
         return kwargs
 
     def get_context_data(self, **kwargs):
@@ -288,5 +423,12 @@ class AddCollaborationView(ModalRenderingMixin):
         :rtype: dict
         """
         context = super().get_context_data(**kwargs)
-        context["articles_collaborations"] = ArticleCollaboration.objects.filter(article=self.article)
+        fk_field = (
+            {"revision_storage": RevisionStorage.objects.get(article=self.article)}
+            if self.is_revision
+            else {"article": self.article}
+        )
+        context["articles_collaborations"] = (
+            RevisionArticleCollaboration if self.is_revision else ArticleCollaboration
+        ).objects.filter(**fk_field)
         return context

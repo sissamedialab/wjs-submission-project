@@ -2,6 +2,9 @@ from dataclasses import dataclass
 
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
+from submission.models import ArticleAuthorOrder
+
+from ..models import RevisionArticleAuthorOrder, RevisionStorage
 
 
 @dataclass
@@ -28,7 +31,8 @@ class TableMoveDeleteHandler:
     item_field: str
     order_field: str
     action: str
-    article: object
+    parent_obj: object
+    parent_field: str = "article"
 
     def delete(self, item, item_obj):
         """
@@ -38,10 +42,9 @@ class TableMoveDeleteHandler:
         the owner and correspondence author cannot be deleted.
         """
         if self.item_field == "author":
-            if item_obj == self.article.owner:
-                msg = _("Can't delete owner %s") % self.item_field
-                raise ValidationError(msg)
-            if item_obj == self.article.correspondence_author:
+            if item_obj.pk == getattr(self.parent_obj, "owner", None):
+                raise ValidationError(_("Can't delete owner %s") % self.item_field)
+            if item_obj.pk == getattr(self.parent_obj, "correspondence_author", None):
                 raise ValidationError(_("Can't delete correspondence author"))
         item.delete()
 
@@ -53,7 +56,7 @@ class TableMoveDeleteHandler:
         """
         swap_with = (
             self.model.objects.filter(
-                article=self.article,
+                **{self.parent_field: self.parent_obj},
                 **{f"{self.order_field}__lt": getattr(item, self.order_field)},
             )
             .order_by(f"-{self.order_field}")
@@ -69,7 +72,7 @@ class TableMoveDeleteHandler:
         """
         swap_with = (
             self.model.objects.filter(
-                article=self.article,
+                **{self.parent_field: self.parent_obj},
                 **{f"{self.order_field}__gt": getattr(item, self.order_field)},
             )
             .order_by(self.order_field)
@@ -85,10 +88,9 @@ class TableMoveDeleteHandler:
         """
         if not swap_with:
             return
-        item_order = getattr(item, self.order_field)
-        swap_order = getattr(swap_with, self.order_field)
-        setattr(item, self.order_field, swap_order)
-        setattr(swap_with, self.order_field, item_order)
+        o1, o2 = getattr(item, self.order_field), getattr(swap_with, self.order_field)
+        setattr(item, self.order_field, o2)
+        setattr(swap_with, self.order_field, o1)
         item.save()
         swap_with.save()
 
@@ -108,5 +110,32 @@ class TableMoveDeleteHandler:
         elif self.action == "move_down":
             self.move_down(item)
         else:
-            msg = _("Unsupported action: %s") % self.action
-            raise ValidationError(msg)
+            raise ValidationError(_("Unsupported action: %s") % self.action)
+
+
+def has_author_list_changed(article):
+    """
+    Determine if the list of authors associated with an article has changed.
+
+    This function compares the authors associated with the current version
+    of an article against the authors stored in its revision history. If the
+    two sets of authors differ, it indicates that the author list has changed.
+
+    :param article: The article instance whose author list is being checked.
+    :type article: Article
+    :return: A boolean indicating whether the list of authors has changed.
+    :rtype: bool
+    """
+    try:
+        revision_storage = article.revisionstorage
+        revision_authors = set(
+            RevisionArticleAuthorOrder.objects.filter(revision_storage=revision_storage).values_list(
+                "author_id", flat=True
+            )
+        )
+    except RevisionStorage.DoesNotExist:
+        revision_authors = set()
+
+    current_authors = set(ArticleAuthorOrder.objects.filter(article=article).values_list("author_id", flat=True))
+
+    return revision_authors != current_authors

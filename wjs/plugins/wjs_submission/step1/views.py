@@ -147,7 +147,6 @@ class SubmissionStep1View(AuthorFilteringView, StepCheckView, CreateView):
             arxiv_identifier = self.object.identifiers.filter(id_type="arxiv").first()
             if arxiv_identifier:
                 initial["arxiv_id"] = arxiv_identifier.identifier
-        if self.object:
             initial["arxiv_article_id"] = self.object.pk
         return initial
 
