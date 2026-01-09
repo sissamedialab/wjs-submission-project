@@ -186,3 +186,29 @@ class AccessModeJournal(models.Model):
 
     def __str__(self):
         return f"{self.access_mode} / {self.journal}"
+
+
+class RevisionStorage(models.Model):
+    """
+    Temporary storage of draft-revision data.
+
+    The revision process can be longish, and we don't want to store half-backed data in their final destination.
+    This (short-lived) records will keep the data while the author completes all the steps of the revision submission.
+    """
+
+    article = models.OneToOneField(
+        Article,
+        on_delete=models.CASCADE,
+    )
+    data = models.JSONField(
+        verbose_name=_("Draft data"),
+        default=dict,
+        blank=True,
+    )
+
+    class Meta:
+        verbose_name = _("Draft article")
+        verbose_name_plural = _("Draft articles")
+
+    def __str__(self):
+        return f"Revision storage for {self.article.journal.code}_{self.article.id}"

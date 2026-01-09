@@ -9,7 +9,7 @@
     <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required"  id="submission-checklist">Submission checklist and declarations</h5>
     <div class="wjs-submission-form__section-content">
       {% if settings.DEBUG %}{{ form.errors }}{% endif %}
-      {{ journal_settings.general.submission_checklist|safe }}
+      {% if is_revision %}{{ journal_settings.general.revision_checklist|safe }}{% else %}{{ journal_settings.general.submission_checklist|safe }}{% endif %}
       {% bootstrap_field form.submission_requirements checkbox_style="switch" %}
       {% if form.copyright_notice %}{% bootstrap_field form.copyright_notice checkbox_style="switch" %}{% endif %}
       {% for bound_field in form.visible_fields %}
@@ -24,14 +24,15 @@
     <div class="wjs-submission-form__section mb-5" id="arxiv_id-section">
       <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">ArXiv</h5>
       <div class="wjs-submission-form__section-content">
-        <div class="mb-4">
+        {% if not form.is_confirm_previous_version %}<div class="mb-4">
           Enter your preprint’s arXiv ID and validate it. The title, abstract, and manuscript will be imported
           automatically and can be reviewed in the next steps.
-        </div>
+        </div>{% endif %}
         <div class="wjs-submission-form__arxiv-validation-wrapper">
           {% bootstrap_field form.arxiv_id show_help=False show_label=False wrapper_class="" %}
           {{ form.arxiv_article_id }}
 
+          {% if not form.is_confirm_previous_version %}
           <button
             class="btn btn-primary js-no-spinner"
             id="js-arxiv-validation-btn"
@@ -44,6 +45,7 @@
           >
             Validate ArXiv ID
           </button>
+          {% endif %}
         </div>
         <div class="wjs-submission-form__arxiv-validation-messages-wrapper" tabindex="-1">
           <div id="js-arxiv-validation-result" class="wjs-submission-form__arxiv-validation-result d-none" role="alert"

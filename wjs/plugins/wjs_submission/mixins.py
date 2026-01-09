@@ -5,7 +5,7 @@ from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.utils.functional import cached_property
 from django.views.generic.edit import ModelFormMixin
-from submission.models import STAGE_UNSUBMITTED, Article
+from submission.models import STAGE_UNDER_REVISION, STAGE_UNSUBMITTED, Article
 from utils.setting_handler import get_setting
 
 from .workflow import STEPS, Step
@@ -36,7 +36,10 @@ class AuthorFilteringView(UserPassesTestMixin):
         return (
             super()
             .get_queryset()
-            .filter(Q(owner=self.request.user) | Q(correspondence_author=self.request.user), stage=STAGE_UNSUBMITTED)
+            .filter(
+                Q(owner=self.request.user) | Q(correspondence_author=self.request.user),
+                Q(stage=STAGE_UNSUBMITTED) | Q(stage=STAGE_UNDER_REVISION),
+            )
             .filter(journal=self.request.journal)
         )
 

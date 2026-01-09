@@ -7,6 +7,20 @@ from django.urls import reverse
 from journal.models import Issue, Journal
 from submission.models import Article
 
+from .models import RevisionStorage
+
+
+class WJSSubmissionEvent:
+    """Events related to WJS submission."""
+
+    # This event will be triggered at the end of the submission of a revision.
+    # This event should trigger the journal-specific logic related to revision-submission
+    # (notifications, etc.)
+    # The logic itself is then in charge of emitting
+    # - ON_REVISIONS_COMPLETE and
+    # - ON_WORKFLOW_ELEMENT_COMPLETE
+    ON_REVISION_SUBMISSION_COMPLETED = "on_revision_submission_completed"
+
 
 class StepState(NamedTuple):
     step: "Step"
@@ -127,6 +141,15 @@ class Step:
         return states
 
 
+def is_cpv(article: Article) -> bool:
+    """Tell if the given article is undergoing a confirm-previous-version revision submission."""
+    try:
+        revision_storage = RevisionStorage.objects.get(article=article)
+    except RevisionStorage.DoesNotExist:
+        return False
+    return revision_storage.data.get("confirm_previous_version", False)
+
+
 def step_check_select_issue(
     journal: Journal,
     article: Article | None = None,
@@ -140,6 +163,8 @@ def step_check_select_issue(
     - open_for_submission() -> uses date_open and date_close to filter out outdated or future issues
     - current_journal() -> only returns issues for the current journal
     """
+    if is_cpv(article):
+        return False
     return Issue.objects.collection().by_user(user).open_for_submission().current_journal(journal).exists()
 
 
@@ -148,7 +173,7 @@ def step_check_keywords(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
-    return True
+    return not is_cpv(article)
 
 
 def step_check_authors(
@@ -156,7 +181,7 @@ def step_check_authors(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
-    return True
+    return not is_cpv(article)
 
 
 def step_check_metadata(
@@ -164,7 +189,7 @@ def step_check_metadata(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
-    return True
+    return not is_cpv(article)
 
 
 def step_check_files(
@@ -172,7 +197,7 @@ def step_check_files(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
-    return True
+    return not is_cpv(article)
 
 
 def step_check_access_funding(
@@ -180,7 +205,7 @@ def step_check_access_funding(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
-    return True
+    return not is_cpv(article)
 
 
 def step_check_review_submit(
@@ -192,7 +217,13 @@ def step_check_review_submit(
 
 
 STEPS = {
-    1: Step(step_number=1, label="Start", step_view_name="wjs_submission_1", check_function=None, icon="bi-clipboard"),
+    1: Step(
+        step_number=1,
+        label="Start",
+        step_view_name="wjs_submission_1",
+        check_function=None,
+        icon="bi-clipboard",
+    ),
     2: Step(
         step_number=2,
         label="Select Issue",
