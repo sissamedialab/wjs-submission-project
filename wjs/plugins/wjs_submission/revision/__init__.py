@@ -1,0 +1,3 @@
+from .views import RevisionStartConfirmView as RevisionStartConfirmView
+from .views import RevisionStartFullView as RevisionStartFullView
+from .views import RevisionStartMetadataView as RevisionStartMetadataView

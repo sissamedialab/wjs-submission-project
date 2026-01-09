@@ -5,21 +5,9 @@ from typing import NamedTuple
 from core.models import Account
 from django.urls import reverse
 from journal.models import Issue, Journal
-from submission.models import Article
+from submission.models import STAGE_UNSUBMITTED, Article
 
 from .models import RevisionStorage
-
-
-class WJSSubmissionEvent:
-    """Events related to WJS submission."""
-
-    # This event will be triggered at the end of the submission of a revision.
-    # This event should trigger the journal-specific logic related to revision-submission
-    # (notifications, etc.)
-    # The logic itself is then in charge of emitting
-    # - ON_REVISIONS_COMPLETE and
-    # - ON_WORKFLOW_ELEMENT_COMPLETE
-    ON_REVISION_SUBMISSION_COMPLETED = "on_revision_submission_completed"
 
 
 class StepState(NamedTuple):
@@ -59,6 +47,19 @@ class Step:
     A generic function to check the availability of a single step for an article
     """
 
+    @staticmethod
+    def _get_incomplete_revision_step(article: Article) -> int:
+        try:
+            revision_storage = RevisionStorage.objects.get(article=article)
+        except RevisionStorage.DoesNotExist:
+            return 0
+        else:
+            return revision_storage.revision_step
+
+    @staticmethod
+    def _get_incomplete_article_step(article: Article) -> int:
+        return article.current_step
+
     def get_incomplete_step_url(self, article: Article) -> str:
         """
         Return the url of the next step for the given article.
@@ -69,18 +70,23 @@ class Step:
         :rtype: str
         """
         try:
-            next_step = max(article.current_step, self.step_number) + 1
-            if next_step in STEPS:
-                return reverse(
-                    f"{STEPS[next_step].step_view_name}",
-                    kwargs={"article_id": article.id},
-                )
-            return reverse(
-                "wjs_submission_0",
-                kwargs={"article_id": article.id},
-            )
+            if revision_step := self._get_incomplete_revision_step(article):
+                next_step = max(revision_step, self.step_number) + 1
+            elif article_step := self._get_incomplete_article_step(article):
+                next_step = max(article_step, self.step_number) + 1
+            else:
+                next_step = self.step_number + 1
         except AttributeError:
             return reverse("wjs_submission_1")
+        if next_step in STEPS:
+            return reverse(
+                f"{STEPS[next_step].step_view_name}",
+                kwargs={"article_id": article.id},
+            )
+        return reverse(
+            "wjs_submission_0",
+            kwargs={"article_id": article.id},
+        )
 
     def is_active(
         self,
@@ -141,13 +147,43 @@ class Step:
         return states
 
 
-def is_cpv(article: Article) -> bool:
+def is_submission(article: Article) -> bool:
+    if not article:
+        return True
+    return article.stage == STAGE_UNSUBMITTED
+
+
+def is_revision_confirm(article: Article) -> bool:
     """Tell if the given article is undergoing a confirm-previous-version revision submission."""
+    if not article:
+        return False
     try:
         revision_storage = RevisionStorage.objects.get(article=article)
     except RevisionStorage.DoesNotExist:
         return False
-    return revision_storage.data.get("confirm_previous_version", False)
+    return revision_storage.revision_flow_type == RevisionStorage.RevisionFlowType.CONFIRM
+
+
+def is_revision_metadata(article: Article) -> bool:
+    """Tell if the given article is undergoing metadata-change revision submission."""
+    if not article:
+        return False
+    try:
+        revision_storage = RevisionStorage.objects.get(article=article)
+    except RevisionStorage.DoesNotExist:
+        return False
+    return revision_storage.revision_flow_type == RevisionStorage.RevisionFlowType.METADATA
+
+
+def is_revision_full(article: Article) -> bool:
+    """Tell if the given article is undergoing a full revision submission."""
+    if not article:
+        return False
+    try:
+        revision_storage = RevisionStorage.objects.get(article=article)
+    except RevisionStorage.DoesNotExist:
+        return False
+    return revision_storage.revision_flow_type == RevisionStorage.RevisionFlowType.FULL
 
 
 def step_check_select_issue(
@@ -163,7 +199,13 @@ def step_check_select_issue(
     - open_for_submission() -> uses date_open and date_close to filter out outdated or future issues
     - current_journal() -> only returns issues for the current journal
     """
-    if is_cpv(article):
+    submission = is_submission(article)
+    revision_confirm = is_revision_confirm(article)
+    revision_metadata = is_revision_metadata(article)
+    revision_revision = is_revision_full(article)
+    enabled_conditions = submission
+    disabled_conditions = revision_confirm or revision_metadata or revision_revision
+    if enabled_conditions and not disabled_conditions:
         return False
     return Issue.objects.collection().by_user(user).open_for_submission().current_journal(journal).exists()
 
@@ -173,7 +215,13 @@ def step_check_keywords(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
-    return not is_cpv(article)
+    submission = is_submission(article)
+    revision_confirm = is_revision_confirm(article)
+    revision_metadata = is_revision_metadata(article)
+    revision_revision = is_revision_full(article)
+    enabled_conditions = submission
+    disabled_conditions = revision_confirm or revision_metadata or revision_revision
+    return enabled_conditions and not disabled_conditions
 
 
 def step_check_authors(
@@ -181,7 +229,13 @@ def step_check_authors(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
-    return not is_cpv(article)
+    submission = is_submission(article)
+    revision_confirm = is_revision_confirm(article)
+    revision_metadata = is_revision_metadata(article)
+    revision_revision = is_revision_full(article)
+    enabled_conditions = submission or revision_metadata or revision_revision
+    disabled_conditions = revision_confirm
+    return enabled_conditions and not disabled_conditions
 
 
 def step_check_metadata(
@@ -189,7 +243,13 @@ def step_check_metadata(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
-    return not is_cpv(article)
+    submission = is_submission(article)
+    revision_confirm = is_revision_confirm(article)
+    revision_metadata = is_revision_metadata(article)
+    revision_revision = is_revision_full(article)
+    enabled_conditions = submission or revision_metadata or revision_revision
+    disabled_conditions = revision_confirm
+    return enabled_conditions and not disabled_conditions
 
 
 def step_check_files(
@@ -197,7 +257,13 @@ def step_check_files(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
-    return not is_cpv(article)
+    submission = is_submission(article)
+    revision_confirm = is_revision_confirm(article)
+    revision_metadata = is_revision_metadata(article)
+    revision_revision = is_revision_full(article)
+    enabled_conditions = submission or revision_revision
+    disabled_conditions = revision_metadata or revision_confirm
+    return enabled_conditions and not disabled_conditions
 
 
 def step_check_access_funding(
@@ -205,7 +271,13 @@ def step_check_access_funding(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
-    return not is_cpv(article)
+    submission = is_submission(article)
+    revision_confirm = is_revision_confirm(article)
+    revision_metadata = is_revision_metadata(article)
+    revision_revision = is_revision_full(article)
+    enabled_conditions = submission or revision_revision
+    disabled_conditions = revision_metadata or revision_confirm
+    return enabled_conditions and not disabled_conditions
 
 
 def step_check_review_submit(

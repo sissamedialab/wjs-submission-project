@@ -5,7 +5,7 @@ from django.utils.translation import gettext_lazy as _
 from events import logic as events_logic
 from submission.models import Article
 
-from ..workflow import WJSSubmissionEvent
+from ..events import SubmissionEvent
 
 
 class RevisionForm(forms.ModelForm):
@@ -21,7 +21,7 @@ class RevisionForm(forms.ModelForm):
     def save(self, commit=True) -> Article:
         """Let all the operations be performed by event-related functions."""
         events_logic.Events.raise_event(
-            WJSSubmissionEvent.ON_REVISION_SUBMISSION_COMPLETED,
+            SubmissionEvent.ON_REVISION_SUBMISSION_COMPLETED,
             article=self.instance,
             request=self.request,
             commit=commit,

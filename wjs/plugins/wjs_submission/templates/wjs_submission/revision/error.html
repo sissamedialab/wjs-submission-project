@@ -1,0 +1,11 @@
+{% extends "wjs_submission/base.html" %}
+{% load django_bootstrap5 static %}
+
+{% block submission_flow %}
+  <div class="wjs-submission-form__section mb-5">
+    <h5 class="wjs-submission-form__form-label-title ">Revision not available</h5>
+    <div class="wjs-submission-form__section-content">
+      {{ error|safe }}
+    </div>
+  </div>
+{% endblock submission_flow %}
