@@ -27,6 +27,7 @@ ignore = [
     "COM812",
     "COM819",
     "EM101",
+    "EM102", # Excetion must not use an f-string literal, assign to variable first
     "D100", # missing docstring in public module
     "D101", # missing docstring in public class   - 🤔 mixed feelings
     "D103", # missing docstring in public function (?)

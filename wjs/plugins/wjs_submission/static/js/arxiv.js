@@ -7,7 +7,12 @@
  */
 function setupArxivValidation() {
   const arxivInput = document.getElementById("id_arxiv_id");
+  // The input can be missing if the journal has "disabled" arxiv
   if (!arxivInput) return;
+
+  const arxivValidationBtn = document.getElementById("js-arxiv-validation-btn");
+  // The button can be missing if the form is beeing used for a revision
+  if (!arxivValidationBtn) return;
 
   const fieldsStatusListItem = Array.from(document.querySelectorAll("li[data-section]")).find(li =>
     li.dataset.section.toLowerCase().includes("arxiv"),
@@ -15,7 +20,6 @@ function setupArxivValidation() {
   const arxivArticleId = document.getElementById("id_arxiv_article_id");
   const resultDiv = document.getElementById("js-arxiv-validation-result");
   const suggestionDiv = document.getElementById("js-arxiv-validation-suggestion");
-  const arxivValidationBtn = document.getElementById("js-arxiv-validation-btn");
   const loaderDiv = document.getElementById("js-arxiv-validation-loader");
 
   const arxivInputWrapper = arxivInput.closest(".wjs-submission-form__arxiv-validation-wrapper");

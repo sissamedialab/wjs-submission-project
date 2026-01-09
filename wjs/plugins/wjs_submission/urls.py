@@ -1,7 +1,7 @@
 from django.urls import path
 
 from .plugin_settings import MANAGER_URL
-from .step1 import SubmissionStep1RedirectView, SubmissionStep1View
+from .step1 import RevisionStartView, SubmissionStep1RedirectView, SubmissionStep1View
 from .step2 import SubmissionStep2View
 from .step3 import SubmissionStep3View
 from .step4 import AddAuthorView, SubmissionStep4View
@@ -38,6 +38,11 @@ urlpatterns = [
         "submission/<int:article_id>/1/",
         SubmissionStep1View.as_view(),
         name="wjs_submission_1",
+    ),
+    path(
+        "submission/<int:article_id>/start_cpv/",
+        RevisionStartView.as_view(confirm_previous_version=True),
+        name="wjs_submission_cpv",
     ),
     path(
         "submission/<int:article_id>/2/",

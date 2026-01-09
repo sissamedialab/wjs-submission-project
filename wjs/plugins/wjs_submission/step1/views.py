@@ -1,11 +1,11 @@
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, RedirectView
 from django.views.generic.edit import ProcessFormView
-from events import logic as events_logic
-from submission.models import Article
+from submission.models import STAGE_UNDER_REVISION, Article
 
 from ..mixins import AuthorFilteringView, StepCheckView
-from .forms import SubmissionStep1Form
+from ..models import RevisionStorage
+from .forms import RevisionCPVForm, SubmissionStep1Form
 
 
 class SubmissionStep1RedirectView(AuthorFilteringView, RedirectView):
@@ -23,6 +23,31 @@ class SubmissionStep1View(AuthorFilteringView, StepCheckView, CreateView):
     template_name = "wjs_submission/step1/article_form.html"
     form_class = SubmissionStep1Form
     step = 1
+
+    @property
+    def is_revision(self) -> bool:
+        """
+        Determine if this is a revision, in contrast to a first submission.
+
+        This is useful if one wants to use the submission plugins to manage revision-submissions
+        and customize the logic. See also get_form_class().
+
+        :return: True if the article exists and its stage is not "Unsubmitted", False otherwise.
+        :rtype: bool
+        """
+        return self.object is not None and self.object.stage == STAGE_UNDER_REVISION
+
+    def get_form_class(self):
+        """
+        Return the form class to use based on whether this is a revision.
+
+        :return: Form class to use.
+        :rtype: django.forms.Form
+        """
+        if self.is_revision:
+            return RevisionCPVForm
+
+        return SubmissionStep1Form
 
     def get_success_url(self):
         """
@@ -122,21 +147,41 @@ class SubmissionStep1View(AuthorFilteringView, StepCheckView, CreateView):
             arxiv_identifier = self.object.identifiers.filter(id_type="arxiv").first()
             if arxiv_identifier:
                 initial["arxiv_id"] = arxiv_identifier.identifier
-        if self.object:
             initial["arxiv_article_id"] = self.object.pk
         return initial
 
-    def form_valid(self, form):
-        """
-        Raise Janeway's ON_ARTICLE_SUBMISSION_START event on initial submission step to trigger further actions.
+    def get_context_data(self, **kwargs):
+        """Add the is_revision flag to the template context."""
+        context = super().get_context_data(**kwargs)
+        context["is_revision"] = self.is_revision
+        return context
 
-        :param form: Form object.
-        :return: Response object.
+
+class RevisionStartView(AuthorFilteringView, RedirectView):
+    """Helper view to start a revision submission process."""
+
+    confirm_previous_version: bool = False
+
+    def setup(self, request, *args, **kwargs):
+        """Prepare the temporary data storage for a revision-submission."""
+        super().setup(request, *args, **kwargs)
+
+        if self.confirm_previous_version:
+            revision_storage, created = RevisionStorage.objects.get_or_create(article_id=kwargs["article_id"])
+            if created:
+                # Set a flag that will be used to distingish this particular kind of revision-submission
+                revision_storage.data["confirm_previous_version"] = True
+
+                # "Blank" some fields whose values already exist, but that must/can be re-submitted:
+                revision_storage.data["submission_requirements"] = False
+                revision_storage.data["cover_letter_file"] = None
+                revision_storage.data["comments_editor"] = ""
+                revision_storage.save()
+
+    def get_redirect_url(self, *args, **kwargs):  # noqa: PLR6301
         """
-        response = super().form_valid(form)
-        events_logic.Events.raise_event(
-            events_logic.Events.ON_ARTICLE_SUBMISSION_START,
-            request=self.request,
-            article=self.object,
-        )
-        return response
+        Redirect to the next step.
+
+        :return: Next step URL.
+        """
+        return reverse_lazy("wjs_submission_1", kwargs={"article_id": kwargs["article_id"]})

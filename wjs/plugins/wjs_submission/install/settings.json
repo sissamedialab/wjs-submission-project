@@ -18,5 +18,20 @@
     "value": {
       "default": "enabled"
     }
+  },
+  {
+    "group": {
+      "name": "general"
+    },
+    "setting": {
+        "description": "Revision checklist. Similar to the \"Submission Checklist\" (in /manager/settings/submission) but only used for revisions (confirm-previous-version, edit-metadata, major/minor-revision).",
+      "is_translatable": true,
+      "name": "revision_checklist",
+      "pretty_name": "Revision Checklist",
+      "type": "rich-text"
+    },
+    "value": {
+      "default": ""
+    }
   }
 ]

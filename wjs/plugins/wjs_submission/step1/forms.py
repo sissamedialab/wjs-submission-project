@@ -1,14 +1,17 @@
 from core import files as core_files
+from core.models import File
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
+from events import logic as events_logic
 from submission.models import Article, Field, FieldAnswer
+from utils.logic import get_current_request
 from utils.setting_handler import get_setting
 
 from ..arxiv import HandleArticleCreation
 from ..fields import CoreFileWrapper, WjsMiniHTMLFormField
-from ..models import ArticleSubmission
+from ..models import ArticleSubmission, RevisionStorage
 
 
 class SubmissionStep1Form(forms.ModelForm):
@@ -35,6 +38,7 @@ class SubmissionStep1Form(forms.ModelForm):
     )
     cover_letter_file = forms.FileField(
         label="Upload file",
+        # FIXME: "accept" should match ArticleSubmission.cover_letter_file_allowed_extension
         widget=forms.ClearableFileInput(attrs={"accept": ".pdf,.docx,.doc,.odt,.rtf"}),
         required=False,
     )
@@ -99,6 +103,9 @@ class SubmissionStep1Form(forms.ModelForm):
         else:
             self.fields.pop("copyright_notice")
 
+        self.fields["submission_requirements"].label = _(
+            "I confirm that the above points have been taken into account.",
+        )
         if self.journal.submissionconfiguration.submission_check:
             self.fields["submission_requirements"].required = True
 
@@ -257,6 +264,7 @@ class SubmissionStep1Form(forms.ModelForm):
                 file_to_handle=self.cleaned_data["cover_letter_file"],
                 article=self.instance,
                 owner=self.user,  # FIXME: change owner when changing correspondence author
+                label="Cover letter",  # NB: fixed label: no translation!
             )
             file.privacy = "owner"
             file.save()
@@ -267,4 +275,106 @@ class SubmissionStep1Form(forms.ModelForm):
         # going back to the step 1 from a further one
         self.instance.current_step = max(self.instance.current_step, self.step)
 
+        self.trigger_submissionstart_event()
+
         return super().save(commit=commit)
+
+    def trigger_submissionstart_event(self):
+        """Raise Janeway's ON_ARTICLE_SUBMISSION_START event on initial submission step to trigger further actions."""
+        events_logic.Events.raise_event(
+            events_logic.Events.ON_ARTICLE_SUBMISSION_START,
+            request=get_current_request(),
+            article=self.instance,
+        )
+
+
+class RevisionCPVForm(SubmissionStep1Form):
+    """
+    Form that lets the author Confirm-Previous-Version.
+
+    We allow the author to maintain the previous version files, but require an explanation (the cover letter).
+
+    All data is kept in the temporary storage RevisionStorage.
+    """
+
+    is_confirm_previous_version: bool = True
+
+    def __init__(self, *args, **kwargs):
+        """
+        Handle differences in form initialization logic for revisions.
+
+        - use RevisionStorage to bind the form with saved data
+        - set some fields as read-only
+        - change the submission-requirements list to the revision-requirements list
+        """
+        revision_storage = RevisionStorage.objects.get(article=kwargs["instance"])
+        kwargs.setdefault("initial", {})
+        for field, value in revision_storage.data.items():
+            if field == "confirm_previous_version":
+                continue
+            kwargs["initial"][field] = value
+
+        if cover_letter_file_id := revision_storage.data.get("cover_letter_file"):
+            django_file = CoreFileWrapper(File.objects.get(id=cover_letter_file_id))
+            kwargs["initial"].update({"cover_letter_file": django_file})
+
+        super().__init__(*args, **kwargs)
+
+        # Make arxiv_id field non-editable
+        # (the visible/non-visible configuration is managed by our parent class)
+        if "arxiv_id" in self.fields:
+            self.fields["arxiv_id"].disabled = True
+            self.fields["arxiv_id"].widget.attrs["readonly"] = True
+
+    def save(self, commit: bool = True):
+        """
+        Override save method to store field values in RevisionStorage JSON field.
+
+        For FileFields, saves the file using core.files.save_file_to_article() and stores
+        the File object's pk in the JSON data.
+
+        :param commit: A boolean indicating whether to commit (not used in this override).
+        :type commit: bool
+        :return: The instance without saving.
+        :rtype: Article
+        """
+        revision_storage = RevisionStorage.objects.get(article=self.instance)
+        for field_name, field_value in self.cleaned_data.items():
+            field = self.fields.get(field_name)
+
+            if isinstance(field, forms.FileField):
+                if field_name == "cover_letter_file":
+                    if field_value is None:
+                        pass
+                    elif field_value is False:
+                        # "False" here means that we should clear the existing file
+                        File.objects.get(id=revision_storage.data[field_name]).delete()
+                        revision_storage.data.pop(field_name)
+                    else:
+                        # Delete existing (draft) file if it exists
+                        if old_file_id := revision_storage.data.get(field_name):
+                            File.objects.get(id=old_file_id).delete()
+
+                        # Save the file and store its pk
+                        saved_file = core_files.save_file_to_article(
+                            file_to_handle=field_value,
+                            article=self.instance,
+                            owner=self.user,
+                            label="Cover letter",  # NB: fixed label: no translation!
+                        )
+                        revision_storage.data[field_name] = saved_file.pk
+                else:
+                    raise ValueError(f"Unmanaged file field {field_name}")
+            else:
+                # Store the value directly (will be JSON-serializable)
+                revision_storage.data[field_name] = field_value
+
+        # Store additional submission fields.
+        # They will be "saved" when the revision submission is complete.
+        for field in self._additional_fields:
+            if answer := self.cleaned_data.get(field.name):
+                revision_storage.data[field.name] = answer
+
+        revision_storage.save()
+
+        return self.instance
