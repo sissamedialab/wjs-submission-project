@@ -4,7 +4,7 @@ from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 from submission.models import Article
 
-from .signals import *  # noqa: F403
+from .signals import *  # noqa
 
 
 class ArticleSubmission(models.Model):
@@ -38,14 +38,24 @@ class ArticleSubmission(models.Model):
     arxiv_category = models.CharField(max_length=30, verbose_name=_("Arxiv category"), default="", blank=True)
 
     cover_letter_file = models.ForeignKey(
-        "core.File", null=True, blank=True, related_name="cover_letter_file", on_delete=models.SET_NULL
+        "core.File",
+        null=True,
+        blank=True,
+        related_name="cover_letter_file",
+        on_delete=models.SET_NULL,
     )
     cas = models.CharField(
-        max_length=255, verbose_name=_("CAS declaration"), choices=CasDeclaration.choices, default=""
+        max_length=255,
+        verbose_name=_("CAS declaration"),
+        choices=CasDeclaration.choices,
+        default="",
     )
     cas_url = models.URLField(verbose_name=_("CAS URL"), default="")
     das = models.CharField(
-        max_length=255, verbose_name=_("DAS declaration"), choices=DasDeclaration.choices, default=""
+        max_length=255,
+        verbose_name=_("DAS declaration"),
+        choices=DasDeclaration.choices,
+        default="",
     )
     das_url = models.URLField(verbose_name=_("DAS URL"), default="")
     administrative_files = models.ManyToManyField(
@@ -141,7 +151,8 @@ class ArticleCollaboration(models.Model):
         help_text=_("Indicates whether the article was written by or on behalf of the collaboration"),
     )
     order = models.PositiveIntegerField(
-        default=0, help_text=_("Order of this collaboration in the author/collaboration list")
+        default=0,
+        help_text=_("Order of this collaboration in the author/collaboration list"),
     )
 
     class Meta:
@@ -176,8 +187,16 @@ class AccessMode(models.Model):
 
 class AccessModeJournal(models.Model):
     access_mode = models.ForeignKey(AccessMode, on_delete=models.CASCADE, related_name="parameters")
-    journal = models.ForeignKey("journal.Journal", on_delete=models.CASCADE, related_name="access_mode_parameters")
-    licence = models.ForeignKey("submission.Licence", on_delete=models.CASCADE, related_name="access_mode_parameters")
+    journal = models.ForeignKey(
+        "journal.Journal",
+        on_delete=models.CASCADE,
+        related_name="access_mode_parameters",
+    )
+    licence = models.ForeignKey(
+        "submission.Licence",
+        on_delete=models.CASCADE,
+        related_name="access_mode_parameters",
+    )
     copyright = models.CharField(_("Copyright declaration"), max_length=255, blank=True, default="")
 
     class Meta:
@@ -196,6 +215,11 @@ class RevisionStorage(models.Model):
     This (short-lived) records will keep the data while the author completes all the steps of the revision submission.
     """
 
+    class RevisionFlowType(models.TextChoices):
+        CONFIRM = "confirm", _("Confirm")
+        METADATA = "metadata", _("Metadata")
+        FULL = "full", _("Minor / Major")
+
     article = models.OneToOneField(
         Article,
         on_delete=models.CASCADE,
@@ -205,6 +229,8 @@ class RevisionStorage(models.Model):
         default=dict,
         blank=True,
     )
+    revision_flow_type = models.CharField(_("Revision flow type"), max_length=10, choices=RevisionFlowType.choices)
+    revision_step = models.PositiveSmallIntegerField(_("Current revision step"), default=1)
 
     class Meta:
         verbose_name = _("Draft article")

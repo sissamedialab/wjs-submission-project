@@ -5,7 +5,7 @@ from submission.models import STAGE_UNDER_REVISION, Article
 
 from ..mixins import AuthorFilteringView, StepCheckView
 from ..models import RevisionStorage
-from .forms import RevisionCPVForm, SubmissionStep1Form
+from .forms import RevisionConfirmForm, SubmissionStep1Form
 
 
 class SubmissionStep1RedirectView(AuthorFilteringView, RedirectView):
@@ -45,7 +45,7 @@ class SubmissionStep1View(AuthorFilteringView, StepCheckView, CreateView):
         :rtype: django.forms.Form
         """
         if self.is_revision:
-            return RevisionCPVForm
+            return RevisionConfirmForm
 
         return SubmissionStep1Form
 
@@ -147,6 +147,7 @@ class SubmissionStep1View(AuthorFilteringView, StepCheckView, CreateView):
             arxiv_identifier = self.object.identifiers.filter(id_type="arxiv").first()
             if arxiv_identifier:
                 initial["arxiv_id"] = arxiv_identifier.identifier
+        if self.object:
             initial["arxiv_article_id"] = self.object.pk
         return initial
 

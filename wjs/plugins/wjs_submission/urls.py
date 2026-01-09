@@ -1,13 +1,23 @@
 from django.urls import path
 
 from .plugin_settings import MANAGER_URL
-from .step1 import RevisionStartView, SubmissionStep1RedirectView, SubmissionStep1View
+from .revision import (
+    RevisionStartConfirmView,
+    RevisionStartFullView,
+    RevisionStartMetadataView,
+)
+from .step1 import SubmissionStep1RedirectView, SubmissionStep1View
 from .step2 import SubmissionStep2View
 from .step3 import SubmissionStep3View
 from .step4 import AddAuthorView, SubmissionStep4View
 from .step4.views import AddCollaborationView
 from .step5 import SubmissionStep5View
-from .step6 import DeleteSubmissionFile, RenderSubmissionFile, SubmissionStep6View, UploadSubmissionFile
+from .step6 import (
+    DeleteSubmissionFile,
+    RenderSubmissionFile,
+    SubmissionStep6View,
+    UploadSubmissionFile,
+)
 from .step7 import SubmissionStep7View
 from .step8 import SubmissionStep8View
 from .views import (
@@ -23,7 +33,11 @@ urlpatterns = [
     path("manager/", Manager.as_view(), name=MANAGER_URL),
     path("arxiv/", ArxivMicroservice.as_view(), name="arxiv_microservice"),
     path("submission/", SubmissionStep1View.as_view(), name="wjs_submission_1"),
-    path("submission/closed/", ClosedSubmissionsView.as_view(), name="wjs_submission_closed"),
+    path(
+        "submission/closed/",
+        ClosedSubmissionsView.as_view(),
+        name="wjs_submission_closed",
+    ),
     path(
         "submission/<int:article_id>/continue/",
         SubmissionLastStepRedirectView.as_view(),
@@ -38,11 +52,6 @@ urlpatterns = [
         "submission/<int:article_id>/1/",
         SubmissionStep1View.as_view(),
         name="wjs_submission_1",
-    ),
-    path(
-        "submission/<int:article_id>/start_cpv/",
-        RevisionStartView.as_view(confirm_previous_version=True),
-        name="wjs_submission_cpv",
     ),
     path(
         "submission/<int:article_id>/2/",
@@ -99,7 +108,26 @@ urlpatterns = [
         RedirectToComplete.as_view(),
         name="wjs_submission_0",
     ),
-    path("keyword-autocomplete/", FreeKeywordAutocomplete.as_view(), name="keyword-autocomplete"),
+    path(
+        "keyword-autocomplete/",
+        FreeKeywordAutocomplete.as_view(),
+        name="keyword-autocomplete",
+    ),
     path("add-author/", AddAuthorView.as_view(), name="add-author"),
     path("add-collaboration/", AddCollaborationView.as_view(), name="add-collaboration"),
+    path(
+        "submission/<int:article_id>/confirm/",
+        RevisionStartConfirmView.as_view(),
+        name="wjs_submission_revision_confirm",
+    ),
+    path(
+        "submission/<int:article_id>/metadata/",
+        RevisionStartMetadataView.as_view(),
+        name="wjs_submission_revision_metadata",
+    ),
+    path(
+        "submission/<int:article_id>/revision/",
+        RevisionStartFullView.as_view(),
+        name="wjs_submission_revision_full",
+    ),
 ]

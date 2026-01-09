@@ -288,7 +288,7 @@ class SubmissionStep1Form(forms.ModelForm):
         )
 
 
-class RevisionCPVForm(SubmissionStep1Form):
+class RevisionConfirmForm(SubmissionStep1Form):
     """
     Form that lets the author Confirm-Previous-Version.
 
@@ -339,6 +339,8 @@ class RevisionCPVForm(SubmissionStep1Form):
         :rtype: Article
         """
         revision_storage = RevisionStorage.objects.get(article=self.instance)
+        revision_storage.revision_step = max(revision_storage.revision_step, self.step)
+
         for field_name, field_value in self.cleaned_data.items():
             field = self.fields.get(field_name)
 
