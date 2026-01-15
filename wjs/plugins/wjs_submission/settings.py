@@ -3,8 +3,8 @@ from django.utils.translation import gettext_lazy as _
 
 DEFAULT_KEYWORD_VALIDATORS = {
     None: ("plugins.wjs_submission.keywords.always_pass",),
-    "JCOM": ("plugins.wjs_submission.keywords.always_pass",),
-    "JCOMAL": ("plugins.wjs_submission.keywords.always_pass",),
+    "JCOM": ("plugins.wjs_submission.keywords.basic_keyword_selection_rule",),
+    "JCOMAL": ("plugins.wjs_submission.keywords.basic_keyword_selection_rule",),
     "JQUANT": ("plugins.wjs_submission.keywords.jquant_keyword_selection_rule",),
     "JHEP": ("plugins.wjs_submission.keywords.jhep_keyword_selection_rule",),
 }
