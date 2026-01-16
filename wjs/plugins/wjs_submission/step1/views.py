@@ -1,11 +1,11 @@
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, RedirectView
 from django.views.generic.edit import ProcessFormView
-from submission.models import STAGE_UNDER_REVISION, Article
+from submission.models import Article
 
 from ..mixins import AuthorFilteringView, StepCheckView
-from ..models import RevisionStorage
-from .forms import RevisionConfirmForm, SubmissionStep1Form
+from ..workflow import is_revision_confirm, is_revision_full, is_revision_metadata
+from .forms import RevisionConfirmForm, RevisionFullForm, RevisionMetadataForm, SubmissionStep1Form
 
 
 class SubmissionStep1RedirectView(AuthorFilteringView, RedirectView):
@@ -24,19 +24,6 @@ class SubmissionStep1View(AuthorFilteringView, StepCheckView, CreateView):
     form_class = SubmissionStep1Form
     step = 1
 
-    @property
-    def is_revision(self) -> bool:
-        """
-        Determine if this is a revision, in contrast to a first submission.
-
-        This is useful if one wants to use the submission plugins to manage revision-submissions
-        and customize the logic. See also get_form_class().
-
-        :return: True if the article exists and its stage is not "Unsubmitted", False otherwise.
-        :rtype: bool
-        """
-        return self.object is not None and self.object.stage == STAGE_UNDER_REVISION
-
     def get_form_class(self):
         """
         Return the form class to use based on whether this is a revision.
@@ -44,8 +31,12 @@ class SubmissionStep1View(AuthorFilteringView, StepCheckView, CreateView):
         :return: Form class to use.
         :rtype: django.forms.Form
         """
-        if self.is_revision:
+        if is_revision_confirm(self.object):
             return RevisionConfirmForm
+        if is_revision_metadata(self.object):
+            return RevisionMetadataForm
+        if is_revision_full(self.object):
+            return RevisionFullForm
 
         return SubmissionStep1Form
 
@@ -153,35 +144,7 @@ class SubmissionStep1View(AuthorFilteringView, StepCheckView, CreateView):
     def get_context_data(self, **kwargs):
         """Add the is_revision flag to the template context."""
         context = super().get_context_data(**kwargs)
-        context["is_revision"] = self.is_revision
+        context["is_revision"] = (
+            is_revision_confirm(self.object) or is_revision_metadata(self.object) or is_revision_full(self.object)
+        )
         return context
-
-
-class RevisionStartView(AuthorFilteringView, RedirectView):
-    """Helper view to start a revision submission process."""
-
-    confirm_previous_version: bool = False
-
-    def setup(self, request, *args, **kwargs):
-        """Prepare the temporary data storage for a revision-submission."""
-        super().setup(request, *args, **kwargs)
-
-        if self.confirm_previous_version:
-            revision_storage, created = RevisionStorage.objects.get_or_create(article_id=kwargs["article_id"])
-            if created:
-                # Set a flag that will be used to distingish this particular kind of revision-submission
-                revision_storage.data["confirm_previous_version"] = True
-
-                # "Blank" some fields whose values already exist, but that must/can be re-submitted:
-                revision_storage.data["submission_requirements"] = False
-                revision_storage.data["cover_letter_file"] = None
-                revision_storage.data["comments_editor"] = ""
-                revision_storage.save()
-
-    def get_redirect_url(self, *args, **kwargs):  # noqa: PLR6301
-        """
-        Redirect to the next step.
-
-        :return: Next step URL.
-        """
-        return reverse_lazy("wjs_submission_1", kwargs={"article_id": kwargs["article_id"]})
