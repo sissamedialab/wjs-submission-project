@@ -24,15 +24,14 @@
     <div class="wjs-submission-form__section mb-5" id="arxiv_id-section">
       <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">ArXiv</h5>
       <div class="wjs-submission-form__section-content">
-        {% if not form.is_confirm_previous_version %}<div class="mb-4">
+        <div class="mb-4">
           Enter your preprint’s arXiv ID and validate it. The title, abstract, and manuscript will be imported
           automatically and can be reviewed in the next steps.
-        </div>{% endif %}
+        </div>
         <div class="wjs-submission-form__arxiv-validation-wrapper">
           {% bootstrap_field form.arxiv_id show_help=False show_label=False wrapper_class="" %}
           {{ form.arxiv_article_id }}
 
-          {% if not form.is_confirm_previous_version %}
           <button
             class="btn btn-primary js-no-spinner"
             id="js-arxiv-validation-btn"
@@ -45,7 +44,6 @@
           >
             Validate ArXiv ID
           </button>
-          {% endif %}
         </div>
         <div class="wjs-submission-form__arxiv-validation-messages-wrapper" tabindex="-1">
           <div id="js-arxiv-validation-result" class="wjs-submission-form__arxiv-validation-result d-none" role="alert"
@@ -72,6 +70,7 @@
     </div>
   </div>
 
+  {% if form.comments_editor %}
   <div class="wjs-submission-form__section mb-5" id="cover_letter-section">
     <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required"> Cover letter</h5>
     <div class="wjs-submission-form__section-content">
@@ -83,6 +82,7 @@
       {% bootstrap_field form.cover_letter_file show_help=False show_label=False %}
     </div>
   </div>
+  {% endif %}
 {% endblock submission_flow %}
 
 {% block js %}

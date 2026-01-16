@@ -62,6 +62,9 @@ class SetupRevisionStorageMetadata(BaseSetupRevisionStorage):
         self.revision_storage.data["submission_requirements"] = False
         self.revision_storage.data["cover_letter_file"] = None
         self.revision_storage.data["comments_editor"] = ""
+        # 🤔 spep4.views.SubmissionStep4View.get_context_data() expects correspondence_author in "data"
+        # but I'm not sure who/when it's populated.
+        self.revision_storage.data["correspondence_author"] = None
         self.revision_storage.save()
 
 

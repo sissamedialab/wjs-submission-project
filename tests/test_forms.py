@@ -6,6 +6,7 @@ import pytest
 from core.models import Account, Country
 from django import forms
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.http import HttpRequest
 from journal.models import Journal
 from plugins.wjs_submission.access_mode import AccessModeConfiguration, get_access_mode_configuration
 from plugins.wjs_submission.events import SubmissionEvent
@@ -72,6 +73,9 @@ def test_save_cover_letter_permission(
     user: Account,
     extension: str,
     is_valid: bool,
+    # a request is needed by Janeway's events.logic.on_article_submission_start upon form.save()
+    # (because of event ON_ARTICLE_SUBMISSION_START)
+    fake_request: HttpRequest,
 ):
     """
     Cover letter file is saved with the correct privacy setting and its extension is validated.

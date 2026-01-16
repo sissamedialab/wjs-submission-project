@@ -33,5 +33,20 @@
     "value": {
       "default": ""
     }
+  },
+  {
+    "group": {
+      "name": "general"
+    },
+    "setting": {
+      "description": "If true, the submitting user is set as main author. To work, the setting 'user_automatically_author' must be on.",
+      "is_translatable": false,
+      "name": "user_automatically_main_author",
+      "pretty_name": "User automatically as main author",
+      "type": "boolean"
+    },
+    "value": {
+      "default": "on"
+    }
   }
 ]

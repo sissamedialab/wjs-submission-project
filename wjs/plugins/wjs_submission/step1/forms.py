@@ -2,6 +2,7 @@ from core import files as core_files
 from core.models import File
 from django import forms
 from django.core.exceptions import ValidationError
+from django.forms import ModelForm
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 from events import logic as events_logic
@@ -297,8 +298,6 @@ class RevisionConfirmForm(SubmissionStep1Form):
     All data is kept in the temporary storage RevisionStorage.
     """
 
-    is_confirm_previous_version: bool = True
-
     def __init__(self, *args, **kwargs):
         """
         Handle differences in form initialization logic for revisions.
@@ -380,3 +379,52 @@ class RevisionConfirmForm(SubmissionStep1Form):
         revision_storage.save()
 
         return self.instance
+
+
+class RevisionMetadataForm(RevisionConfirmForm):
+    """
+    Form that lets the author perform changes to metadata only.
+
+    All data is kept in the temporary storage RevisionStorage.
+    """
+
+    def __init__(self, *args, **kwargs):
+        """Disable the cover letter (section 4)."""
+        super().__init__(*args, **kwargs)
+        del self.fields["comments_editor"]
+        del self.fields["cover_letter_file"]
+
+    def clean(self):
+        """
+        No cover letter.
+
+        Revisions of this type do not require a cover letter (comments_editor/ cover_letter_file),
+        while our parent's clean() method expects it.
+
+        Here we copy RevisionConfirmForm.clean(), omitting the cover-letter part.
+
+        :return: A dictionary containing the cleaned form data after
+            validation, with possible errors added for invalid or missing
+            required fields.
+        :rtype: dict
+        """
+        cleaned_data = ModelForm.clean(self)
+
+        for element in self._additional_fields:
+            name = element.name
+            val = cleaned_data.get(name)
+            if element.required and not val:
+                self.add_error(
+                    name,
+                    _("This field (“%(label)s”) is required.") % {"label": element.name},
+                )
+
+        return cleaned_data
+
+
+class RevisionFullForm(RevisionConfirmForm):
+    """
+    Form that lets the author perform a full (normal) revision.
+
+    All data is kept in the temporary storage RevisionStorage.
+    """

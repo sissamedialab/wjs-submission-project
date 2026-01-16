@@ -22,6 +22,7 @@ __pycache__/*
 .idea
 .vscode
 tags
+.dir-locals.el
 
 # Package files
 *.egg
