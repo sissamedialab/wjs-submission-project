@@ -102,18 +102,23 @@ class PopulateStep4:
         :param commit: Save the updated models. Set to True if it's the last step to initialize RevisionStorage.
         :type commit: bool
         """
+        article = self.revision_storage.article
         self.revision_storage.data["collaboration_relation"] = (
-            ArticleCollaboration.objects.filter(article=self.revision_storage.article)
-            .values_list("relation", flat=True)
-            .first()
+            ArticleCollaboration.objects.filter(article=article).values_list("relation", flat=True).first()
         ) or CollaborationRelation.NONE
-        self.revision_storage.data["correspondence_author"] = self.revision_storage.article.correspondence_author.pk
-        self.revision_storage.data["owner"] = self.revision_storage.article.owner.pk
+        self.revision_storage.data["correspondence_author"] = article.correspondence_author.pk
+        self.revision_storage.data["owner"] = article.owner.pk
         self.revision_storage.data["affiliation_country"] = getattr(
-            getattr(self.revision_storage.article, "submission_data", None), "affiliation_country_id", None
+            getattr(article, "submission_data", None), "affiliation_country_id", None
         )
-        self.revision_storage.data["article_authors"] = list(
-            self.revision_storage.article.authors.values_list("id", flat=True)
+        self.revision_storage.data["article_authors"] = list(article.authors.values_list("id", flat=True))
+
+        # STEP6
+        self.revision_storage.data["supplementary_files"] = list(
+            article.supplementary_files.all().values_list("id", flat=True),
+        )
+        self.revision_storage.data["data_figure_files"] = list(
+            article.data_figure_files.all().values_list("id", flat=True),
         )
         if commit:
             self.revision_storage.save()

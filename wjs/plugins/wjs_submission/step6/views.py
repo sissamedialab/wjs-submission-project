@@ -12,7 +12,8 @@ from utils.setting_handler import get_setting
 from .. import settings as submission_settings
 from ..management.commands.send_feedback import Command as FakeYakunin
 from ..mixins import AuthorFilteringView, HtmxMixin, StepCheckView
-from .forms import SubmissionStep6Form, UploadArticleForm
+from ..workflow import is_revision_confirm, is_revision_full, is_revision_metadata
+from .forms import RevisionStep6Form, SubmissionStep6Form, UploadArticleForm
 
 
 class SubmissionStep6View(AuthorFilteringView, StepCheckView, UpdateView):
@@ -20,6 +21,22 @@ class SubmissionStep6View(AuthorFilteringView, StepCheckView, UpdateView):
     step = 6
     form_class = SubmissionStep6Form
     template_name = "wjs_submission/step6/article_form.html"
+
+    def get_form_class(self):
+        """
+        Return the form class to use based on whether this is a revision.
+
+        :return: Form class to use.
+        :rtype: django.forms.Form
+        """
+        if is_revision_confirm(self.object):
+            raise ValueError("Revisions with flow-type confirm-previous-version should never touch the files!")
+        if is_revision_metadata(self.object):
+            raise ValueError("Revisions with flow-type metadata-change should never touch the files!")
+        if is_revision_full(self.object):
+            return RevisionStep6Form
+
+        return SubmissionStep6Form
 
     def get_success_url(self):
         """

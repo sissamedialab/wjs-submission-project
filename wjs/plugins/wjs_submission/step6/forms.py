@@ -3,7 +3,7 @@ from django import forms
 from django.utils.translation import gettext_lazy as _
 from submission.models import Article
 
-from ..models import ArticleSubmission
+from ..models import ArticleSubmission, RevisionStorage
 from ..settings import SUBMISSION_FILE_TYPES
 
 
@@ -189,3 +189,41 @@ class UploadArticleForm(forms.Form):
                 self.instance.submission_data.save()
             self.new_file = new_file
         return self.instance
+
+
+class RevisionStep6Form(SubmissionStep6Form):
+    def __init__(self, *args, **kwargs):
+        """
+        Initialize a custom form with pre-filled initial data based on revision storage.
+
+        The constructor fetches the associated `RevisionStorage` object for the given `Article` instance
+        and initializes specific form fields using data from the `RevisionStorage`.
+
+        :param args: Positional arguments passed to the superclass initializer.
+        :type args: tuple
+        :param kwargs: Keyword arguments passed to the superclass initializer. It must contain the key
+            `instance`, which refers to an `Article` instance.
+        :type kwargs: dict
+        """
+        revision_storage = RevisionStorage.objects.get(article=kwargs["instance"])
+        kwargs.setdefault("initial", {})
+        kwargs["initial"]["data_figure_files"] = revision_storage.data.get("data_figure_files")
+        # TODO: supplementary_files
+        super().__init__(*args, **kwargs)
+
+    def save(self, commit: bool = True) -> Article:
+        """
+        Override save method to store field values in RevisionStorage JSON field.
+
+        For FileFields, saves the file using core.files.save_file_to_article() and stores
+        the File object's pk in the JSON data.
+
+        :param commit: A boolean indicating whether to commit (not used in this override).
+        :type commit: bool
+        :return: The instance without saving.
+        :rtype: Article
+        """
+        revision_storage = RevisionStorage.objects.get(article=self.instance)
+        revision_storage.revision_step = max(revision_storage.revision_step, self.step)
+
+        return revision_storage.article
