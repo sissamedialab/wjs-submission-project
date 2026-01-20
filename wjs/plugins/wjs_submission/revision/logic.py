@@ -9,6 +9,7 @@ from submission.models import (
 
 from ..models import (
     ArticleCollaboration,
+    ArticleSubmission,
     CollaborationRelation,
     RevisionArticleAuthorOrder,
     RevisionArticleCollaboration,
@@ -46,6 +47,24 @@ class BaseSetupRevisionStorage:
         """Populate the RevisionStorage object with data based on the revision flow type."""
         raise NotImplementedError
 
+    def _ensure_submission_data(self) -> ArticleSubmission:
+        """
+        Ensure ArticleSubmission wrapper exists.
+
+        It is possible that articles submitted before the ArticleSubmission wrapper was introduced
+        do not have one such object associated, because it (the ArticleSubmission object) is created
+        only when the Article is created.
+
+        However, such object is needed in some steps (e.g. step6) of the revision process.
+
+        Here we ensure that it exists.
+        """
+        submission_data, created = ArticleSubmission.objects.get_or_create(article=self.revision_storage.article)
+        if created:
+            pass
+            # TODO: do I need to fix some of its data?
+        return submission_data
+
     def run(self):
         """Run the initialization of the RevisionStorage object according to the initialized revision flow."""
         with atomic():
@@ -54,6 +73,7 @@ class BaseSetupRevisionStorage:
             self._ensure_storage()
             self._populate_storage()
             self._populate_additional_models()
+            self._ensure_submission_data()
 
 
 @dataclasses.dataclass
