@@ -49,3 +49,7 @@ class SubmissionStep5Form(ArticleInfo):
                 article=self.instance, keyword=keyword.keyword, order=keyword.order, weight=keyword.weight
             )
         return self.instance
+
+
+class RevisionStep5Form(SubmissionStep5Form):
+    pass
