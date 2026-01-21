@@ -69,6 +69,24 @@ def always_pass(
     return True, None
 
 
+def basic_keyword_selection_rule(
+    keyword_weights: dict,
+) -> tuple[bool, str | None]:
+    """
+    Validate keyword selection for JCOM and JCOMAL submissions.
+
+    Rules:
+    - A submission must include between 1 and 4 keywords.
+
+    :param keyword_weights: Dictionary of keyword_id -> weight.
+    :return: Tuple (is_valid, error_message). If valid, error_message is None.
+    """
+    count = len(keyword_weights)
+    if count < 1 or count > 4:
+        return False, "You must select between 1 and 4 keywords."
+    return True, None
+
+
 def jquant_keyword_selection_rule(
     keyword_weights: dict,
     journal: Journal | None = None,
