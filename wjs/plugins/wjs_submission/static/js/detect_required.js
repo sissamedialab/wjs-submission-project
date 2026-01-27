@@ -101,9 +101,9 @@ function allFilled(form, fields) {
  */
 function updateRequiredChecklist() {
   let allSectionsFilled = true;
-  const form = getForm();
   const submitBtn = document.getElementById("submit-btn");
   const fieldsStatusList = document.getElementById("wjs-submission-form__fields-list");
+  const form = fieldsStatusList.closest("form");
 
   fieldsStatusList.childNodes.forEach(fieldStatusItem => {
     const fields = JSON.parse(fieldStatusItem.dataset.fields).map(field => {
@@ -204,7 +204,7 @@ function addTinyMceListener(field) {
  * @return {void} Does not return a value.
  */
 function populateRequiredChecklist(fieldsStatusList) {
-  const form = getForm();
+  const form = fieldsStatusList.closest("form");
   const sectionMap = new Map();
 
   getRequiredFields(form).forEach(field => {

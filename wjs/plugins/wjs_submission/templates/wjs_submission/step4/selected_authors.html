@@ -106,6 +106,7 @@
           <select name="{{ form.country.html_name }}"
                   id="{{ form.country.id_for_label }}"
                   class="form-select w-100">
+          <option value="" {% if not correspondence_author.country.pk %}selected{% endif %}></option>
             {% for country in form.country.field.queryset %}
               <option value="{{ country.pk }}"
                 {% if country.pk == correspondence_author.country.pk %}
@@ -115,6 +116,7 @@
               </option>
             {% endfor %}
           </select>
+          <div class="mb-4 form-text">Required</div>
         </div>
       </div>
       {% if form.correspondence_author_error %}
@@ -130,7 +132,7 @@
             <input type="hidden" id="authors-blocker" name="authors-blocker" required="required">
             Correspondence author account is not complete.
           {% elif form.correspondence_author_error == "missing_orcid" %}
-            Authors need to associate their Orcid id to their profile as soon as possible and in any case before publication of manuscripts.
+            Authors need to associate their Orcid id to their <a class="link-light" href="{% url 'core_edit_profile' %}?next={% url 'wjs_submission_4' form.instance.pk %}">profile</a> as soon as possible and in any case before publication of manuscripts.
           {% endif %}
         </div>
       {% endif %}
