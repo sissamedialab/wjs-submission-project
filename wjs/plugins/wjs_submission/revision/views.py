@@ -31,7 +31,11 @@ class BaseRevisionStartView(AuthorFilteringView, RedirectView):
             self._init_revision_flow(kwargs["article_id"])
             return super().get(request, *args, **kwargs)
         except ValueError as e:
-            return render(request, "wjs_submission/revision/error.html", context={"error": str(e)})
+            return render(
+                request,
+                "wjs_submission/revision/error.html",
+                context={"error": str(e), "article_id": kwargs["article_id"]},
+            )
 
     def _init_revision_flow(self, article_id: int):
         flow_init = self.flow_init_class(article_id)

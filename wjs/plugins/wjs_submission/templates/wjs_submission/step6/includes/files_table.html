@@ -55,7 +55,7 @@
               {% if settings.DEBUG %}
                 {% bootstrap_button button_class="btn btn-sm btn-outline js-refresh" type="button" hx_get=render_url hx_target=container_id content="<i class='bi bi-arrow-clockwise'></i>" title="DEBUG: Reload table" %}
               {% else %}
-                {% bootstrap_button button_class="js-refresh d-none" type="button" hx_get=render_url hx_target=container_id %}
+                {% bootstrap_button button_class="js-refresh d-none" type="button" hx_get=render_url hx_target=container_id content="" %}
               {% endif %}
             {% endif %}
             <a class="btn btn-sm btn-outline" href="{{ download_url }}" title="Download"><i class="bi bi-cloud-arrow-down"></i></a>

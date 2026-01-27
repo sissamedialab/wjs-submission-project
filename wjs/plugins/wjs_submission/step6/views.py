@@ -40,6 +40,23 @@ class SubmissionStep6View(AuthorFilteringView, StepCheckView, UpdateView):
         kwargs["journal"] = self.request.journal
         return kwargs
 
+    def get_initial(self):
+        """
+        Return form initial data with additional keys populated using submission data from the underlying object.
+
+        :return: A dictionary containing initial form data with additional submission data
+                 keys and their corresponding values.
+        :rtype: dict
+        :raises AttributeError: If the `submission_data` attribute is missing from the `object`.
+        """
+        initial = super().get_initial()
+        initial["current_step"] = self.step
+        initial["das"] = self.object.submission_data.das
+        initial["das_url"] = self.object.submission_data.das_url
+        initial["cas"] = self.object.submission_data.cas
+        initial["cas_url"] = self.object.submission_data.cas_url
+        return initial
+
     def get_context_data(self, **kwargs):
         """
         Add WebSocket URL for feedback to the template context.

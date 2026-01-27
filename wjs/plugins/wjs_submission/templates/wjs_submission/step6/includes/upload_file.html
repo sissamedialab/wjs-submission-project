@@ -5,7 +5,7 @@
 </div>
 <div class="modal-body">
   {% url "wjs_submission_6_upload" article_id=form.instance.pk file_type=form.prefix as upload_files %}
-  <form novalidate enctype="multipart/form-data" hx-post="{{ upload_files }}" hx-target="#htmxModalContent">
+  <form enctype="multipart/form-data" hx-post="{{ upload_files }}" hx-target="#htmxModalContent">
     {% csrf_token %}
     <div class="mb-3">
       {% bootstrap_field form.label show_help=True %}

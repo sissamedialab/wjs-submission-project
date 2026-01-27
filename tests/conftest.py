@@ -20,7 +20,7 @@ from plugins.wjs_submission.models import AccessMode
 from plugins.wjs_submission.settings import OA_CODE
 from press.models import Press
 from submission import models as submission_models
-from submission.models import Article
+from submission.models import Article, Licence
 from utils.install import (
     update_emails,
     update_issue_types,
@@ -208,6 +208,9 @@ def _article(author, coauthor, journal, sections, submitted=False):
         )
     else:
         date_started = date_submitted = None
+    licence, __ = Licence.objects.get_or_create(
+        name="cc-by-nc-nd-4.0", short_name="CC BY-NC-ND 4.0", url="http://example.com", journal=journal
+    )
     article = submission_models.Article.objects.create(
         abstract="Abstract",
         journal=journal,
@@ -218,6 +221,7 @@ def _article(author, coauthor, journal, sections, submitted=False):
         date_started=date_started,
         section=random.choice(sections),  # noqa: S311
         language="eng",
+        license=licence,
     )
     article.authors.add(author, coauthor)
     for file_ext in ["_es.pdf", "_en.pdf", ".epub"]:

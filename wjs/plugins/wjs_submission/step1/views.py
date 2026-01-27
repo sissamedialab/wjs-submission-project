@@ -4,7 +4,12 @@ from django.views.generic.edit import ProcessFormView
 from submission.models import Article
 
 from ..mixins import AuthorFilteringView, StepCheckView
-from ..workflow import is_revision_confirm, is_revision_full, is_revision_metadata
+from ..workflow import (
+    is_revision,
+    is_revision_confirm,
+    is_revision_full,
+    is_revision_metadata,
+)
 from .forms import RevisionConfirmForm, RevisionFullForm, RevisionMetadataForm, SubmissionStep1Form
 
 
@@ -144,7 +149,5 @@ class SubmissionStep1View(AuthorFilteringView, StepCheckView, CreateView):
     def get_context_data(self, **kwargs):
         """Add the is_revision flag to the template context."""
         context = super().get_context_data(**kwargs)
-        context["is_revision"] = (
-            is_revision_confirm(self.object) or is_revision_metadata(self.object) or is_revision_full(self.object)
-        )
+        context["is_revision"] = is_revision(self.object)
         return context

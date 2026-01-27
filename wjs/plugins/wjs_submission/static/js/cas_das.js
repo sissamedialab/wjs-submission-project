@@ -6,11 +6,17 @@
  * @return {void}
  */
 function urlSelectedCheck(field, value) {
-  const fieldUrl = document.getElementById(`id_${field}_url`).closest(".wjs-submission-form__form-label-wrapper");
+  const fieldUrl = document.getElementById(`id_${field}_url`);
+  const fieldUrlWrapper = fieldUrl.closest(".wjs-submission-form__form-label-wrapper");
+  const fieldsStatusList = document.getElementById("wjs-submission-form__fields-list");
+  console.log(fieldsStatusList);
 
-  if (fieldUrl && value === "url") {
-    fieldUrl.classList.remove("d-none");
-  } else if (fieldUrl) {
-    fieldUrl.classList.add("d-none");
+  if (fieldUrlWrapper && value === "url") {
+    fieldUrlWrapper.classList.remove("d-none");
+    fieldUrl.setAttribute("required", "true");
+  } else if (fieldUrlWrapper) {
+    fieldUrlWrapper.classList.add("d-none");
+    fieldUrl.removeAttribute("required");
   }
+  populateRequiredChecklist(fieldsStatusList);
 }

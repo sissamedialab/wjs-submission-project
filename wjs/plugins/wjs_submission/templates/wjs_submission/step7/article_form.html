@@ -1,5 +1,5 @@
 {% extends "wjs_submission/base.html" %}
-{% load django_bootstrap5 field hooks static wjs_articles %}
+{% load django_bootstrap5 field hooks settings static wjs_articles %}
 
 {% block submission_flow %}
   <div class="wjs-submission-form__section mb-5">
@@ -22,8 +22,8 @@
         {% bootstrap_field form.license label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" %}
       </div>
       <div id="js-access-mode-message" class="wjs-submission-form__alert-message-box wjs-submission-form__alert-message-box--warning d-none d-flex">
-        <i class="bi bi-exclamation-triangle"></i>
-        Pay attention! By selecting this option you will have to pay. Lorem ipsum dolor sit amet consectetur.
+        <i class="bi bi-exclamation-triangle"></i>&nbsp;&nbsp;
+        {{ request.journal|setting:'oat_disclaimer_message'|safe }}
       </div>
     </div>
     <div class="wjs-submission-form__section mb-5">
@@ -35,7 +35,7 @@
     <div class="wjs-submission-form__section mb-5">
       <div class="wjs-submission-form__section-content">
         {{ form.errors }}
-        If accepted, your paper will be published {{ view.access_mode_configuration.access_mode }}, copyright "{{ view.access_mode_configuration.copyright_text }}", licence {{ view.access_mode_configuration.license.short_name }}.
+        If accepted, your paper may be published {{ view.access_mode_configuration.access_mode }} in the framework of Transformative agreement, copyright "{{ view.access_mode_configuration.copyright_text }}", licence {{ view.access_mode_configuration.license.short_name }}. Confirmation will be given after acceptance for publication.
       </div>
     </div>
   {% endif %}

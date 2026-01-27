@@ -1,7 +1,11 @@
 import dataclasses
 
 from django.db.transaction import atomic
-from submission.models import STAGE_UNDER_REVISION, Article, ArticleAuthorOrder
+from submission.models import (
+    STAGE_UNDER_REVISION,
+    Article,
+    ArticleAuthorOrder,
+)
 
 from ..models import (
     ArticleCollaboration,
@@ -14,23 +18,32 @@ from ..models import (
 
 @dataclasses.dataclass
 class BaseSetupRevisionStorage:
+    """
+    Base class to create RevisionStorage objects according to the revision flow type.
+    """
+
     article_id: int
     revision_flow_type: RevisionStorage.RevisionFlowType = None
     revision_storage: RevisionStorage = None
     created: bool = False
 
-    def _check_conditions(self):
+    def _check_conditions(self) -> bool:
+        """
+        Check if the article is in a revision stage and if the revision flow type is valid.
+        """
         article = Article.objects.get(pk=self.article_id)
         return article.stage == STAGE_UNDER_REVISION
 
     def _ensure_storage(self):
+        """Ensure that the RevisionStorage object exists."""
         self.revision_storage, self.created = RevisionStorage.objects.get_or_create(article_id=self.article_id)
         self.revision_storage.revision_flow_type = self.revision_flow_type
 
     def _populate_additional_models(self):
-        pass
+        """Create additional models required for the revision flow type."""
 
     def _populate_storage(self):
+        """Populate the RevisionStorage object with data based on the revision flow type."""
         raise NotImplementedError
 
     def run(self):
@@ -44,39 +57,51 @@ class BaseSetupRevisionStorage:
 
 
 @dataclasses.dataclass
-class SetupRevisionStorageConfirm(BaseSetupRevisionStorage):
-    revision_flow_type: RevisionStorage.RevisionFlowType = RevisionStorage.RevisionFlowType.CONFIRM
+class PopulateStep1:
+    """
+    Populate the RevisionStorage object with data for step 1 of the revision flow.
 
-    def _populate_storage(self):
+    Reset submission requirements and cover letter fields.
+    """
+
+    revision_storage: RevisionStorage
+
+    def __call__(self, commit: bool = False):
+        """
+        Run the initialization of the RevisionStorage object according to the initialized revision flow.
+
+        :param commit: Save the updated models. Set to True if it's the last step to initialize RevisionStorage.
+        :type commit: bool
+        """
         self.revision_storage.data["submission_requirements"] = False
         self.revision_storage.data["cover_letter_file"] = None
         self.revision_storage.data["comments_editor"] = ""
-        self.revision_storage.save()
+        if commit:
+            self.revision_storage.save()
 
 
 @dataclasses.dataclass
-class SetupRevisionStorageMetadata(BaseSetupRevisionStorage):
-    revision_flow_type: RevisionStorage.RevisionFlowType = RevisionStorage.RevisionFlowType.METADATA
+class PopulateStep4:
+    """
+    Populate the RevisionStorage object with data for step 4 of the revision flow.
 
-    def _populate_storage(self):
-        self.revision_storage.data["submission_requirements"] = False
-        self.revision_storage.data["cover_letter_file"] = None
-        self.revision_storage.data["comments_editor"] = ""
-        # 🤔 spep4.views.SubmissionStep4View.get_context_data() expects correspondence_author in "data"
-        # but I'm not sure who/when it's populated.
-        self.revision_storage.data["correspondence_author"] = None
-        self.revision_storage.save()
+    Setup the following fields:
+    - collaboration_relation
+    - correspondence_author
+    - owner
+    - affiliation_country
+    - article_authors
+    """
 
+    revision_storage: RevisionStorage
 
-@dataclasses.dataclass
-class SetupRevisionStorageFull(BaseSetupRevisionStorage):
-    revision_flow_type: RevisionStorage.RevisionFlowType = RevisionStorage.RevisionFlowType.FULL
+    def __call__(self, commit: bool = False):
+        """
+        Run the initialization of the RevisionStorage object according to the initialized revision flow.
 
-    def _populate_storage(self):
-        self.revision_storage.data["submission_requirements"] = False
-        self.revision_storage.data["cover_letter_file"] = None
-        self.revision_storage.data["comments_editor"] = ""
-        # STEP4
+        :param commit: Save the updated models. Set to True if it's the last step to initialize RevisionStorage.
+        :type commit: bool
+        """
         self.revision_storage.data["collaboration_relation"] = (
             ArticleCollaboration.objects.filter(article=self.revision_storage.article)
             .values_list("relation", flat=True)
@@ -90,9 +115,27 @@ class SetupRevisionStorageFull(BaseSetupRevisionStorage):
         self.revision_storage.data["article_authors"] = list(
             self.revision_storage.article.authors.values_list("id", flat=True)
         )
-        self.revision_storage.save()
+        if commit:
+            self.revision_storage.save()
 
-    def _populate_additional_models(self):
+
+@dataclasses.dataclass
+class PopulateStep4AdditionalModels:
+    """
+    Create additional models required for Step 4.
+
+    Create ArticleAuthorOrder and ArticleCollaboration objects for the article.
+    """
+
+    revision_storage: RevisionStorage
+
+    def __call__(self, commit: bool = False):
+        """
+        Run the initialization of the RevisionStorage object according to the initialized revision flow.
+
+        :param commit: Save the updated models. Set to True if it's the last step to initialize RevisionStorage.
+        :type commit: bool
+        """
         article_author = ArticleAuthorOrder.objects.filter(article=self.revision_storage.article)
         for aa in article_author:
             RevisionArticleAuthorOrder.objects.get_or_create(
@@ -109,3 +152,120 @@ class SetupRevisionStorageFull(BaseSetupRevisionStorage):
                 relation=ac.relation,
                 order=ac.order,
             )
+
+
+@dataclasses.dataclass
+class PopulateStep5:
+    """
+    Populate the RevisionStorage object with data for step 5 of the revision flow.
+
+    Setup the following fields:
+    - title
+    - abstract
+    - section
+    - language
+    - access_mode
+    """
+
+    revision_storage: RevisionStorage
+
+    def __call__(self, commit: bool = False):
+        """
+        Run the initialization of the RevisionStorage object according to the initialized revision flow.
+
+        :param commit: Save the updated models. Set to True if it's the last step to initialize RevisionStorage.
+        :type commit: bool
+        """
+        self.revision_storage.data["title"] = self.revision_storage.article.title
+        self.revision_storage.data["abstract"] = self.revision_storage.article.abstract
+        self.revision_storage.data["section"] = self.revision_storage.article.section_id
+        self.revision_storage.data["language"] = self.revision_storage.article.language
+        if commit:
+            self.revision_storage.save()
+
+
+@dataclasses.dataclass
+class PopulateStep7:
+    """
+    Populate the RevisionStorage object with data for step 7 of the revision flow.
+
+    Setup the following fields:
+    - access_mode
+    - special_request
+    """
+
+    revision_storage: RevisionStorage
+
+    def __call__(self, commit: bool = False):
+        """
+        Run the initialization of the RevisionStorage object according to the initialized revision flow.
+
+        :param commit: Save the updated models. Set to True if it's the last step to initialize RevisionStorage.
+        :type commit: bool
+        """
+        self.revision_storage.data["access_mode"] = self.revision_storage.article.submission_data.access_mode.pk
+        self.revision_storage.data["special_request"] = self.revision_storage.article.submission_data.special_request
+        if commit:
+            self.revision_storage.save()
+
+
+@dataclasses.dataclass
+class SetupRevisionStorageConfirm(BaseSetupRevisionStorage):
+    """
+    Setup the RevisionStorage object for the confirm revision flow type.
+    """
+
+    revision_flow_type: RevisionStorage.RevisionFlowType = RevisionStorage.RevisionFlowType.CONFIRM
+
+    def _populate_storage(self):
+        """
+        Populate the RevisionStorage object with data for step 1 of the revision flow.
+        """
+        PopulateStep1(self.revision_storage)(commit=True)
+
+
+@dataclasses.dataclass
+class SetupRevisionStorageMetadata(BaseSetupRevisionStorage):
+    """
+    Setup the RevisionStorage object for the metadata revision flow type.
+    """
+
+    revision_flow_type: RevisionStorage.RevisionFlowType = RevisionStorage.RevisionFlowType.METADATA
+
+    def _populate_storage(self):
+        """
+        Populate the RevisionStorage object with data for step 1, 4 and 5 of the revision flow.
+        """
+        PopulateStep1(self.revision_storage)()
+        PopulateStep4(self.revision_storage)()
+        PopulateStep5(self.revision_storage)(commit=True)
+
+    def _populate_additional_models(self):
+        """
+        Populate additional models required for Step 4.
+        """
+        PopulateStep4AdditionalModels(self.revision_storage)(commit=True)
+
+
+@dataclasses.dataclass
+class SetupRevisionStorageFull(BaseSetupRevisionStorage):
+    """
+    Setup the RevisionStorage object for the full revision flow type.
+    """
+
+    revision_flow_type: RevisionStorage.RevisionFlowType = RevisionStorage.RevisionFlowType.FULL
+
+    def _populate_storage(self):
+        """
+        Populate the RevisionStorage object with data for step 1, 4, 5 and 7 of the revision flow.
+        """
+        PopulateStep1(self.revision_storage)()
+        PopulateStep4(self.revision_storage)()
+        PopulateStep5(self.revision_storage)()
+        PopulateStep7(self.revision_storage)(commit=True)
+
+    def _populate_additional_models(self):
+        """
+        Populate additional models required for Step 4.
+        """
+        PopulateStep4AdditionalModels(self.revision_storage)(commit=True)

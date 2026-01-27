@@ -77,7 +77,9 @@ class SubmissionStep6Form(forms.ModelForm):
 
 class UploadArticleForm(forms.Form):
     file_type = forms.ChoiceField(
-        label=_("File type"), choices=(("manuscript", _("Manuscript")), ("data", _("Data/Figure"))), required=False
+        label=_("File type"),
+        choices=(("manuscript", _("Manuscript")), ("data", _("Data/Figure"))),
+        required=False,
     )
     label = forms.CharField(label=_("File label"), widget=forms.TextInput(attrs={"placeholder": "Label"}))
     file = forms.FileField(label=_("Source file"), widget=forms.FileInput())
@@ -88,10 +90,14 @@ class UploadArticleForm(forms.Form):
         help_text=_("Manually set your sources format ( tex or odt ) if the system cannot determine it automatically"),
     )
     tex_engine = forms.ChoiceField(
-        label=_("Source format"), choices=ArticleSubmission.TexEngine.choices, required=False
+        label=_("Source format"),
+        choices=ArticleSubmission.TexEngine.choices,
+        required=False,
     )
     tex_master = forms.CharField(
-        label=_("TeX Master"), help_text=_("Only when more than one TeX file is present"), required=False
+        label=_("TeX Master"),
+        help_text=_("Only when more than one TeX file is present"),
+        required=False,
     )
 
     def __init__(self, *args, **kwargs):
@@ -110,7 +116,7 @@ class UploadArticleForm(forms.Form):
         self.new_file = None
         kwargs["prefix"] = self.file_type
         super().__init__(*args, **kwargs)
-        if self.file_type != "manuscript":
+        if self.file_type != "manuscript" or "text/x-tex" not in self.supported_file_types:
             self.fields["source_format"].required = False
             self.fields["source_format"].widget = forms.HiddenInput()
             self.fields["tex_engine"].widget = forms.HiddenInput()
@@ -120,13 +126,21 @@ class UploadArticleForm(forms.Form):
                 self.fields[field].widget.attrs["required"] = True
                 self.fields[field].help_text = _("Required")
 
+    @property
+    def supported_file_types(self):
+        """
+        Retrieve the supported file types for submissions based on the journal code.
+
+        :return: The list of supported file types for the journal.
+        :rtype: list
+        """
+        return SUBMISSION_FILE_TYPES.get(self.instance.journal.code, SUBMISSION_FILE_TYPES[None])
+
     def clean_file(self):
         """Validate file mime according to journal and file type form."""
         cleaned_data = super().clean()
-        if self.file_type == "manuscript":
-            permitted_mime_types = SUBMISSION_FILE_TYPES.get(self.instance.journal.code, SUBMISSION_FILE_TYPES[None])
-            if cleaned_data["file"].content_type not in permitted_mime_types:
-                raise forms.ValidationError("File type not allowed.")
+        if self.file_type == "manuscript" and cleaned_data["file"].content_type not in self.supported_file_types:
+            raise forms.ValidationError("File type not allowed.")
         return cleaned_data["file"]
 
     def clean(self):
