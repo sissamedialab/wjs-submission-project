@@ -6,18 +6,19 @@ import pytest
 from core.models import Account, Country
 from django import forms
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.http import HttpRequest
+from django.http import HttpRequest, QueryDict
 from journal.models import Journal
 from plugins.wjs_submission.access_mode import AccessModeConfiguration, get_access_mode_configuration
 from plugins.wjs_submission.events import SubmissionEvent
 from plugins.wjs_submission.models import AccessMode, ArticleSubmission
 from plugins.wjs_submission.settings import OA_CODE
 from plugins.wjs_submission.step1.forms import SubmissionStep1Form
+from plugins.wjs_submission.step3.forms import SubmissionStep3Form
 from plugins.wjs_submission.step5.forms import SubmissionStep5Form
 from plugins.wjs_submission.step6.forms import SubmissionStep6Form
 from plugins.wjs_submission.step7.forms import SubmissionStep7Form
 from pytest_django.asserts import assertQuerysetEqual
-from submission.models import Article, Licence
+from submission.models import Article, Keyword, KeywordGroup, Licence
 
 
 @pytest.mark.parametrize(
@@ -289,8 +290,10 @@ def test_cas_das_url_form(
         "das_url": "http://example.com" if das == "url" else "",
         "cas": cas,
         "cas_url": "http://example.com" if cas == "url" else "",
+        "current_step": 6,
     }
     form = SubmissionStep6Form(data=data, journal=journal, instance=article, step=6, initial={})
+    form.is_valid()
     assert form.is_valid()
     instance = form.save()
     assert instance.submission_data.cas == cas
@@ -314,6 +317,7 @@ def test_cas_das_url_error_form(
     data = {
         "das": das,
         "cas": cas,
+        "current_step": 6,
     }
     form = SubmissionStep6Form(data=data, journal=journal, instance=article, step=6, initial={})
     if das == "url" or cas == "url":
@@ -467,3 +471,47 @@ def test_access_mode_form_data(
         raise_event.assert_called_once_with(
             SubmissionEvent.ON_ACCESS_MODE_SELECTION, article=article, submission_data=article.submission_data
         )
+
+
+@pytest.mark.django_db
+def test_preserve_keywords_metadata_form5(
+    journal: Journal, install_plugins: Callable, user: Account, article: Article, fake_request, hierarchical_keywords
+):
+    """
+    Form for step 5 does not clear keywords set in step 3.
+
+    :param journal: Journal instance used in the test.
+    :param install_plugins: Callable function for installing plugins.
+    :param user: Account instance representing the user.
+    :param article: Article instance being tested.
+    :param fake_request: Mock request object for testing.
+    :param hierarchical_keywords: Hierarchical keywords for testing.
+    """
+    keywords = {"kw1": "group1", "kw2": "group2"}
+    keyword_values = {}
+
+    for name, group_name in keywords.items():
+        group = KeywordGroup.objects.get_or_create(name=group_name)[0] if group_name else None
+        keyword_values[name] = Keyword.objects.create(word=name, group=group)
+        journal.keywords.add(keyword_values[name])
+
+    data = QueryDict(f"keyword_{keyword_values['kw1'].pk}_weight=50&keyword_{keyword_values['kw2'].pk}_weight=50")
+    form_3 = SubmissionStep3Form(data={"state": "state"}, form_data=data, instance=article, step=3)
+    assert form_3.is_valid()
+    form_3.save()
+    article.refresh_from_db()
+    assert article.keywords.count() == 2
+    form_5 = SubmissionStep5Form(
+        data={
+            "title": article.title,
+            "language": article.language,
+            "section": article.section,
+            "license": article.license,
+        },
+        instance=article,
+        step=5,
+    )
+    assert form_5.is_valid()
+    form_5.save()
+    article.refresh_from_db()
+    assert article.keywords.count() == 2

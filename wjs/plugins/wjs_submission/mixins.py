@@ -5,7 +5,11 @@ from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.utils.functional import cached_property
 from django.views.generic.edit import ModelFormMixin
-from submission.models import STAGE_UNDER_REVISION, STAGE_UNSUBMITTED, Article
+from submission.models import (
+    STAGE_UNDER_REVISION,
+    STAGE_UNSUBMITTED,
+    Article,
+)
 from utils.setting_handler import get_setting
 
 from .workflow import STEPS, Step

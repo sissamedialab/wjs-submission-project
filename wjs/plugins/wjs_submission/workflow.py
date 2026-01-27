@@ -186,6 +186,10 @@ def is_revision_full(article: Article) -> bool:
     return revision_storage.revision_flow_type == RevisionStorage.RevisionFlowType.FULL
 
 
+def is_revision(article: Article) -> bool:
+    return is_revision_confirm(article) or is_revision_metadata(article) or is_revision_full(article)
+
+
 def step_check_select_issue(
     journal: Journal,
     article: Article | None = None,
@@ -205,7 +209,7 @@ def step_check_select_issue(
     revision_revision = is_revision_full(article)
     enabled_conditions = submission
     disabled_conditions = revision_confirm or revision_metadata or revision_revision
-    if enabled_conditions and not disabled_conditions:
+    if not enabled_conditions or disabled_conditions:
         return False
     return Issue.objects.collection().by_user(user).open_for_submission().current_journal(journal).exists()
 

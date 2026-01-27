@@ -1,3 +1,5 @@
+from copy import copy
+
 from django import forms
 from django.utils.translation import gettext_lazy as _
 from events import logic as events_logic
@@ -47,7 +49,9 @@ class SubmissionStep7Form(forms.ModelForm):
             kwargs["initial"][field[1]] = field[0]
             # form data is overwritten with initial values only if calculated values are not a mere default
             if "data" in kwargs and not self.configuration.is_default:
-                kwargs["data"][field[1]] = field[0]
+                tmp = copy(kwargs["data"])
+                tmp[field[1]] = field[0]
+                kwargs["data"] = tmp
         return kwargs
 
     def _setup_fields(self):
@@ -87,6 +91,8 @@ class SubmissionStep7Form(forms.ModelForm):
         instance.submission_data.special_request = self.cleaned_data["special_request"]
         instance.submission_data.save()
         events_logic.Events.raise_event(
-            SubmissionEvent.ON_ACCESS_MODE_SELECTION, article=instance, submission_data=instance.submission_data
+            SubmissionEvent.ON_ACCESS_MODE_SELECTION,
+            article=instance,
+            submission_data=instance.submission_data,
         )
         return instance

@@ -9,3 +9,10 @@
     </div>
   </div>
 {% endblock submission_flow %}
+{% block submission_footer %}
+    <div class="wjs-submission-form__footer">
+      <div class="wjs-submission-form__footer-button d-flex justify-content-between align-items-center">
+        <a href="{% url 'wjs_submission_0' article_id=article_id %}" class="btn btn-secondary" id="back-btn">Back</a>
+      </div>
+    </div>
+{% endblock submission_footer %}

@@ -4,7 +4,7 @@ from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 from submission.models import Article, ArticleAuthorOrder
 
-from .signals import *  # noqa: F403
+from .signals import *  # noqa
 
 
 class ArticleSubmission(models.Model):
@@ -20,8 +20,8 @@ class ArticleSubmission(models.Model):
 
     class ManuscriptSourceFormat(models.TextChoices):
         AUTO = "auto", _("Auto")
-        LATEX = "latex", _("tex/latex")
-        DOC = "doc", _("odt/docx")
+        LATEX = "latex", _("Tex / LaTeX")
+        DOC = "doc", _("Documents (odt/docx/rtf)")
 
     class TexEngine(models.TextChoices):
         TEX = "tex", _("Tex")

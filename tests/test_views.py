@@ -8,8 +8,13 @@ from django.core.exceptions import ValidationError
 from django.test import Client
 from django.urls import reverse
 from journal.models import Journal
-from plugins.wjs_submission.models import ArticleCollaboration, Collaboration
+from plugins.wjs_submission.models import (
+    ArticleCollaboration,
+    ArticleSubmission,
+    Collaboration,
+)
 from plugins.wjs_submission.step1 import SubmissionStep1View
+from plugins.wjs_submission.step6 import SubmissionStep6View
 from plugins.wjs_submission.views import SubmissionLastStepRedirectView
 from plugins.wjs_submission.workflow import STEPS
 from submission.models import (
@@ -512,3 +517,21 @@ def test_submission_step4_form_saves_country_and_authors(client, article, collab
         assert article.collaborations.count() == 0
     else:
         assert article.collaborations.count() == 1
+
+
+@pytest.mark.django_db
+def test_submission_step6_load_value(fake_request, article):
+    article.submission_data.das = ArticleSubmission.DasDeclaration.URL
+    article.submission_data.das_url = "http://example.com"
+    article.submission_data.cas = ArticleSubmission.CasDeclaration.URL
+    article.submission_data.cas_url = "http://example.com"
+
+    view_obj = SubmissionStep6View()
+    view_obj.kwargs = {"article_id": article.pk}
+    view_obj.object = article
+    view_obj.request = fake_request
+    form = view_obj.get_form()
+    assert form.initial["das"] == ArticleSubmission.DasDeclaration.URL
+    assert form.initial["das_url"] == "http://example.com"
+    assert form.initial["cas"] == ArticleSubmission.CasDeclaration.URL
+    assert form.initial["cas_url"] == "http://example.com"

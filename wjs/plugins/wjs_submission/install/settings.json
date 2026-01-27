@@ -1,52 +1,100 @@
 [
-  {
-    "group": {
-      "name": "wjs_submission"
+    {
+        "group": {
+            "name": "wjs_submission"
+        },
+        "setting": {
+            "description": "Toggle to enable/make required/disable the ArXiv field status. Allowed values: enabled, disabled, required.",
+            "is_translatable": false,
+            "name": "arxiv_field_status",
+            "pretty_name": "ArXiv field status",
+            "type": "select",
+            "choices": [
+                "enabled",
+                "disabled",
+                "required"
+            ]
+        },
+        "value": {
+            "default": "enabled"
+        }
     },
-    "setting": {
-      "description": "Toggle to enable/make required/disable the ArXiv field status. Allowed values: enabled, disabled, required.",
-      "is_translatable": false,
-      "name": "arxiv_field_status",
-      "pretty_name": "ArXiv field status",
-      "type": "select",
-      "choices": [
-        "enabled",
-        "disabled",
-        "required"
-      ]
+    {
+        "group": {
+            "name": "general"
+        },
+        "setting": {
+            "description": "Revision checklist. Similar to the \"Submission Checklist\" (in /manager/settings/submission) but only used for revisions (confirm-previous-version, edit-metadata, major/minor-revision).",
+            "is_translatable": true,
+            "name": "revision_checklist",
+            "pretty_name": "Revision Checklist",
+            "type": "rich-text"
+        },
+        "value": {
+            "default": ""
+        }
     },
-    "value": {
-      "default": "enabled"
+    {
+        "group": {
+            "name": "general"
+        },
+        "setting": {
+            "description": "If true, the submitting user is set as main author. To work, the setting 'user_automatically_author' must be on.",
+            "is_translatable": false,
+            "name": "user_automatically_main_author",
+            "pretty_name": "User automatically as main author",
+            "type": "boolean"
+        },
+        "value": {
+            "default": "on"
+        }
+    },
+    {
+        "group": {
+            "name": "general"
+        },
+        "setting": {
+            "description": "Disclaimer for file types used during submissions",
+            "is_translatable": true,
+            "name": "file_type_disclaimer",
+            "pretty_name": "Manuscript File type disclaimer",
+            "type": "rich-text"
+        },
+        "value": {
+            "default": "Manually set your sources format ( tex or odt ) if the system cannot determine it automatically."
+        }
+    },
+    {
+        "group": {
+            "name": "wjs_themes"
+        },
+        "setting": {
+            "description": "Funders logos shown in the home page journal.",
+            "is_translatable": false,
+            "name": "journal_funders",
+            "pretty_name": "Funders",
+            "type": "json"
+        },
+        "value": {
+            "default": "[]"
+        },
+        "editable_by": [
+            "journal-manager"
+        ]
+    },
+    {
+        "group": {
+            "name": "wjs_submission"
+        },
+        "setting": {
+            "description": "Message when OAT is not available.",
+            "is_translatable": false,
+            "name": "oat_disclaimer_message",
+            "pretty_name": "Non-OAT access message",
+            "type": "rich-text"
+        },
+        "value": {
+            "default": "<p>Since it seems that no Transformative Agreement is in place between your institutions and this journal, payment will be requested of you for Open Access publication. <a href='https://iopscience.iop.org/journal/1475-7516/page/publication-charges'>See fees</a>.</p>"
+        }
     }
-  },
-  {
-    "group": {
-      "name": "general"
-    },
-    "setting": {
-        "description": "Revision checklist. Similar to the \"Submission Checklist\" (in /manager/settings/submission) but only used for revisions (confirm-previous-version, edit-metadata, major/minor-revision).",
-      "is_translatable": true,
-      "name": "revision_checklist",
-      "pretty_name": "Revision Checklist",
-      "type": "rich-text"
-    },
-    "value": {
-      "default": ""
-    }
-  },
-  {
-    "group": {
-      "name": "general"
-    },
-    "setting": {
-      "description": "If true, the submitting user is set as main author. To work, the setting 'user_automatically_author' must be on.",
-      "is_translatable": false,
-      "name": "user_automatically_main_author",
-      "pretty_name": "User automatically as main author",
-      "type": "boolean"
-    },
-    "value": {
-      "default": "on"
-    }
-  }
 ]
