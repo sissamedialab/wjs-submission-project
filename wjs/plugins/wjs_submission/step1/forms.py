@@ -121,6 +121,7 @@ class SubmissionStep1Form(forms.ModelForm):
         if self.journal.submissionconfiguration.comments_to_the_editor:
             # Using a custom attribute to not trigger bootstrap validation as we use custom logic which checks tinymce
             self.fields["comments_editor"].widget.attrs["js_required"] = True
+            self.fields["comments_editor"].widget.attrs["alternate_field"] = "cover_letter_file"
 
         arxiv_field_status = get_setting("wjs_submission", "arxiv_field_status", self.journal).processed_value
         if arxiv_field_status == "disabled":
@@ -185,6 +186,10 @@ class SubmissionStep1Form(forms.ModelForm):
             if not cover_letter_file and not comments_editor:
                 self.add_error(
                     "comments_editor",
+                    _("You must enter a cover letter or upload a file to proceed."),
+                )
+                self.add_error(
+                    "cover_letter_file",
                     _("You must enter a cover letter or upload a file to proceed."),
                 )
 
@@ -259,6 +264,10 @@ class SubmissionStep1Form(forms.ModelForm):
                     field=field,
                     defaults={"answer": answer},
                 )
+            # Set dependent value on submission_data
+            if field.name == "Use of AI":
+                self.instance.submission_data.use_of_ai_flag = bool(answer) if answer else False
+                self.instance.submission_data.save()
 
         if self.cleaned_data.get("cover_letter_file"):
             file = core_files.save_file_to_article(
@@ -270,6 +279,12 @@ class SubmissionStep1Form(forms.ModelForm):
             file.privacy = "owner"
             file.save()
             self.instance.submission_data.cover_letter_file = file
+            self.instance.submission_data.save()
+        elif self.cleaned_data.get("cover_letter_file") is False:
+            # False means that we should clear the existing file
+            if self.instance.submission_data.cover_letter_file:
+                self.instance.submission_data.cover_letter_file.delete()
+            self.instance.submission_data.cover_letter_file = None
             self.instance.submission_data.save()
 
         # Set the current step to 1 if it's the first time the article is saved, or keep the current one if we are

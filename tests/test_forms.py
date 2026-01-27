@@ -18,7 +18,7 @@ from plugins.wjs_submission.step5.forms import SubmissionStep5Form
 from plugins.wjs_submission.step6.forms import SubmissionStep6Form
 from plugins.wjs_submission.step7.forms import SubmissionStep7Form
 from pytest_django.asserts import assertQuerysetEqual
-from submission.models import Article, Keyword, KeywordGroup, Licence
+from submission.models import Article, Field, Keyword, KeywordGroup, Licence
 
 
 @pytest.mark.parametrize(
@@ -64,6 +64,39 @@ def test_clean_copyright_notice(
         assert form.errors == {"copyright_notice": ["This field is required."]}
     else:
         assert form.is_valid()
+
+
+@pytest.mark.parametrize(
+    ("selected", "result"),
+    [
+        (
+            True,
+            True,
+        ),
+        (
+            False,
+            False,
+        ),
+    ],
+)
+@pytest.mark.django_db
+def test_save_use_of_ai_flag(
+    journal: Journal, install_plugins: Callable, user: Account, selected: bool, result: bool, fake_request
+):
+    """Setting Use of AI custom field updates ArticleSubmission.use_of_ai_flag as well."""
+    data = {
+        "Use of AI": "Something" if selected else "",
+        "copyright_notice": True,
+        "comments_editor": "AAA",
+        "competing_interests": "AAA",
+        "submission_requirements": True,
+    }
+    Field.objects.create(journal=journal, name="Use of AI", kind="text", order=1, help_text="Hello", required=False)
+    with patch("plugins.wjs_submission.step1.forms.SubmissionStep1Form.trigger_submissionstart_event"):
+        form = SubmissionStep1Form(data=data, journal=journal, user=user, step=1)
+        assert form.is_valid()
+        instance = form.save()
+        assert instance.submission_data.use_of_ai_flag is result
 
 
 @pytest.mark.parametrize(("extension", "is_valid"), [("jpg", False), ("pdf", True)])
@@ -201,7 +234,10 @@ def test_clean_comments_editor_requirements(
     form = SubmissionStep1Form(data=data, journal=journal, user=user, files=files, step=1)
     assert form.is_valid() is (file or text)
     if not (file or text):
-        assert form.errors == {"comments_editor": ["You must enter a cover letter or upload a file to proceed."]}
+        assert form.errors == {
+            "comments_editor": ["You must enter a cover letter or upload a file to proceed."],
+            "cover_letter_file": ["You must enter a cover letter or upload a file to proceed."],
+        }
     else:
         assert form.errors == {}
 

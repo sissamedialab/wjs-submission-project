@@ -64,9 +64,9 @@
     <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required"> Conflict of interest</h5>
     <div class="wjs-submission-form__section-content">
       <div class="mb-3">
-        If you have any conflict of interests in the publication of this manuscript please state them here.
+        {{ form.competing_interests.help_text }}
       </div>
-      {% bootstrap_field form.competing_interests show_help=True show_label=False %}
+      {% bootstrap_field form.competing_interests show_help=False show_label=False %}
     </div>
   </div>
 
@@ -79,7 +79,12 @@
         The Editor may decide to share it with any selected reviewers.
       </div>
       {% bootstrap_field form.comments_editor show_help=False show_label=False %}
-      {% bootstrap_field form.cover_letter_file show_help=False show_label=False %}
+      {% comment %}
+        Opportunistic file field used to mark the field as required only if populated.
+        After the file is uploaded this is rendered to satisfy the alternate_field attribute for comments_editor. If file is not set this is not rendered, making comments_editor required
+      {% endcomment %}
+      {% if article.submission_data.cover_letter_file_id %}<input type="hidden" name="cover_letter_file" value="{{ article.submission_data.cover_letter_file_id }}" required="">{% endif %}
+      {% bootstrap_field form.cover_letter_file show_help=False show_label=False required=True %}
     </div>
   </div>
   {% endif %}
