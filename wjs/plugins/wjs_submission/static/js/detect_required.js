@@ -76,6 +76,23 @@ function hasContent(field) {
 function allFilled(form, fields) {
 
   return fields.every(field => {
+    let alternateField;
+    // Skip fields that might not be rendered yet
+    if(!field) return true;
+    // If field declare an alternate field, check that one instead; if alternate field is not empty we can exit early
+    if(field.getAttribute("alternate_field"))
+      alternateField = form.querySelector(`[name="${field.getAttribute("alternate_field")}"]`);
+    return _verifyFieldValue(field) || (alternateField && _verifyFieldValue(alternateField));
+  });
+}
+
+/**
+ * Verify if field value is valid according to the field type or attributes.
+ *
+ * @param {HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement} field - The field element to validate.
+ * @return {boolean} True if the field has a valid or non-empty value, otherwise false.
+ */
+function _verifyFieldValue(field) {
     if (field.type === "radio") {
       return !!form.querySelector(`input[type="radio"][name="${field.name}"]:checked`);
     }
@@ -88,7 +105,6 @@ function allFilled(form, fields) {
       return hasContent(field);
     }
     return field.value?.trim() !== "";
-  });
 }
 
 /**
@@ -165,8 +181,10 @@ function setupRequiredChecklist() {
   const fieldsStatusList = document.createElement("ul");
   fieldsStatusList.id = "wjs-submission-form__fields-list";
   fieldsStatusList.setAttribute("aria-live", "polite");
-  formFooter.insertAdjacentElement("beforebegin", fieldsStatusList);
-  populateRequiredChecklist(fieldsStatusList);
+  if(formFooter) {
+    formFooter.insertAdjacentElement("beforebegin", fieldsStatusList);
+    populateRequiredChecklist(fieldsStatusList);
+  }
 }
 
 /**
