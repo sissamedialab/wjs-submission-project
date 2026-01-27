@@ -6,7 +6,7 @@ from events import logic as events_logic
 from submission.models import Article, Licence
 
 from ..events import SubmissionEvent
-from ..models import AccessMode
+from ..models import AccessMode, RevisionStorage
 
 
 class SubmissionStep7Form(forms.ModelForm):
@@ -46,9 +46,11 @@ class SubmissionStep7Form(forms.ModelForm):
             (self.configuration.copyright_text, "rights"),
             (self.configuration.access_mode, "access_mode"),
         ):
-            kwargs["initial"][field[1]] = field[0]
-            # form data is overwritten with initial values only if calculated values are not a mere default
-            if "data" in kwargs and not self.configuration.is_default:
+            if field[1] not in kwargs["initial"] or not kwargs["initial"][field[1]]:
+                kwargs["initial"][field[1]] = field[0]
+            # form data is overwritten with initial values only if calculated values are not customisable by the user
+            # in the form UI
+            if "data" in kwargs and not self.configuration.user_selectable:
                 tmp = copy(kwargs["data"])
                 tmp[field[1]] = field[0]
                 kwargs["data"] = tmp
@@ -59,7 +61,7 @@ class SubmissionStep7Form(forms.ModelForm):
         Configure fields according to access mode configuration.
         """
         self.fields["license"].queryset = Licence.objects.filter(journal=self.journal)
-        if self.configuration.is_default:
+        if self.configuration.user_selectable:
             self.fields["access_mode"].queryset = AccessMode.objects.filter(
                 parameters__journal=self.journal, user_selectable=True
             )
@@ -96,3 +98,26 @@ class SubmissionStep7Form(forms.ModelForm):
             submission_data=instance.submission_data,
         )
         return instance
+
+
+class RevisionStep7Form(SubmissionStep7Form):
+    def __init__(self, *args, **kwargs):
+        """
+        Initialize a custom form with pre-filled initial data based on revision storage.
+
+        The constructor fetches the associated `RevisionStorage` object for the given `Article` instance
+        and initializes specific form fields using data from the `RevisionStorage`.
+
+        :param args: Positional arguments passed to the superclass initializer.
+        :type args: tuple
+        :param kwargs: Keyword arguments passed to the superclass initializer. It must contain the key
+            `instance`, which refers to an `Article` instance.
+        :type kwargs: dict
+        """
+        revision_storage = RevisionStorage.objects.get(article=kwargs["instance"])
+        kwargs.setdefault("initial", {})
+        for field, value in revision_storage.data.items():
+            if field == "confirm_previous_version":
+                continue
+            kwargs["initial"][field] = value
+        super().__init__(*args, **kwargs)

@@ -371,7 +371,7 @@ def test_access_mode_form(
             initial={},
         )
         if access_mode_fixed:
-            assert not configuration.is_default
+            assert not configuration.user_selectable
             assert isinstance(form.fields["license"].widget, forms.HiddenInput)
             assert isinstance(form.fields["rights"].widget, forms.HiddenInput)
             assert isinstance(form.fields["access_mode"].widget, forms.HiddenInput)
@@ -383,7 +383,7 @@ def test_access_mode_form(
             assert form.initial["rights"] == configuration.copyright_text
             assert form.initial["license"] == configuration.license
         else:
-            assert configuration.is_default
+            assert configuration.user_selectable
             assert isinstance(form.fields["rights"].widget, forms.HiddenInput)
             assertQuerysetEqual(
                 form.fields["access_mode"].queryset,
@@ -426,14 +426,14 @@ def test_access_mode_form_data(
                 access_mode=oa,
                 license=journal_parameters.licence,
                 copyright_text=journal_parameters.copyright,
-                is_default=False,
+                user_selectable=False,
             )
         else:
             configuration = AccessModeConfiguration(
                 access_mode=oa,
                 license=journal_parameters.licence,
                 copyright_text=journal_parameters.copyright,
-                is_default=True,
+                user_selectable=True,
             )
         form = SubmissionStep7Form(
             data={

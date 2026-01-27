@@ -4,7 +4,8 @@ from submission.models import Article
 
 from ..access_mode import get_access_mode_configuration
 from ..mixins import AuthorFilteringView, StepCheckView
-from .forms import SubmissionStep7Form
+from ..workflow import is_revision
+from .forms import RevisionStep7Form, SubmissionStep7Form
 
 
 class SubmissionStep7View(AuthorFilteringView, StepCheckView, UpdateView):
@@ -12,6 +13,17 @@ class SubmissionStep7View(AuthorFilteringView, StepCheckView, UpdateView):
     step = 7
     form_class = SubmissionStep7Form
     template_name = "wjs_submission/step7/article_form.html"
+
+    def get_form_class(self):
+        """
+        Return the form class to use based on whether this is a revision.
+
+        :return: Form class to use.
+        :rtype: django.forms.Form
+        """
+        if is_revision(self.object):
+            return RevisionStep7Form
+        return SubmissionStep7Form
 
     def get_success_url(self):
         """
