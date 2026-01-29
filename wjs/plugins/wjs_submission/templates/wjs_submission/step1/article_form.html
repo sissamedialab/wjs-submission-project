@@ -6,7 +6,7 @@
     {{ journal_settings.general.submission_intro_text|safe }}
   </div>
   <div class="wjs-submission-form__section wjs-submission-form__section--submission-checklist mb-5">
-    <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required"  id="submission-checklist">Submission checklist and declarations</h5>
+    <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required"  id="submission-checklist">Submission checklist and declarations</h5>
     <div class="wjs-submission-form__section-content">
       {% if settings.DEBUG %}{{ form.errors }}{% endif %}
       {% if is_revision %}{{ journal_settings.general.revision_checklist|safe }}{% else %}{{ journal_settings.general.submission_checklist|safe }}{% endif %}
@@ -22,7 +22,7 @@
 
   {% if form.arxiv_id %}
     <div class="wjs-submission-form__section mb-5" id="arxiv_id-section">
-      <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">ArXiv</h5>
+      <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">ArXiv</h5>
       <div class="wjs-submission-form__section-content">
         <div class="mb-4">
           Enter your preprint’s arXiv ID and validate it. The title, abstract, and manuscript will be imported
@@ -48,7 +48,7 @@
         <div class="wjs-submission-form__arxiv-validation-messages-wrapper" tabindex="-1">
           <div id="js-arxiv-validation-result" class="wjs-submission-form__arxiv-validation-result d-none" role="alert"
                aria-live="assertive"></div>
-          <p id="js-arxiv-validation-suggestion" class="wjs-submission-form__arxiv-validation-suggestion d-none">
+          <p id="js-arxiv-validation-suggestion" class="wjs-submission-form__arxiv-validation-suggestion d-none errormessage" id="validationWarning">
             ArXiv ID must be in the following format: nnnn.nnnnn
           </p>
         </div>
@@ -61,7 +61,7 @@
   {% endif %}
 
   <div class="wjs-submission-form__section mb-5" id="competing_interests-section">
-    <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required"> Conflict of interest</h5>
+    <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required"> Conflict of interest</h5>
     <div class="wjs-submission-form__section-content">
       <div class="mb-3">
         {{ form.competing_interests.help_text }}
@@ -72,7 +72,7 @@
 
   {% if form.comments_editor %}
   <div class="wjs-submission-form__section mb-5" id="cover_letter-section">
-    <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required"> Cover letter</h5>
+    <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required"> Cover letter</h5>
     <div class="wjs-submission-form__section-content">
       <div class="mb-3">
         You may enter a text and/or upload a file as cover letter for the Editor-in-charge.

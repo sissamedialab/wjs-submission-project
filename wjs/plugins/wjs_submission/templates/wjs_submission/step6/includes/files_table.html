@@ -12,11 +12,9 @@
     <thead>
     <tr>
       <th scope="col" width="20%">Title</th>
-      <th scope="col" width="40%">Filename</th>
+      <th scope="col" {% if show_conversion %}width="40%"{% else %}width="65%"{% endif %}>Filename</th>
       {% if show_conversion %}
         <th scope="col" width="25%">Conversion status</th>
-      {% else %}
-        <th scope="col" width="25%"></th>
       {% endif %}
       <th scope="col" width="15%">Actions</th>
     </tr>

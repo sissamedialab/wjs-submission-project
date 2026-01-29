@@ -8,7 +8,7 @@
 
 {% block submission_flow %}
   <div class="wjs-submission-form__section mb-5" id="authors-section">
-    <h5 class="wjs-submission-form__form-label-title">Authors</h5>
+    <h2 class="wjs-submission-form__form-label-title">Authors</h2>
     <div class="wjs-submission-form__section-content">
       {% if settings.DEBUG %}{{ form.errors }}{% endif %}
       <p class="wjs-submission-form__authors-intro-text">
@@ -25,10 +25,10 @@
       >
       </div>
       <input class="d-none" name="author_id" id="id_author_id"
-             hx-post="{% url 'wjs_submission_4' article.pk %}"
-             hx-trigger="change"
-             hx-swap="innerHTML"
-             hx-target="#selected-authors-wrapper"
+        hx-post="{% url 'wjs_submission_4' article.pk %}"
+        hx-trigger="change"
+        hx-swap="innerHTML"
+        hx-target="#selected-authors-wrapper"
       >
     </div>
     <div class="wjs-submission-form__section-content">
@@ -43,7 +43,8 @@
                 hx-target="#htmxModalContent"
                 hx-vals='{"article_id": "{{ article.pk }}"}'
                 id="add-author-btn"
-                disabled="">
+                disabled=""
+                aria-label="Add">
           Add new author
         </button>
       </div>
@@ -54,7 +55,7 @@
 
   <div id="authors-contributions-wrapper" style="display: {% if show_special_fragment %}block{% else %}none{% endif %};">
     <div class="wjs-submission-form__section mb-5">
-        <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Authors contributions</h5>
+        <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Authors contributions</h2>
         <div class="wjs-submission-form__section-content">
           <p class="wjs-submission-form__authors-intro-text">
             Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
@@ -66,7 +67,7 @@
   </div>
 
   <div class="wjs-submission-form__section mb-5" id="collaborations-section">
-    <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Collaboration</h5>
+    <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Collaboration</h2>
     <div class="wjs-submission-form__section-content">
       <p class="wjs-submission-form__authors-intro-text">
         Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
@@ -90,15 +91,16 @@
 
       <div id="js-collaborations-search-wrapper" class="d-none">
         <div class="wjs-submission-form__search-input-text" id="collaboration-search-wrapper"
-             hx-get="{% url 'search-typeahead-collaboration' %}"
-             hx-trigger="load"
-             hx-swap="innerHTML">
+          hx-get="{% url 'search-typeahead-collaboration' %}"
+          hx-trigger="load"
+          hx-swap="innerHTML"
+        >
         </div>
         <input type="hidden" name="collaboration_id" id="id_collaboration_id"
-               hx-post="{% url 'wjs_submission_4' article.pk %}"
-               hx-trigger="change"
-               hx-swap="innerHTML"
-               hx-target="#selected-collaborations-wrapper"
+          hx-post="{% url 'wjs_submission_4' article.pk %}"
+          hx-trigger="change"
+          hx-swap="innerHTML"
+          hx-target="#selected-collaborations-wrapper"
         >
         <div class="d-flex justify-content-end">
           {% url 'add-collaboration' as add_collaboration_url %}
@@ -123,7 +125,7 @@
   </div>
 
   <div class="wjs-submission-form__section mb-5">
-    <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Confirmation</h5>
+    <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Confirmation</h2>
     <div class="wjs-submission-form__section-content">
       <input
         class="form-check-input"
