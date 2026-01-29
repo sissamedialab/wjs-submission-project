@@ -2,7 +2,7 @@ from core.models import Account, Country
 from django.db import models
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
-from submission.models import Article, ArticleAuthorOrder
+from submission.models import Article, ArticleAuthorOrder, ArticleFunding
 
 from .signals import *  # noqa
 
@@ -291,3 +291,11 @@ def next_author_sort(self, revision: bool = False, *args, **kwargs) -> int:
 
 
 Article.next_author_sort = next_author_sort
+
+
+class SubmissionArticleFunding(models.Model):
+    article_funding = models.OneToOneField(ArticleFunding, on_delete=models.CASCADE, related_name="submission_extra")
+    country = models.CharField(max_length=128, blank=True)
+
+    def __str__(self):
+        return self.article_funding.name

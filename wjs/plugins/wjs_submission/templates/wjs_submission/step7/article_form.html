@@ -53,11 +53,55 @@
       {% bootstrap_field form.special_request label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" placeholder="" %}
     </div>
   </div>
+
+  <div class="wjs-submission-form__section mb-5" id="funding-section">
+    <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Funding</h5>
+    <div class="wjs-submission-form__section-content">
+      <p class="wjs-submission-form__funding-intro-text">
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
+        quis nostrud exercitation ullamco laboris
+      </p>
+    </div>
+  </div>
+
+        <div class="wjs-submission-form__search-input-text" id="funding-search-wrapper"
+             hx-get="{% url 'search-typeahead-funding' %}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+        </div>
+        <input type="hidden" name="funding_id" id="id_funding_id">
+        <div class="d-flex justify-content-end">
+          {% url 'add-funding' as add_funding_url %}
+          <button id="add-funding-btn" type="button"
+                  class="btn btn-primary"
+                  data-bs-toggle="modal"
+                  data-bs-target="#htmxModal"
+                  hx-get="{{ add_funding_url }}"
+                  hx-trigger="click"
+                  hx-target="#htmxModalContent"
+                  hx-vals='{"article_id": "{{ article.pk }}"}'
+                  disabled="">
+            Add new funding
+          </button>
+        </div>
+
+      {% include "wjs_submission/step7/selected_funding.html" %}
 {% endblock submission_flow %}
 
 {% block js %}
   {{ block.super }}
+  <script src="{% static 'js/livesearch.js' %}"></script>
+  <script src="{% static 'js/funding.js' %}"></script>
+  <script src="{% static 'js/handlebars-v4.7.7.js' %}"></script>
+  <script src="{% static 'js/jquery-3.6.0.min.js' %}"></script>
+  <script src="{% static 'js/typeahead.custom.js' %}"></script>
+  <script src="{% static 'js/typeahead.bundle.js' %}"></script>
+
   <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      setupFundingSelection();
+    });
+
     function checkAccessMode(value) {
       if (value === "1") {
         document.getElementById("js-access-mode-message").classList.remove("d-none");
@@ -72,6 +116,35 @@
       selector.addEventListener("change", function(event) {
         checkAccessMode(event.target.value);
       });
+    });
+
+    window.addEventListener("load", function() {
+      document.body.addEventListener("close-active-modal", function() {
+        document.querySelector("#htmxModal").querySelector("[aria-label=Close]").click();
+      });
+    });
+
+    document.addEventListener("DOMContentLoaded", function() {
+      const modal = document.getElementById("htmxModal");
+      modal.addEventListener("hidden.bs.modal", function () {
+        document.getElementById("htmxModalContent").innerHTML = "";
+      });
+    });
+
+    document.addEventListener("DOMContentLoaded", function() {
+      const hiddenFunding = document.getElementById("id_funding_id");
+      const addBtn = document.getElementById("add-funding-btn");
+
+      if (hiddenFunding && addBtn) {
+        hiddenFunding.addEventListener("change", function() {
+          const btnVals = JSON.parse(addBtn.getAttribute("hx-vals") || "{}");
+          btnVals.funding_id = hiddenFunding.value || "";
+          btnVals.funding_name = hiddenFunding.dataset.name || "";
+          btnVals.funding_country = hiddenFunding.dataset.country || "";
+          addBtn.setAttribute("hx-vals", JSON.stringify(btnVals));
+          addBtn.click();
+        });
+      }
     });
   </script>
 {% endblock js %}

@@ -1,0 +1,45 @@
+<div id="selected-funding-wrapper">
+  <div class="wjs-submission-form__section mb-5 {% if not articles_funding.exists %}d-none{% endif %}">
+    <div class="wjs-submission-form__section-content">
+      <table class="table table-sm" id="funding-table">
+        <thead>
+        <tr>
+          <th width="40%">Name</th>
+          <th width="30%">Country</th>
+          <th width="30%">Grant / award number</th>
+          <th class="text-center">Edit</th>
+          <th class="text-end">Delete</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for funding in articles_funding %}
+          <tr>
+            <td>{{ funding.name }}</td>
+            <td>{{ funding.submission_extra.country }}</td>
+            <td>{{ funding.funding_id }}</td>
+            <td class="text-center">
+                <button class="btn btn-sm btn-primary"
+                        data-bs-toggle="modal"
+                        data-bs-target="#htmxModal"
+                        hx-get="{% url 'add-funding' %}"
+                        hx-target="#htmxModalContent"
+                        hx-vals='{"article_id": "{{ article.pk }}", "funding_pk": "{{ funding.pk }}"}'>
+                  <i class="bi bi-pencil"></i>
+                </button>
+            </td>
+            <td class="text-end">
+                <button class="btn btn-sm"
+                        hx-post="{% url 'wjs_submission_7' article.pk %}"
+                        hx-vals='{"funding_pk": "{{ funding.pk }}", "action": "delete"}'
+                        hx-target="#selected-funding-wrapper"
+                        hx-swap="innerHTML">
+                  <i class="bi bi-trash3"></i>
+                </button>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

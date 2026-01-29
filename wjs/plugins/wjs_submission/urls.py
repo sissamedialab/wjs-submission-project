@@ -18,7 +18,7 @@ from .step6 import (
     SubmissionStep6View,
     UploadSubmissionFile,
 )
-from .step7 import SubmissionStep7View
+from .step7 import AddFundingView, SubmissionStep7View
 from .step8 import SubmissionStep8View
 from .views import (
     ArxivMicroservice,
@@ -115,6 +115,7 @@ urlpatterns = [
     ),
     path("add-author/", AddAuthorView.as_view(), name="add-author"),
     path("add-collaboration/", AddCollaborationView.as_view(), name="add-collaboration"),
+    path("add-funding/", AddFundingView.as_view(), name="add-funding"),
     path(
         "submission/<int:article_id>/confirm/",
         RevisionStartConfirmView.as_view(),
