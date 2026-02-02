@@ -6,7 +6,7 @@
 {% endblock %}
 {% block submission_flow %}
   <div class="wjs-submission-form__section mb-5" id="keywords-section">
-    <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Keywords</h5>
+    <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Keywords</h2>
 
     {% if journal.submissionconfiguration.hierarchical_keywords %}
       <div class="wjs-submission-form__section-content">
@@ -125,7 +125,7 @@
           </div>
 
           <div class="wjs-submission-form__keywords-weight">
-            <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label--required d-none">Keywords weight</h5>
+            <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label--required d-none">Keywords weight</h2>
             <input type="radio" required class="form-check-input d-none" name="keyword_weight_hidden" id="js-keywords-weight-hidden-required">
             <div class="wjs-submission-form__keywords-weight-info d-none">
               <p class="wjs-submission-form__keywords-requirements">Select keywords weight</p>

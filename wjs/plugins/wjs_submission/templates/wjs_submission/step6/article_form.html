@@ -3,7 +3,7 @@
 
 {% block submission_flow %}
   <div class="wjs-submission-form__section mb-5">
-    <h5 class="wjs-submission-form__form-label-title" id="step6-files-section">Files upload</h5>
+    <h2 class="wjs-submission-form__form-label-title" id="step6-files-section">Files upload</h2>
     <div class="wjs-submission-form__section-content">
       {% if settings.DEBUG %}{{ form.errors }}{% endif %}
       <div class="mb-3">
@@ -15,25 +15,25 @@
   </div>
   <div class="wjs-submission-form__section mb-5">
     <div class="wjs-submission-form__section-content">
-      <h6 class="wjs-submission-form__form-label wjs-submission-form__form-label--required">Manuscript file</h6>
+      <h3 class="wjs-submission-form__form-label wjs-submission-form__form-label--required">Manuscript file</h3>
       {% include "wjs_submission/step6/includes/files_table.html" with files_list=article.manuscript_files show_conversion=True button_name="trigger_manuscript" file_type="manuscript" %}
     </div>
   </div>
   <div class="wjs-submission-form__section mb-5">
     <div class="wjs-submission-form__section-content">
-      <h6 class="wjs-submission-form__form-label">Electronic Supplementary Material file</h6>
+      <h3 class="wjs-submission-form__form-label">Electronic Supplementary Material file</h3>
       {% include "wjs_submission/step6/includes/files_table.html" with files_list=article.data_figure_files button_name="trigger_data" file_type="data" %}
     </div>
   </div>
   <div class="wjs-submission-form__section mb-5">
     <div class="wjs-submission-form__section-content">
-      <h6 class="wjs-submission-form__form-label">Administrative files (not for publication)</h6>
+      <h3 class="wjs-submission-form__form-label">Administrative files (not for publication)</h3>
       {% include "wjs_submission/step6/includes/files_table.html" with files_list=article.submission_data.administrative_files button_name="trigger_administrative" file_type="administrative" %}
     </div>
   </div>
   <div class="wjs-submission-form__section mb-5">
     <div class="wjs-submission-form__section-content" id="step6-das-section">
-      <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Data Availability Statement</h5>
+      <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Data Availability Statement</h2>
       <div class="mb-3">
         Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore
         magna aliqua.
@@ -45,7 +45,7 @@
   </div>
   <div class="wjs-submission-form__section mb-5">
     <div class="wjs-submission-form__section-content" id="step6-cas-section">
-      <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Code Availability Statement</h5>
+      <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Code Availability Statement</h2>
       <div class="mb-3">
         Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore
         magna aliqua.

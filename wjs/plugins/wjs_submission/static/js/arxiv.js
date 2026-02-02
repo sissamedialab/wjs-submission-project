@@ -51,12 +51,18 @@ function setupArxivValidation() {
         arxivArticleId.value = "";
       }
 
-      arxivInput.setAttribute("required", true);
+      Object.entries({
+        "required": true,
+        "aria-errormessage": 'err1',
+      }).forEach(([key, value]) => arxivInput.setAttribute(key, value));
+
       arxivArticleId.setAttribute("required", true);
     } else {
       arxivArticleId.value = "";
       if (arxivInput.getAttribute("force_required") === null) {
-        arxivInput.removeAttribute("required");
+        ['required', 'aria-errormessage'].forEach(attr => {
+          arxivInput.removeAttribute(attr);
+        });
         arxivArticleId.removeAttribute("required");
       }
     }
