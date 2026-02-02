@@ -35,12 +35,12 @@ DEFAULT_ACCESS_MODE_COUNTRIES = {
 DEFAULT_SUBMISSION_FILE_TYPES = {
     None: ("text/x-tex", "application/zip", "application/gzip"),
     "JCOM": (
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document;",
-        "application/vnd.oasis.opendocument.text;",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.oasis.opendocument.text",
     ),
     "JCOMAL": (
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document;",
-        "application/vnd.oasis.opendocument.text;",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.oasis.opendocument.text",
     ),
 }
 
