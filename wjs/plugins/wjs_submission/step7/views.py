@@ -35,12 +35,6 @@ class SubmissionStep7View(HtmxMixin, AuthorFilteringView, StepCheckView, UpdateV
         """
         return reverse_lazy("wjs_submission_8", kwargs={"article_id": self.object.pk})
 
-    def get_template_names(self):
-        """Return template based on HTMX trigger."""
-        if self.htmx:
-            return ["wjs_submission/step7/selected_funding.html"]
-        return ["wjs_submission/step7/article_form.html"]
-
     def get_object(self, queryset=None):
         """
         Set access_mode_configuration for current article.
@@ -78,6 +72,12 @@ class SubmissionStep7View(HtmxMixin, AuthorFilteringView, StepCheckView, UpdateV
         context = super().get_context_data(**kwargs)
         context["articles_funding"] = self.object.articlefunding_set.all()
         return context
+
+    def get_template_names(self):
+        """Return template based on HTMX trigger."""
+        if self.htmx:
+            return ["wjs_submission/step7/selected_funding.html"]
+        return ["wjs_submission/step7/article_form.html"]
 
     def post(self, request, *args, **kwargs):
         """

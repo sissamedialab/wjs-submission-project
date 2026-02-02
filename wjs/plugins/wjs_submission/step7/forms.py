@@ -27,9 +27,9 @@ class SubmissionStep7Form(forms.ModelForm):
         """
         Initialise the ArticleInfo form and assign proper attributes to set required fields.
         """
-        self.step = kwargs.pop("step", None)
-        self.journal = kwargs.pop("journal", None)
-        self.configuration = kwargs.pop("configuration", None)
+        self.step = kwargs.pop("step")
+        self.journal = kwargs.pop("journal")
+        self.configuration = kwargs.pop("configuration")
         kwargs = self._inject_configuration_values(kwargs)
         super().__init__(*args, **kwargs)
         self._setup_fields()
@@ -41,8 +41,6 @@ class SubmissionStep7Form(forms.ModelForm):
         :param kwargs: Form kwargs
         :return: Updated kwargs
         """
-        if "initial" not in kwargs:
-            kwargs["initial"] = {}
         for field in (
             (self.configuration.license, "license"),
             (self.configuration.copyright_text, "rights"),
