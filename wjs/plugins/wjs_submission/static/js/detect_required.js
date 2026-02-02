@@ -82,7 +82,7 @@ function allFilled(form, fields) {
     // If field declare an alternate field, check that one instead; if alternate field is not empty we can exit early
     if(field.getAttribute("alternate_field"))
       alternateField = form.querySelector(`[name="${field.getAttribute("alternate_field")}"]`);
-    return _verifyFieldValue(field) || (alternateField && _verifyFieldValue(alternateField));
+    return _verifyFieldValue(form, field) || (alternateField && _verifyFieldValue(alternateField));
   });
 }
 
@@ -92,7 +92,7 @@ function allFilled(form, fields) {
  * @param {HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement} field - The field element to validate.
  * @return {boolean} True if the field has a valid or non-empty value, otherwise false.
  */
-function _verifyFieldValue(field) {
+function _verifyFieldValue(form, field) {
     if (field.type === "radio") {
       return !!form.querySelector(`input[type="radio"][name="${field.name}"]:checked`);
     }
@@ -130,8 +130,18 @@ function updateRequiredChecklist() {
       console.log("Filled", fieldStatusItem, fields, filled);
     if (filled) {
       fieldStatusItem.classList.add("wjs-submission-form__label--filled");
+      if (!fieldStatusItem.querySelector(".visually-hidden"))  {
+        const srOnlyFilledElement = document.createElement("span");
+        srOnlyFilledElement.classList.add("visually-hidden");
+        srOnlyFilledElement.textContent = "Done";
+        fieldStatusItem.appendChild(srOnlyFilledElement);
+      }
     } else {
       fieldStatusItem.classList.remove("wjs-submission-form__label--filled");
+      const srOnlyFilledElement = fieldStatusItem.querySelector(".visually-hidden");
+      if (srOnlyFilledElement) {
+        fieldStatusItem.removeChild(srOnlyFilledElement);
+      }
       allSectionsFilled = false;
     }
   });
