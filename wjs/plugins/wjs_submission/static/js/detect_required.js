@@ -82,7 +82,7 @@ function allFilled(form, fields) {
     // If field declare an alternate field, check that one instead; if alternate field is not empty we can exit early
     if(field.getAttribute("alternate_field"))
       alternateField = form.querySelector(`[name="${field.getAttribute("alternate_field")}"]`);
-    return _verifyFieldValue(form, field) || (alternateField && _verifyFieldValue(alternateField));
+    return _verifyFieldValue(form, field) || (alternateField && _verifyFieldValue(form, alternateField));
   });
 }
 
@@ -90,6 +90,7 @@ function allFilled(form, fields) {
  * Verify if field value is valid according to the field type or attributes.
  *
  * @param {HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement} field - The field element to validate.
+ * @param {HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement} form - Form used to verify radio groups.
  * @return {boolean} True if the field has a valid or non-empty value, otherwise false.
  */
 function _verifyFieldValue(form, field) {
