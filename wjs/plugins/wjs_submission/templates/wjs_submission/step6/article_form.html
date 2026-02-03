@@ -16,19 +16,19 @@
   <div class="wjs-submission-form__section mb-5">
     <div class="wjs-submission-form__section-content">
       <h3 class="wjs-submission-form__form-label wjs-submission-form__form-label--required">Manuscript file</h3>
-      {% include "wjs_submission/step6/includes/files_table.html" with files_list=article.manuscript_files show_conversion=True button_name="trigger_manuscript" file_type="manuscript" %}
+      {% include "wjs_submission/step6/includes/files_table.html" with files_list=manuscript_files show_conversion=True button_name="trigger_manuscript" file_type="manuscript" %}
     </div>
   </div>
   <div class="wjs-submission-form__section mb-5">
     <div class="wjs-submission-form__section-content">
       <h3 class="wjs-submission-form__form-label">Electronic Supplementary Material file</h3>
-      {% include "wjs_submission/step6/includes/files_table.html" with files_list=article.data_figure_files button_name="trigger_data" file_type="data" %}
+      {% include "wjs_submission/step6/includes/files_table.html" with files_list=data_figure_files button_name="trigger_data" file_type="data" %}
     </div>
   </div>
   <div class="wjs-submission-form__section mb-5">
     <div class="wjs-submission-form__section-content">
       <h3 class="wjs-submission-form__form-label">Administrative files (not for publication)</h3>
-      {% include "wjs_submission/step6/includes/files_table.html" with files_list=article.submission_data.administrative_files button_name="trigger_administrative" file_type="administrative" %}
+      {% include "wjs_submission/step6/includes/files_table.html" with files_list=administrative_files button_name="trigger_administrative" file_type="administrative" %}
     </div>
   </div>
   <div class="wjs-submission-form__section mb-5">

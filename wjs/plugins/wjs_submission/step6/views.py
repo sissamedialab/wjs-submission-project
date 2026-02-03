@@ -1,5 +1,4 @@
 from core import models as core_models
-from core.models import File
 from django.db.models import QuerySet
 from django.http import HttpRequest
 from django.urls import reverse_lazy
@@ -12,7 +11,8 @@ from utils.setting_handler import get_setting
 from .. import settings as submission_settings
 from ..management.commands.send_feedback import Command as FakeYakunin
 from ..mixins import AuthorFilteringView, HtmxMixin, StepCheckView
-from ..workflow import is_revision_confirm, is_revision_full, is_revision_metadata
+from ..models import RevisionStorage
+from ..workflow import is_revision, is_revision_confirm, is_revision_full, is_revision_metadata
 from .forms import RevisionStep6Form, SubmissionStep6Form, UploadArticleForm
 
 
@@ -91,6 +91,33 @@ class SubmissionStep6View(AuthorFilteringView, StepCheckView, UpdateView):
         """
         context = super().get_context_data(**kwargs)
         context["feedback_ws_url"] = get_feedback_ws_url(self.request, self.object.pk, self.request.user.pk)
+
+        # Prepare files-slots
+        # NB ensure that here and TableRenderingContext.get_context_data() agree!
+        # TODO: review in specs#2330
+        if is_revision(self.object):
+            revision_storage = RevisionStorage.objects.get(article=self.object)
+            context["manuscript_files"] = revision_storage.data.get(
+                "manuscript_files",
+                core_models.File.objects.none(),
+            )
+            context["supplementary_files"] = revision_storage.data.get(
+                "supplementary_files",
+                core_models.SupplementaryFile.objects.none(),
+            )
+            context["data_figure_files"] = revision_storage.data.get(
+                "data_figure_files",
+                core_models.File.objects.none(),
+            )
+            context["administrative_files"] = revision_storage.data.get(
+                "administrative_files",
+                core_models.File.objects.none(),
+            )
+        else:
+            context["manuscript_files"] = self.object.manuscript_files.all()
+            context["supplementary_files"] = self.object.supplementary_files.all()
+            context["data_figure_files"] = self.object.data_figure_files.all()
+            context["administrative_files"] = self.object.submission_data.administrative_files.all()
         return context
 
 
@@ -138,7 +165,7 @@ class RenderSubmissionFile(HtmxMixin, AuthorFilteringView, TableRenderingContext
 
 
 class DeleteSubmissionFile(HtmxMixin, AuthorFilteringView, TableRenderingContext, DeleteView):
-    model = File
+    model = core_models.File
     pk_url_kwarg = "file_id"
     template_name = "wjs_submission/step6/includes/files_table.html"
 
