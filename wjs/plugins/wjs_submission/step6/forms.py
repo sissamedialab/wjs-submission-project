@@ -253,7 +253,13 @@ class RevisionUploadArticleForm(UploadArticleForm):
             )
 
             if file_type == "manuscript":
+                if existing_source_id := revision_storage.data["source_files"]:
+                    raise ValueError(
+                        f"Unexpected source file {existing_source_id} found"
+                        f" while uploading manuscript on {self.instance.id}",
+                    )
                 revision_storage.data["source_files"] = new_file.id
+                revision_storage.save()
 
                 article_id = self.instance.pk
                 user_id = self.request.user.pk
@@ -275,14 +281,15 @@ class RevisionUploadArticleForm(UploadArticleForm):
 
             elif file_type == "data":
                 revision_storage.data["data_figure_files"].append(new_file.pk)
+                revision_storage.save()
                 # TODO specs#2330:
                 # ...  esm = SupplementaryFile.objects.create(file=new_file)
                 # ...  revision_storage.data["supplementary_files"].append(esm.id)
 
             elif file_type == "administrative":
                 revision_storage.data["administrative_files"].append(new_file.pk)
+                revision_storage.save()
 
-            revision_storage.save()
             self.new_file = new_file
 
         else:

@@ -1,3 +1,5 @@
+import logging
+
 from core import models as core_models
 from django.db.models import QuerySet
 from django.urls import reverse_lazy
@@ -9,6 +11,8 @@ from ..mixins import AuthorFilteringView, HtmxMixin, StepCheckView
 from ..models import RevisionStorage
 from ..workflow import get_feedback_ws_url, is_revision, is_revision_confirm, is_revision_full, is_revision_metadata
 from .forms import RevisionStep6Form, RevisionUploadArticleForm, SubmissionStep6Form, UploadArticleForm
+
+logger = logging.getLogger(__name__)
 
 
 class TableRenderingContext:
@@ -46,7 +50,7 @@ class TableRenderingContext:
             context["button_name"] = f"trigger_{self.kwargs['file_type']}"
             context["file_type"] = self.kwargs["file_type"]
         else:
-            revision_storage = RevisionStorage.objects.get(article=self.object)
+            revision_storage = RevisionStorage.objects.get(article=self._article)
             if file_id := revision_storage.data["manuscript_files"]:
                 context["manuscript_files"] = core_models.File.objects.filter(id=file_id)
             else:
@@ -184,14 +188,50 @@ class DeleteSubmissionFile(HtmxMixin, AuthorFilteringView, TableRenderingContext
         If file to delete is a source file, manuscript files are cleared.
         Same if the file is a manuscript file, source files are cleared.
         """
-        if self.object in self._article.source_files.all():
-            for f in self._article.manuscript_files.all():
-                f.delete()
-        if self.object in self._article.manuscript_files.all():
-            for f in self._article.source_files.all():
-                f.delete()
-        self.object.delete()
-        self._article.refresh_from_db()
+        if not is_revision(self._article):
+            if self.object in self._article.source_files.all():
+                for f in self._article.manuscript_files.all():
+                    f.delete()
+            if self.object in self._article.manuscript_files.all():
+                for f in self._article.source_files.all():
+                    f.delete()
+            self.object.delete()
+            self._article.refresh_from_db()
+        else:
+            revision_storage = RevisionStorage.objects.get(article=self._article)
+            # HELP: refactor the following to delete the file and its "reference" inside a `with transaction.atomic():`
+            file_type = self.kwargs["file_type"]
+            if file_type == "manuscript":
+                self.object.delete()
+                revision_storage.data["manuscript_files"] = ""
+                if source_file_id := revision_storage.data["source_files"]:
+                    core_models.File.objects.get(id=source_file_id).delete()
+                    revision_storage.data["source_files"] = ""
+
+            elif file_type == "source_files":  # HELP: sort-of "not implemented"
+                self.object.delete()
+                revision_storage.data["source_files"] = ""
+                if manuscript_file_id := revision_storage.data["manuscript_files"]:
+                    core_models.File.objects.get(id=manuscript_file_id).delete()
+                    revision_storage.data["manuscript_files"] = ""
+
+            elif file_type == "data":
+                revision_storage.data["data_figure_files"].remove(self.object.id)
+                self.object.delete()
+
+            elif file_type == "supplementary_files":
+                # TODO specs#2330: ⚠ supplementary files are not core.File, but core.SupplementaryFiles!
+                revision_storage.data["supplementary_files"].remove(self.object.id)
+                self.object.delete()
+
+            elif file_type == "administrative":
+                revision_storage.data["administrative_files"].remove(self.object.id)
+                self.object.delete()
+
+            else:
+                logger.error(f"""Trying to delete unexpected file type "{file_type}" for article {self._article.id}""")
+
+            revision_storage.save()
 
     def form_valid(self, form):
         """
