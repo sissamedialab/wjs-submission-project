@@ -3,11 +3,12 @@ from django.views.generic import UpdateView
 from submission.models import Article
 
 from ..mixins import AuthorFilteringView, StepCheckView
+from ..step6.views import TableRenderingContext
 from ..workflow import is_revision, step_check_select_issue
 from .forms import RevisionForm, SubmissionStep8Form
 
 
-class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
+class SubmissionStep8View(AuthorFilteringView, StepCheckView, TableRenderingContext, UpdateView):
     model = Article
     step = 8
     template_name = "wjs_submission/step8/article_form.html"
