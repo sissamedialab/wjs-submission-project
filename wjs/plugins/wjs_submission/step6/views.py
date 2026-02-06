@@ -14,8 +14,6 @@ from .forms import RevisionStep6Form, RevisionUploadArticleForm, SubmissionStep6
 
 logger = logging.getLogger(__name__)
 
-# in step6.view.get_context_data, call `f` and update the context
-
 
 def get_files(article: Article) -> dict:
     """
@@ -231,18 +229,25 @@ class DeleteSubmissionFile(HtmxMixin, AuthorFilteringView, TableRenderingContext
             file_type = self.kwargs["file_type"]
 
             if file_type == "manuscript":
-                revision_storage.data["manuscript_files"] = ""
-                self.object.delete()
-                if source_file_id := revision_storage.data["source_files"]:
-                    revision_storage.data["source_files"] = ""
-                    core_models.File.objects.get(id=source_file_id).delete()
-
-            elif file_type == "source_files":
-                revision_storage.data["source_files"] = ""
-                self.object.delete()
-                if manuscript_file_id := revision_storage.data["manuscript_files"]:
-                    revision_storage.data["manuscript_files"] = ""
-                    core_models.File.objects.get(id=manuscript_file_id).delete()
+                # I'ts possible that the author deletes the "manuscript", before the conversion is fihished.
+                # Ensure that the object id is either the manuscript or source slot,
+                # then delete all existing Files refrenced by revision storage manuscript or source slots.
+                #
+                # below, "filter(bool...)" is needed because "empty" slots hold the "Null" value,
+                # which makes for a valid item in a list, but not for a valid id in a query
+                # (the "set" is not strictly necessary :)
+                fileids_to_delete = set(
+                    filter(bool, [revision_storage.data["manuscript_files"], revision_storage.data["source_files"]])
+                )
+                if self.object.id in fileids_to_delete:
+                    revision_storage.data["manuscript_files"] = None
+                    revision_storage.data["source_files"] = None
+                    core_models.File.objects.filter(id__in=fileids_to_delete).delete()
+                else:
+                    logger.error(
+                        f"Unexpected file to delete {self.object.id} not manuscript nor source"
+                        f" for article {self._article.id}",
+                    )
 
             elif file_type == "data":
                 revision_storage.data["data_figure_files"].remove(self.object.id)
