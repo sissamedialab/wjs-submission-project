@@ -44,9 +44,8 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
         :return: Context data.
         """
         context = super().get_context_data(**kwargs)
-        # FIXME
-        if context["article"].identifiers.filter(id_type="arxiv").first():
-            context["arxiv_id"] = context["article"].identifiers.filter(id_type="arxiv").first().identifier
+        if arxiv_identifier := context["article"].identifiers.filter(id_type="arxiv").first():
+            context["arxiv_id"] = arxiv_identifier.identifier
         context["show_issue"] = step_check_select_issue(self.object.journal, user=self.request.user)
         context["is_revision"] = is_revision(self.object)
         return context
