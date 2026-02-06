@@ -208,8 +208,14 @@ class DeleteSubmissionFile(HtmxMixin, AuthorFilteringView, TableRenderingContext
         """
         Delete the selected file.
 
-        If file to delete is a source file, manuscript files are cleared.
-        Same if the file is a manuscript file, source files are cleared.
+        - If file to delete is a source file, manuscript files are cleared.
+        - If file to delete is a manuscript file, source files are cleared.
+        - The file object itself is deleted.
+
+        For revisions:
+        - Only delete file objects that are NOT in the article's existing file slots.
+        - Files from the original article are preserved; only their references in RevisionStorage are removed.
+        - Newly uploaded files (not in original article) are deleted completely.
         """
         if not is_revision(self._article):
             if self.object in self._article.source_files.all():
@@ -222,44 +228,39 @@ class DeleteSubmissionFile(HtmxMixin, AuthorFilteringView, TableRenderingContext
             self._article.refresh_from_db()
         else:
             revision_storage = RevisionStorage.objects.get(article=self._article)
-            # HELP: refactor the following to delete the file and its "reference" inside a `with transaction.atomic():`
-            # FIXME: only delete new files! E.g.
-            # - Article.data_figure_files = [123,]
-            # - author uploads file 456
-            # - now RS.data_figure_files is [123, 456]
-            # - IF author deletes file 123 (existing in previous version)
-            #   - remove reference in RS.data_figure_files
-            #   - do _not_ remove the file itself (it is references by revision-request)
-            # - IF author deletes file 456 (which is the one newly uploaded)
-            #   - remove the reference in RS.data_figure_files
-            #   - do _delete_ the file itself (it is not referernced by anyone)
             file_type = self.kwargs["file_type"]
-            if file_type == "manuscript":
-                self.object.delete()
-                revision_storage.data["manuscript_files"] = ""
-                if source_file_id := revision_storage.data["source_files"]:
-                    core_models.File.objects.get(id=source_file_id).delete()
-                    revision_storage.data["source_files"] = ""
 
-            elif file_type == "source_files":  # HELP: sort-of "not implemented"
+            if file_type == "manuscript":
+                revision_storage.data["manuscript_files"] = ""
                 self.object.delete()
+                if source_file_id := revision_storage.data["source_files"]:
+                    revision_storage.data["source_files"] = ""
+                    core_models.File.objects.get(id=source_file_id).delete()
+
+            elif file_type == "source_files":
                 revision_storage.data["source_files"] = ""
+                self.object.delete()
                 if manuscript_file_id := revision_storage.data["manuscript_files"]:
-                    core_models.File.objects.get(id=manuscript_file_id).delete()
                     revision_storage.data["manuscript_files"] = ""
+                    core_models.File.objects.get(id=manuscript_file_id).delete()
 
             elif file_type == "data":
                 revision_storage.data["data_figure_files"].remove(self.object.id)
-                self.object.delete()
+                if self.object.id not in set(self._article.data_figure_files.values_list("id", flat=True)):
+                    self.object.delete()
 
             elif file_type == "supplementary_files":
                 # TODO specs#2330: ⚠ supplementary files are not core.File, but core.SupplementaryFiles!
                 revision_storage.data["supplementary_files"].remove(self.object.id)
-                self.object.delete()
+                if self.object.id not in set(self._article.supplementary_files.values_list("id", flat=True)):
+                    self.object.delete()
 
             elif file_type == "administrative":
                 revision_storage.data["administrative_files"].remove(self.object.id)
-                self.object.delete()
+                if self.object.id not in set(
+                    self._article.submission_data.administrative_files.values_list("id", flat=True)
+                ):
+                    self.object.delete()
 
             else:
                 logger.error(f"""Trying to delete unexpected file type "{file_type}" for article {self._article.id}""")
