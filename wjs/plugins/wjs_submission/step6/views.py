@@ -30,25 +30,55 @@ class TableRenderingContext:
         :rtype: dict
         :raises Article.DoesNotExist: If the article with the provided `article_id` does not exist.
         """
+        print("🐔 TableRenderingContext.get_context_data()")
         context = super().get_context_data(**kwargs)
         context["article"] = self._article
+        file_type = self.kwargs.get("file_type")
+
+        # RFC  TODO:
+        # RFC  if file_type:
+        # RFC      we are working on a single table;
+        # RFC      we must provide context for the single table (files_table.html)
+        # RFC      add button_name
+        # RFC      add file_type
+        # RFC      add files_list
+        # RFC      add show_conversion if necessary (manuscript only)
+        # RFC  else:
+        # RFC      we are working on the main view;
+        # RFC      we must provide context for all tables included by article_form.html
+        # RFC      add manuscript_files      \
+        # RFC      add data_figure_files      - these are used in place of "files_list"
+        # RFC      add administrative files  /
+        # RFC
+        # RFC  orthogonally, distinguish between normal-submission and revision:
+        # RFC  if normal-submission:
+        # RFC      take files_list (or  manucript/data_figure/administrative files) from the Article
+        # RFC  else (if revision):
+        # RFC      take files_list (or  manucript/data_figure/administrative files) from the Article
+        # RFC
+
+        if file_type:
+            # the "file_type" argument can be missing when working on the main view,
+            # where all files are needed
+            context["button_name"] = f"trigger_{file_type}"
+            context["file_type"] = file_type
+
         if not is_revision(self._article):
-            if self.kwargs["file_type"] == "manuscript":
-                context["show_conversion"] = True
-                context["files_list"] = (
-                    context["article"].manuscript_files
-                    if context["article"].manuscript_files.exists()
-                    else context["article"].source_files
-                )
-                context["failed_conversion_log"] = core_models.File.objects.filter(
-                    article_id=context["article"].pk, label="Failed conversion log ConvertManuscriptToPdf"
-                ).first()
-            elif self.kwargs["file_type"] == "data":
-                context["files_list"] = context["article"].data_figure_files
-            elif self.kwargs["file_type"] == "administrative":
-                context["files_list"] = context["article"].submission_data.administrative_files
-            context["button_name"] = f"trigger_{self.kwargs['file_type']}"
-            context["file_type"] = self.kwargs["file_type"]
+            if file_type:
+                if file_type == "manuscript":
+                    context["show_conversion"] = True
+                    context["files_list"] = (
+                        context["article"].manuscript_files
+                        if context["article"].manuscript_files.exists()
+                        else context["article"].source_files
+                    )
+                    context["failed_conversion_log"] = core_models.File.objects.filter(
+                        article_id=context["article"].pk, label="Failed conversion log ConvertManuscriptToPdf"
+                    ).first()
+                elif file_type == "data":
+                    context["files_list"] = context["article"].data_figure_files
+                elif file_type == "administrative":
+                    context["files_list"] = context["article"].submission_data.administrative_files
         else:
             revision_storage = RevisionStorage.objects.get(article=self._article)
             if file_id := revision_storage.data["manuscript_files"]:
