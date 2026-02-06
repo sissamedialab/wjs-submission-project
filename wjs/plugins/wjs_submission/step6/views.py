@@ -23,90 +23,108 @@ class TableRenderingContext:
 
     def get_context_data(self, **kwargs):
         """
-        Add to context the data required to render the files table.
+        Add to context the files list & co.
+
+        The returned context is suitable both for the main template (article_form.html) and the single files-tables
+        templates (files_table.html).
+        Also, this method knows both about normal submissions and revisions and gets the files from the Article or the
+        RevisionStorage accordingly.
 
         :param kwargs: Additional keyword arguments passed to the method.
         :return: The modified context dictionary with additional article files and related attributes.
         :rtype: dict
-        :raises Article.DoesNotExist: If the article with the provided `article_id` does not exist.
         """
-        print("🐔 TableRenderingContext.get_context_data()")
         context = super().get_context_data(**kwargs)
         context["article"] = self._article
         file_type = self.kwargs.get("file_type")
 
-        # RFC  TODO:
-        # RFC  if file_type:
-        # RFC      we are working on a single table;
-        # RFC      we must provide context for the single table (files_table.html)
-        # RFC      add button_name
-        # RFC      add file_type
-        # RFC      add files_list
-        # RFC      add show_conversion if necessary (manuscript only)
-        # RFC  else:
-        # RFC      we are working on the main view;
-        # RFC      we must provide context for all tables included by article_form.html
-        # RFC      add manuscript_files      \
-        # RFC      add data_figure_files      - these are used in place of "files_list"
-        # RFC      add administrative files  /
-        # RFC
-        # RFC  orthogonally, distinguish between normal-submission and revision:
-        # RFC  if normal-submission:
-        # RFC      take files_list (or  manucript/data_figure/administrative files) from the Article
-        # RFC  else (if revision):
-        # RFC      take files_list (or  manucript/data_figure/administrative files) from the Article
-        # RFC
+        # TODO: refactor (maybe?)
+        #       collect the files in the outer "if"
+        #       in the inner "if", only add the files to the context with the correct keys
 
-        if file_type:
-            # the "file_type" argument can be missing when working on the main view,
-            # where all files are needed
-            context["button_name"] = f"trigger_{file_type}"
-            context["file_type"] = file_type
-
+        # When working on a normal submission, we take the files from the article,
+        # when working on a revision, we take the files from the revision storage.
         if not is_revision(self._article):
             if file_type:
+                # When "file_type" is defined, it means that we are Working on a single table:
+                # we must provide context for the files_table.html template.
+                context["button_name"] = f"trigger_{file_type}"
+                context["file_type"] = file_type
+
                 if file_type == "manuscript":
                     context["show_conversion"] = True
                     context["files_list"] = (
-                        context["article"].manuscript_files
-                        if context["article"].manuscript_files.exists()
-                        else context["article"].source_files
+                        self._article.manuscript_files
+                        if self._article.manuscript_files.exists()
+                        else self._article.source_files
                     )
                     context["failed_conversion_log"] = core_models.File.objects.filter(
-                        article_id=context["article"].pk, label="Failed conversion log ConvertManuscriptToPdf"
+                        article_id=self._article.pk, label="Failed conversion log ConvertManuscriptToPdf"
                     ).first()
                 elif file_type == "data":
-                    context["files_list"] = context["article"].data_figure_files
+                    context["files_list"] = self._article.data_figure_files
                 elif file_type == "administrative":
-                    context["files_list"] = context["article"].submission_data.administrative_files
+                    context["files_list"] = self._article.submission_data.administrative_files
+            else:
+                # Working on the main view; provide context for all tables in article_form.html
+                context["manuscript_files"] = (
+                    self._article.manuscript_files
+                    if self._article.manuscript_files.exists()
+                    else self._article.source_files
+                )
+                context["data_figure_files"] = self._article.data_figure_files
+                context["administrative_files"] = self._article.submission_data.administrative_files
         else:
+            # Revision: get files from RevisionStorage
             revision_storage = RevisionStorage.objects.get(article=self._article)
-            if file_id := revision_storage.data["manuscript_files"]:
-                context["manuscript_files"] = core_models.File.objects.filter(id=file_id)
-            else:
-                context["manuscript_files"] = core_models.File.objects.none()
-            if file_id := revision_storage.data["source_files"]:
-                context["source_files"] = core_models.File.objects.filter(id=file_id)
-            else:
-                context["source_files"] = core_models.File.objects.none()
 
-            # HELP: is the following a good idea?
-            # Show a file even when the source-manuscript conversion failed
-            if not context["manuscript_files"]:
-                context["manuscript_files"] = context["source_files"]
+            if file_type:
+                # Working on a single table; provide context for files_table.html
+                context["button_name"] = f"trigger_{file_type}"
+                context["file_type"] = file_type
 
-            # TODO specs#2330: review data-figure vs supplementary vs administrative files relation
-            # ... context["supplementary_files"] = core_models.SupplementaryFile.objects.filter(
-            #                                                  ⇧⇧⇧⇧⇧⇧⇧⇧⇧⇧⇧⇧⇧
-            context["supplementary_files"] = core_models.File.objects.filter(
-                id__in=revision_storage.data["supplementary_files"],
-            )
-            context["data_figure_files"] = core_models.File.objects.filter(
-                id__in=revision_storage.data["data_figure_files"],
-            )
-            context["administrative_files"] = core_models.File.objects.filter(
-                id__in=revision_storage.data["administrative_files"],
-            )
+                if file_type == "manuscript":
+                    context["show_conversion"] = True
+                    if file_id := revision_storage.data["manuscript_files"]:
+                        context["files_list"] = core_models.File.objects.filter(id=file_id)
+                    elif file_id := revision_storage.data["source_files"]:
+                        # Show source file if manuscript conversion failed
+                        context["files_list"] = core_models.File.objects.filter(id=file_id)
+                    else:
+                        context["files_list"] = core_models.File.objects.none()
+
+                    context["failed_conversion_log"] = core_models.File.objects.filter(
+                        article_id=self._article.pk, label="Failed conversion log ConvertManuscriptToPdf"
+                    ).first()
+                elif file_type == "data":
+                    context["files_list"] = core_models.File.objects.filter(
+                        id__in=revision_storage.data["data_figure_files"],
+                    )
+                elif file_type == "administrative":
+                    context["files_list"] = core_models.File.objects.filter(
+                        id__in=revision_storage.data["administrative_files"],
+                    )
+            else:
+                # Working on the main view; provide context for all tables in article_form.html
+                if file_id := revision_storage.data["manuscript_files"]:
+                    context["manuscript_files"] = core_models.File.objects.filter(id=file_id)
+                elif file_id := revision_storage.data["source_files"]:
+                    # Show source file if manuscript conversion failed
+                    context["manuscript_files"] = core_models.File.objects.filter(id=file_id)
+                else:
+                    context["manuscript_files"] = core_models.File.objects.none()
+
+                # TODO specs#2330: review data-figure vs supplementary vs administrative files relation
+                context["supplementary_files"] = core_models.File.objects.filter(
+                    id__in=revision_storage.data["supplementary_files"],
+                )
+                context["data_figure_files"] = core_models.File.objects.filter(
+                    id__in=revision_storage.data["data_figure_files"],
+                )
+                context["administrative_files"] = core_models.File.objects.filter(
+                    id__in=revision_storage.data["administrative_files"],
+                )
+
         return context
 
 
