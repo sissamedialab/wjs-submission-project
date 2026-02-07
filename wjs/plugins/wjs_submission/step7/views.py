@@ -1,6 +1,6 @@
 from django.urls import reverse_lazy
-from django.views.generic import UpdateView
-from submission.models import Article, ArticleFunding
+from django.views.generic import TemplateView, UpdateView
+from submission.models import Article
 
 from ..access_mode import get_access_mode_configuration
 from ..mixins import AuthorFilteringView, HtmxMixin, StepCheckView
@@ -10,7 +10,7 @@ from ..workflow import is_revision
 from .forms import AddFundingForm, RevisionStep7Form, SubmissionStep7Form
 
 
-class SubmissionStep7View(HtmxMixin, AuthorFilteringView, StepCheckView, UpdateView):
+class SubmissionStep7View(AuthorFilteringView, StepCheckView, UpdateView):
     model = Article
     step = 7
     form_class = SubmissionStep7Form
@@ -70,52 +70,8 @@ class SubmissionStep7View(HtmxMixin, AuthorFilteringView, StepCheckView, UpdateV
             article funding objects.
         """
         context = super().get_context_data(**kwargs)
-        context["articles_funding"] = self.object.articlefunding_set.all()
+        context["articles_funding"] = SubmissionArticleFunding.objects.filter(article=self.object)
         return context
-
-    def get_template_names(self):
-        """Return template based on HTMX trigger."""
-        if self.htmx:
-            return ["wjs_submission/step7/selected_funding.html"]
-        return ["wjs_submission/step7/article_form.html"]
-
-    def post(self, request, *args, **kwargs):
-        """
-        Handle the HTTP POST request for the view.
-
-        This method processes specific actions based on the `Hx-Target` header in the
-        request. If the header and the request data indicate a "delete" action, it deletes
-        the corresponding funding record. It also prepares a specific form based on the
-        current object, submission step, journal, and access mode configuration for
-        rendering the response in an HTMX context. If HTMX is not in use, it falls back
-        to the superclass implementation.
-
-        :param request: The HTTP request object.
-        :type request: HttpRequest
-        :param args: Additional positional arguments.
-        :type args: tuple
-        :param kwargs: Additional keyword arguments.
-        :type kwargs: dict
-        :return: A rendered response context or the superclass' post method's response.
-        :rtype: HttpResponse
-        """
-        hx_target = request.headers.get("Hx-Target")
-        if self.htmx:
-            self.object = self.get_object()
-            if hx_target == "selected-funding-wrapper" and request.POST.get("action") == "delete":
-                funding = ArticleFunding.objects.get(pk=request.POST.get("funding_pk"))
-                funding.delete()
-
-            form = SubmissionStep7Form(
-                instance=self.object,
-                step=self.step,
-                journal=self.request.journal,
-                configuration=self.access_mode_configuration,
-            )
-            context = self.get_context_data(form=form)
-            return self.render_to_response(context)
-
-        return super().post(request, *args, **kwargs)
 
 
 class AddFundingView(ModalRenderingMixin):
@@ -132,7 +88,7 @@ class AddFundingView(ModalRenderingMixin):
     def get_context_data(self, **kwargs):
         """Construct and returns the context data dictionary."""
         context = super().get_context_data(**kwargs)
-        context["articles_funding"] = self.article.articlefunding_set.all()
+        context["articles_funding"] = SubmissionArticleFunding.objects.filter(article=self.article)
         context["funding_pk"] = self.request.GET.get("funding_pk")
         return context
 
@@ -143,30 +99,73 @@ class AddFundingView(ModalRenderingMixin):
         :return: Form kwargs.
         """
         kwargs = super().get_form_kwargs()
-        kwargs["article_id"] = self.request.GET.get("article_id") or self.request.POST.get("article_id")
-        kwargs["funding_id"] = self.request.GET.get("funding_id")
-        kwargs["funding_name"] = self.request.GET.get("funding_name")
-        kwargs["funding_country"] = self.request.GET.get("funding_country")
-
-        funding_pk = self.request.GET.get("funding_pk") or self.request.POST.get("funding_pk")
+        # Parameters passed when adding the funding from dropdown results
+        if self.request.GET.get("article_id") and not self.request.GET.get("funding_pk"):
+            kwargs["data"] = self.request.GET.copy()
+            kwargs["article_id"] = kwargs["data"].pop("article_id")[0]
+            if not kwargs["data"]:
+                del kwargs["data"]
+            funding_pk = self.request.GET.get("funding_pk")
+        # Parameters combination when editing an existing funding from the funders table
+        elif self.request.GET.get("article_id") and self.request.GET.get("funding_pk"):
+            kwargs["article_id"] = self.request.GET.get("article_id")
+            funding_pk = self.request.GET.get("funding_pk")
+        # We are saving the funding from the modal
+        else:
+            kwargs["data"] = self.request.POST.copy()
+            kwargs["article_id"] = kwargs["data"].pop("article_id")[0]
+            funding_pk = self.request.POST.get("funding_pk")
         if funding_pk:
-            kwargs["instance"] = SubmissionArticleFunding.objects.select_related("article_funding").get(pk=funding_pk)
+            kwargs["instance"] = SubmissionArticleFunding.objects.get(pk=funding_pk)
         return kwargs
 
     def form_valid(self, form):
         """Save form and redirect via HTMX."""
         form.save()
         self.render_table = True
-        article = Article.objects.get(id=self.request.POST.get("article_id"))
-        access_mode_configuration = get_access_mode_configuration(self.request.user, article)
-        form = (
-            SubmissionStep7Form(
-                instance=self.article, journal=self.request.journal, configuration=access_mode_configuration
-            )
-            if not is_revision(article)
-            else RevisionStep7Form(instance=self.article)
-        )
-        context = self.get_context_data(form=form)
+        context = self.get_context_data()
         response = self.render_to_response(context)
         response["HX-Trigger"] = "close-active-modal"
         return response
+
+
+class DeleteFundingView(HtmxMixin, TemplateView):
+    model = SubmissionArticleFunding
+    template_name = "wjs_submission/step7/selected_funding.html"
+
+    def get_context_data(self, **kwargs):
+        """Construct and returns the context data dictionary."""
+        context = super().get_context_data(**kwargs)
+        context["articles_funding"] = SubmissionArticleFunding.objects.filter(article=self.article)
+        context["funding_pk"] = self.request.GET.get("funding_pk")
+        return context
+
+    def get_object(self, queryset=None):
+        """
+        Retrieve an object from the specified queryset based on a primary key obtained from the request.
+
+        :param queryset: Optional; a queryset to search for the object. Defaults to None.
+        :type queryset: QuerySet, optional
+        :return: The object retrieved from the queryset matching the primary key in the request.
+        :rtype: SubmissionArticleFunding
+        :raises SubmissionArticleFunding.DoesNotExist: If no object with specified primary key exists in the queryset.
+        """
+        return SubmissionArticleFunding.objects.get(pk=self.request.POST.get("funding_pk"))
+
+    def post(self, request, *args, **kwargs):
+        """
+        Delete the object associated with the request and render the response with the updated context.
+
+        :param request: HttpRequest object containing metadata about the request.
+        :type request: HttpRequest
+        :param args: Positional arguments passed to the method.
+        :type args: tuple
+        :param kwargs: Keyword arguments passed to the method.
+        :type kwargs: dict
+        :return: HttpResponse with the rendered context after object deletion.
+        :raises: AttributeError if the object to be deleted is not found.
+        """
+        self.object = self.get_object()
+        self.article = self.object.article
+        self.object.delete()
+        return self.render_to_response(self.get_context_data())

@@ -4,8 +4,9 @@
       <table class="table table-sm" id="funding-table">
         <thead>
         <tr>
-          <th width="40%">Name</th>
-          <th width="30%">Country</th>
+          <th width="30%">Name</th>
+          <th width="25%">DOI</th>
+          <th width="15%">Country</th>
           <th width="30%">Grant / award number</th>
           <th class="text-center">Edit</th>
           <th class="text-end">Delete</th>
@@ -13,30 +14,34 @@
         </thead>
         <tbody>
         {% for funding in articles_funding %}
+          {% if forloop.first %}<input type="hidden" name="funding_id" id="id_funding_id" required="" value="{{ funding.pk }}">{% endif %}
           <tr>
             <td>{{ funding.name }} {{ funding.pk }}</td>
-            <td>{{ funding.submission_extra.country }}</td>
-            <td>{{ funding.funding_id }}</td>
+            <td>{{ funding.fundref_id|default:"" }}</td>
+            <td>{{ funding.country|default:"" }}</td>
+            <td>{{ funding.funding_id|default:"" }}</td>
             <td class="text-center">
                 <button class="btn btn-sm btn-primary"
                         data-bs-toggle="modal"
                         data-bs-target="#htmxModal"
                         hx-get="{% url 'add-funding' %}"
                         hx-target="#htmxModalContent"
-                        hx-vals='{"article_id": "{{ article.pk }}", "funding_pk": "{{ funding.submission_extra.pk }}"}'>
+                        hx-vals='{"article_id": "{{ article.pk }}", "funding_pk": "{{ funding.pk }}"}'>
                   <i class="bi bi-pencil"></i>
                 </button>
             </td>
             <td class="text-end">
                 <button class="btn btn-sm"
-                        hx-post="{% url 'wjs_submission_7' article.pk %}"
-                        hx-vals='{"funding_pk": "{{ funding.submission_extra.pk }}", "action": "delete"}'
+                        hx-post="{% url 'delete-funding' %}"
+                        hx-vals='{"article_id": "{{ article.pk }}", "funding_pk": "{{ funding.pk }}"}'
                         hx-target="#selected-funding-wrapper"
                         hx-swap="innerHTML">
                   <i class="bi bi-trash3"></i>
                 </button>
             </td>
           </tr>
+        {% empty %}
+          <input type="hidden" name="funding_id" id="id_funding_id" required="">
         {% endfor %}
         </tbody>
       </table>

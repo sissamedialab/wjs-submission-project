@@ -6,6 +6,7 @@
 <div class="modal-body">
   <form method="post" action="" class="wjs-submission-form" enctype="multipart/form-data" hx-post="{% url 'add-funding' %}"  hx-vals='{"article_id": "{{ article_id }}", "funding_pk": "{{ funding_pk|default_if_none:"" }}"}' hx-target="#selected-funding-wrapper">
     {% csrf_token %}
+    {% bootstrap_form_errors form %}
     {% bootstrap_field form.name %}
     {% bootstrap_field form.fundref_id %}
     {% bootstrap_field form.country %}

@@ -3,7 +3,7 @@
 
 {% block submission_flow %}
   <div class="wjs-submission-form__section mb-5">
-    <h2 class="wjs-submission-form__form-label-title" id="step7-access-mode-section">Access mode</h2>
+    <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label--required" id="step7-access-mode-section">Access mode</h2>
     <div class="wjs-submission-form__section-content">
       {% if settings.DEBUG %}{{ form.errors }}{% endif %}
       <div class="mb-3">
@@ -54,38 +54,35 @@
     </div>
   </div>
 
-  <div class="wjs-submission-form__section mb-5" id="funding-section">
-    <h5 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Funding</h5>
+  <div class="wjs-submission-form__section mb-5">
+    <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label--required" id="step7-funding-section">Funding</h2>
     <div class="wjs-submission-form__section-content">
-      <p class="wjs-submission-form__funding-intro-text">
+      <div class="mb-3">
         Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
         quis nostrud exercitation ullamco laboris
-      </p>
+      </div>
+      <div class="wjs-submission-form__search-input-text" id="funding-search-wrapper"
+           hx-get="{% url 'search-typeahead-funding' %}"
+           hx-trigger="load"
+           hx-swap="innerHTML">
+      </div>
+      <div class="d-flex justify-content-end">
+        {% url 'add-funding' as add_funding_url %}
+        <button id="add-funding-btn" type="button"
+                class="btn btn-primary"
+                data-bs-toggle="modal"
+                data-bs-target="#htmxModal"
+                hx-get="{{ add_funding_url }}"
+                hx-trigger="click"
+                hx-target="#htmxModalContent"
+                hx-vals='{"article_id": "{{ article.pk }}"}'
+                disabled="">
+          Add new funding
+        </button>
+      </div>
+      {% include "wjs_submission/step7/selected_funding.html" %}
     </div>
   </div>
-
-        <div class="wjs-submission-form__search-input-text" id="funding-search-wrapper"
-             hx-get="{% url 'search-typeahead-funding' %}"
-             hx-trigger="load"
-             hx-swap="innerHTML">
-        </div>
-        <input type="hidden" name="funding_id" id="id_funding_id">
-        <div class="d-flex justify-content-end">
-          {% url 'add-funding' as add_funding_url %}
-          <button id="add-funding-btn" type="button"
-                  class="btn btn-primary"
-                  data-bs-toggle="modal"
-                  data-bs-target="#htmxModal"
-                  hx-get="{{ add_funding_url }}"
-                  hx-trigger="click"
-                  hx-target="#htmxModalContent"
-                  hx-vals='{"article_id": "{{ article.pk }}"}'
-                  disabled="">
-            Add new funding
-          </button>
-        </div>
-
-      {% include "wjs_submission/step7/selected_funding.html" %}
 {% endblock submission_flow %}
 
 {% block js %}
@@ -126,7 +123,7 @@
 
     document.addEventListener("DOMContentLoaded", function() {
       const modal = document.getElementById("htmxModal");
-      modal.addEventListener("hidden.bs.modal", function () {
+      modal.addEventListener("hidden.bs.modal", function() {
         document.getElementById("htmxModalContent").innerHTML = "";
       });
     });
@@ -138,11 +135,12 @@
       if (hiddenFunding && addBtn) {
         hiddenFunding.addEventListener("change", function() {
           const btnVals = JSON.parse(addBtn.getAttribute("hx-vals") || "{}");
-          btnVals.funding_id = hiddenFunding.value || "";
-          btnVals.funding_name = hiddenFunding.dataset.name || "";
-          btnVals.funding_country = hiddenFunding.dataset.country || "";
+          btnVals.fundref_id = hiddenFunding.value || "";
+          btnVals.name = hiddenFunding.dataset.name || "";
+          btnVals.country = hiddenFunding.dataset.country || "";
           addBtn.setAttribute("hx-vals", JSON.stringify(btnVals));
           addBtn.click();
+          addBtn.setAttribute("hx-vals", JSON.stringify({"article_id": "{{ article.pk }}"}));
         });
       }
     });

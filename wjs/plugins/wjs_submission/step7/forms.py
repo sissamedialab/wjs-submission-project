@@ -3,7 +3,7 @@ from copy import copy
 from django import forms
 from django.utils.translation import gettext_lazy as _
 from events import logic as events_logic
-from submission.models import Article, ArticleFunding, Licence
+from submission.models import Article, Licence
 
 from ..events import SubmissionEvent
 from ..models import AccessMode, RevisionStorage, SubmissionArticleFunding
@@ -101,16 +101,14 @@ class SubmissionStep7Form(forms.ModelForm):
 
 
 class AddFundingForm(forms.ModelForm):
-    name = forms.CharField(required=True, label="Funder's name")
-    fundref_id = forms.CharField(required=False, label="Funder's DOI")
-    funding_id = forms.CharField(required=True, label="Grant / award number")
-    funding_statement = forms.CharField(widget=forms.Textarea, required=False, label="Funding statement")
-
     class Meta:
         model = SubmissionArticleFunding
-        fields = ["country"]
+        fields = ["country", "name", "fundref_id", "funding_id", "funding_statement", "article"]
         labels = {
             "country": "Country of Funding",
+        }
+        widgets = {
+            "article": forms.HiddenInput(),
         }
 
     def __init__(self, *args, **kwargs):
@@ -132,90 +130,25 @@ class AddFundingForm(forms.ModelForm):
         article_id = kwargs.pop("article_id")
         self.is_revision = kwargs.pop("is_revision", False)
         self.article = Article.objects.get(pk=article_id)
-
-        funding_id = kwargs.pop("funding_id", None)
-        funding_name = kwargs.pop("funding_name", None)
-        funding_country = kwargs.pop("funding_country", None)
-
         super().__init__(*args, **kwargs)
-        # Edit mode
-        if self.instance.pk:
-            af = self.instance.article_funding
-            instance_initials = {
-                "funding_id": af.funding_id,
-                "name": af.name,
-                "fundref_id": af.fundref_id,
-                "funding_statement": af.funding_statement,
-                "country": self.instance.country,
-            }
-            for field, value in instance_initials.items():
-                self.fields[field].initial = value
-            for field in ["funding_id", "name", "country"]:
-                self.fields[field].widget.attrs["readonly"] = True
-        # Selection from typeahead dropdown
-        readonly_kwargs = {
-            "funding_id": funding_id,
-            "name": funding_name,
-            "country": funding_country,
-        }
-        for field, value in readonly_kwargs.items():
-            if value:
-                self.fields[field].initial = value
-                self.fields[field].widget.attrs["readonly"] = True
+        if self.instance and self.instance.pk:
+            self.fields["name"].widget.attrs["readonly"] = True
+            self.fields["fundref_id"].widget.attrs["readonly"] = True
+            self.fields["country"].widget.attrs["readonly"] = True
+        self.data = self.data.copy()
+        self.data["article_id"] = article_id
+        self.data["article"] = self.article
 
-    def save(self, commit: bool = True) -> SubmissionArticleFunding:
+    def clean_article(self) -> Article:
         """
-        Save the submission funding information.
+        Force current article to be returned.
 
-        Works either in edit mode (updating an existing funding entry) or create mode (creating a new funding entry).
-        The function ensures data consistency between the `SubmissionArticleFunding` instance and the related
-        `ArticleFunding` instance.
+        Avoid tampering attempts.
 
-        :param commit: Indicates whether changes should be immediately saved to the database
-            (True) or not (False).
-        :type commit: bool
-        :return: The updated or newly created `SubmissionArticleFunding` instance.
-        :rtype: SubmissionArticleFunding
+        :return: Article instance associated with the form.
+        :rtype: Article
         """
-        name = self.cleaned_data.get("name")
-        funding_id = self.cleaned_data.get("funding_id")
-        fundref_id = self.cleaned_data.get("fundref_id")
-        funding_statement = self.cleaned_data.get("funding_statement")
-        country = self.cleaned_data.get("country")
-
-        if self.instance.pk:
-            # edit mode
-            article_funding = self.instance.article_funding
-            article_funding.name = name
-            article_funding.funding_id = funding_id
-            article_funding.fundref_id = fundref_id
-            article_funding.funding_statement = funding_statement
-            if commit:
-                article_funding.save()
-
-            submission_funding = self.instance
-            submission_funding.country = country or ""
-            if commit:
-                submission_funding.save()
-        else:
-            # create mode
-            article_funding = ArticleFunding(
-                name=name,
-                funding_id=funding_id,
-                fundref_id=fundref_id,
-                funding_statement=funding_statement,
-                article=self.article,
-            )
-            if commit:
-                article_funding.save()
-
-            submission_funding = super().save(commit=False)
-            submission_funding.article_funding = article_funding
-            submission_funding.country = country or ""
-            if commit:
-                submission_funding.save()
-
-        return submission_funding
+        return self.article
 
 
 class RevisionStep7Form(SubmissionStep7Form):
