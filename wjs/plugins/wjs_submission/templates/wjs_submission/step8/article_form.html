@@ -325,33 +325,39 @@
   <div class="wjs-submission-form__section mb-5">
     <div class="wjs-submission-form__form-label-title-container">
       <h2 class="wjs-submission-form__form-label-title">
-        Funder (WiP)
+        Funders
       </h2>
       <a href="{% url 'wjs_submission_7' article_id=article.id %}#step7-funder" class="wjs-submission-navigation-step__link">
         <i class="bi bi-pencil ms-1" aria-hidden="true"></i>
       </a>
     </div>
-
-    <div class="wjs-submission-form__section-content mb-2">
-      <label class=" fw-bold">Name</label>
-      <div class="">Funder</div>
-    </div>
-    <div class="wjs-submission-form__section-content mb-2">
-      <label class=" fw-bold">DOI</label>
-      <div class="">https://doi.org/1/12222</div>
-    </div>
-    <div class="wjs-submission-form__section-content mb-2">
-      <label class=" fw-bold">Country</label>
-      <div class="">Italy</div>
-    </div>
-    <div class="wjs-submission-form__section-content mb-2">
-      <label class=" fw-bold">Grant / award number</label>
-      <div class="">123456</div>
-    </div>
-    <div class="wjs-submission-form__section-content mb-2">
-      <label class=" fw-bold">Statement</label>
-      <div class="wjs-submission-form__text-area">elit. vel Sed malesuada quis venenatis venenatis quis risus Nullam eu ipsum luctus. eu sit ut adipiscing risus Sed Sed Suspendisse at.</div>
-    </div>
+    {% for funding in articles_fundings %}
+      <div class="wjs-submission-form__section-content mb-2 d-flex">
+        <div class="w-25">
+          <label class=" fw-bold">Name</label>
+          <div>{{ funding.name }}</div>
+        </div>
+        <div class="w-25">
+          <label class=" fw-bold">DOI</label>
+          <div>{{ funding.fundref_id|default:"-" }}</div>
+        </div>
+        <div class="w-25">
+          <label class=" fw-bold">Country</label>
+          <div>{{ funding.country|default:"-" }}</div>
+        </div>
+        <div class="w-25">
+          <label class=" fw-bold">Grant / award number</label>
+          <div>{{ funding.funding_id|default:"-" }}</div>
+        </div>
+      </div>
+      {% if funding.funding_statement %}
+      <div class="wjs-submission-form__section-content mb-2">
+        <label class=" fw-bold">Statement</label>
+        <div class="wjs-submission-form__text-area">{{ funding.funding_statement }}</div>
+      </div>
+      {% endif %}
+      {% if not forloop.last %}<hr class="mt-4 mb-4">{% endif %}
+    {% endfor %}
   </div>
 
 {% endblock submission_flow %}

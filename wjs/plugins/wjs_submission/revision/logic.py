@@ -13,6 +13,8 @@ from ..models import (
     RevisionArticleAuthorOrder,
     RevisionArticleCollaboration,
     RevisionStorage,
+    RevisionSubmissionArticleFunding,
+    SubmissionArticleFunding,
 )
 
 
@@ -205,6 +207,19 @@ class PopulateStep7:
         """
         self.revision_storage.data["access_mode"] = self.revision_storage.article.submission_data.access_mode.pk
         self.revision_storage.data["special_request"] = self.revision_storage.article.submission_data.special_request
+
+        fundings = SubmissionArticleFunding.objects.filter(article=self.revision_storage.article)
+        for funding in fundings:
+            RevisionSubmissionArticleFunding.objects.get_or_create(
+                pk=funding.pk,
+                revision_storage=self.revision_storage,
+                name=funding.name,
+                fundref_id=funding.fundref_id,
+                funding_id=funding.funding_id,
+                funding_statement=funding.funding_statement,
+                country=funding.country,
+            )
+
         if commit:
             self.revision_storage.save()
 

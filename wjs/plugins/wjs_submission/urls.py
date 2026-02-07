@@ -118,6 +118,8 @@ urlpatterns = [
     path("add-collaboration/", AddCollaborationView.as_view(), name="add-collaboration"),
     path("add-funding/", AddFundingView.as_view(), name="add-funding"),
     path("delete-funding/", DeleteFundingView.as_view(), name="delete-funding"),
+    path("add-funding/revision/", AddFundingView.as_view(is_revision=True), name="add-funding-revision"),
+    path("delete-funding/revision/", DeleteFundingView.as_view(is_revision=True), name="delete-funding-revision"),
     path(
         "submission/<int:article_id>/confirm/",
         RevisionStartConfirmView.as_view(),

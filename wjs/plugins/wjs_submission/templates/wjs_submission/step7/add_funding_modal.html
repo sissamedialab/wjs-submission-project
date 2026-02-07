@@ -1,10 +1,16 @@
 {% load django_bootstrap5 static field %}
 <div class="modal-header">
-  <h5 class="modal-title" id="htmxModalLabel">New Author</h5>
+  <h5 class="modal-title" id="htmxModalLabel">New Funder</h5>
   {% bootstrap_button button_class="btn-close" data_bs_dismiss="modal" button_type="button" aria_label="Close" content="" %}
 </div>
+{% if view.is_revision %}
+  {% url 'add-funding-revision' as add_funding_url %}
+{% else %}
+  {% url 'add-funding' as add_funding_url %}
+{% endif %}
 <div class="modal-body">
-  <form method="post" action="" class="wjs-submission-form" enctype="multipart/form-data" hx-post="{% url 'add-funding' %}"  hx-vals='{"article_id": "{{ article_id }}", "funding_pk": "{{ funding_pk|default_if_none:"" }}"}' hx-target="#selected-funding-wrapper">
+  <form method="post" action="" class="wjs-submission-form" enctype="multipart/form-data" hx-post="{{ add_funding_url }}" hx-vals='{"article_id": "{{ article_id }}", "funding_pk": "{{ funding_pk|default_if_none:"" }}"}'
+        hx-target="#selected-funding-wrapper">
     {% csrf_token %}
     {% bootstrap_form_errors form %}
     {% bootstrap_field form.name %}

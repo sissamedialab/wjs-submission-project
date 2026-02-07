@@ -3,6 +3,7 @@ from django.views.generic import UpdateView
 from submission.models import Article
 
 from ..mixins import AuthorFilteringView, StepCheckView
+from ..step7.views import get_article_fundings
 from ..workflow import is_revision, step_check_select_issue
 from .forms import RevisionForm, SubmissionStep8Form
 
@@ -49,4 +50,5 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
             context["arxiv_id"] = context["article"].identifiers.filter(id_type="arxiv").first().identifier
         context["show_issue"] = step_check_select_issue(self.object.journal, user=self.request.user)
         context["is_revision"] = is_revision(self.object)
+        context["articles_fundings"] = get_article_fundings(self.object)
         return context

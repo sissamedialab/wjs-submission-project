@@ -4,10 +4,21 @@ from submission.models import Article
 
 from ..access_mode import get_access_mode_configuration
 from ..mixins import AuthorFilteringView, HtmxMixin, StepCheckView
-from ..models import SubmissionArticleFunding
+from ..models import RevisionSubmissionArticleFunding, SubmissionArticleFunding
 from ..step4 import ModalRenderingMixin
 from ..workflow import is_revision
-from .forms import AddFundingForm, RevisionStep7Form, SubmissionStep7Form
+from .forms import (
+    AddFundingForm,
+    RevisionAddFundingForm,
+    RevisionStep7Form,
+    SubmissionStep7Form,
+)
+
+
+def get_article_fundings(article):
+    if is_revision(article):
+        return RevisionSubmissionArticleFunding.objects.filter(revision_storage__article=article)
+    return SubmissionArticleFunding.objects.filter(article=article)
 
 
 class SubmissionStep7View(AuthorFilteringView, StepCheckView, UpdateView):
@@ -70,14 +81,40 @@ class SubmissionStep7View(AuthorFilteringView, StepCheckView, UpdateView):
             article funding objects.
         """
         context = super().get_context_data(**kwargs)
-        context["articles_funding"] = SubmissionArticleFunding.objects.filter(article=self.object)
+        context["articles_funding"] = get_article_fundings(self.object)
+        context["is_revision"] = is_revision(self.object)
         return context
 
 
 class AddFundingView(ModalRenderingMixin):
-    model = SubmissionArticleFunding
-    form_class = AddFundingForm
     template_name = "wjs_submission/step7/add_funding_modal.html"
+    object = None
+    is_revision = False
+
+    @property
+    def model(self):
+        """
+        Return the model class based on the state of the object.
+
+        :returns: The corresponding model class.
+        :rtype: Type
+        :raises AttributeError: If the object's attributes are improperly configured.
+        """
+        if self.is_revision:
+            return RevisionSubmissionArticleFunding
+        return SubmissionArticleFunding
+
+    def get_form_class(self):
+        """
+        Determine and return the appropriate form class based on the revision state of the article.
+
+        :return: The form class to use for handling funding data.
+        :rtype: type[AddFundingForm] | type[RevisionAddFundingForm]
+        :raises AttributeError: If the attribute `article` is not defined or accessible.
+        """
+        if is_revision(self.article):
+            return RevisionAddFundingForm
+        return AddFundingForm
 
     def get_template_names(self):
         """Return template based on HTMX trigger."""
@@ -88,7 +125,7 @@ class AddFundingView(ModalRenderingMixin):
     def get_context_data(self, **kwargs):
         """Construct and returns the context data dictionary."""
         context = super().get_context_data(**kwargs)
-        context["articles_funding"] = SubmissionArticleFunding.objects.filter(article=self.article)
+        context["articles_funding"] = get_article_fundings(self.article)
         context["funding_pk"] = self.request.GET.get("funding_pk")
         return context
 
@@ -98,25 +135,19 @@ class AddFundingView(ModalRenderingMixin):
 
         :return: Form kwargs.
         """
+        funding_pk = None
         kwargs = super().get_form_kwargs()
-        # Parameters passed when adding the funding from dropdown results
-        if self.request.GET.get("article_id") and not self.request.GET.get("funding_pk"):
-            kwargs["data"] = self.request.GET.copy()
-            kwargs["article_id"] = kwargs["data"].pop("article_id")[0]
-            if not kwargs["data"]:
-                del kwargs["data"]
-            funding_pk = self.request.GET.get("funding_pk")
-        # Parameters combination when editing an existing funding from the funders table
-        elif self.request.GET.get("article_id") and self.request.GET.get("funding_pk"):
-            kwargs["article_id"] = self.request.GET.get("article_id")
-            funding_pk = self.request.GET.get("funding_pk")
-        # We are saving the funding from the modal
-        else:
-            kwargs["data"] = self.request.POST.copy()
-            kwargs["article_id"] = kwargs["data"].pop("article_id")[0]
+        if self.request.method == "POST":
+            kwargs["data"] = self.request.POST
             funding_pk = self.request.POST.get("funding_pk")
+        elif self.request.method == "GET":
+            funding_pk = self.request.GET.get("funding_pk")
+            if not funding_pk:
+                kwargs["data"] = self.request.GET
         if funding_pk:
-            kwargs["instance"] = SubmissionArticleFunding.objects.get(pk=funding_pk)
+            self.object = self.model.objects.get(pk=funding_pk)
+        kwargs["article"] = self.article
+        kwargs["instance"] = self.object
         return kwargs
 
     def form_valid(self, form):
@@ -130,13 +161,27 @@ class AddFundingView(ModalRenderingMixin):
 
 
 class DeleteFundingView(HtmxMixin, TemplateView):
-    model = SubmissionArticleFunding
     template_name = "wjs_submission/step7/selected_funding.html"
+    is_revision = False
+
+    @property
+    def model(self):
+        """
+        Return the appropriate model based on whether the instance represents a revision.
+
+        :raises AttributeError: If any required attributes are not properly set.
+        :return: Returns `RevisionSubmissionArticleFunding` if the instance represents
+            a revision. Otherwise, returns `SubmissionArticleFunding`.
+        :rtype: type
+        """
+        if self.is_revision:
+            return RevisionSubmissionArticleFunding
+        return SubmissionArticleFunding
 
     def get_context_data(self, **kwargs):
         """Construct and returns the context data dictionary."""
         context = super().get_context_data(**kwargs)
-        context["articles_funding"] = SubmissionArticleFunding.objects.filter(article=self.article)
+        context["articles_funding"] = self.model.objects.filter(article=self.article)
         context["funding_pk"] = self.request.GET.get("funding_pk")
         return context
 
@@ -150,7 +195,7 @@ class DeleteFundingView(HtmxMixin, TemplateView):
         :rtype: SubmissionArticleFunding
         :raises SubmissionArticleFunding.DoesNotExist: If no object with specified primary key exists in the queryset.
         """
-        return SubmissionArticleFunding.objects.get(pk=self.request.POST.get("funding_pk"))
+        return self.model.objects.get(pk=self.request.POST.get("funding_pk"))
 
     def post(self, request, *args, **kwargs):
         """

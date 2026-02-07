@@ -67,7 +67,13 @@
            hx-swap="innerHTML">
       </div>
       <div class="d-flex justify-content-end">
-        {% url 'add-funding' as add_funding_url %}
+        {% if is_revision %}
+          {% url 'add-funding-revision' as add_funding_url %}
+          {% url 'delete-funding-revision' as delete_funding_url %}
+        {% else %}
+          {% url 'add-funding' as add_funding_url %}
+          {% url 'delete-funding' as delete_funding_url %}
+        {% endif %}
         <button id="add-funding-btn" type="button"
                 class="btn btn-primary"
                 data-bs-toggle="modal"
@@ -80,7 +86,7 @@
           Add new funding
         </button>
       </div>
-      {% include "wjs_submission/step7/selected_funding.html" %}
+      {% include "wjs_submission/step7/selected_funding.html" with add_funding_url=add_funding_url delete_funding_url=delete_funding_url %}
     </div>
   </div>
 {% endblock submission_flow %}
@@ -140,7 +146,7 @@
           btnVals.country = hiddenFunding.dataset.country || "";
           addBtn.setAttribute("hx-vals", JSON.stringify(btnVals));
           addBtn.click();
-          addBtn.setAttribute("hx-vals", JSON.stringify({"article_id": "{{ article.pk }}"}));
+          addBtn.setAttribute("hx-vals", JSON.stringify({ "article_id": "{{ article.pk }}" }));
         });
       }
     });

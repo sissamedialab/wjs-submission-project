@@ -6,7 +6,12 @@ from events import logic as events_logic
 from submission.models import Article, Licence
 
 from ..events import SubmissionEvent
-from ..models import AccessMode, RevisionStorage, SubmissionArticleFunding
+from ..models import (
+    AccessMode,
+    RevisionStorage,
+    RevisionSubmissionArticleFunding,
+    SubmissionArticleFunding,
+)
 
 
 class SubmissionStep7Form(forms.ModelForm):
@@ -127,16 +132,15 @@ class AddFundingForm(forms.ModelForm):
                        information, funding details, and other metadata.
         :type kwargs: dict
         """
-        article_id = kwargs.pop("article_id")
         self.is_revision = kwargs.pop("is_revision", False)
-        self.article = Article.objects.get(pk=article_id)
+        self.article = kwargs.pop("article")
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
             self.fields["name"].widget.attrs["readonly"] = True
             self.fields["fundref_id"].widget.attrs["readonly"] = True
             self.fields["country"].widget.attrs["readonly"] = True
         self.data = self.data.copy()
-        self.data["article_id"] = article_id
+        self.data["article_id"] = self.article.pk
         self.data["article"] = self.article
 
     def clean_article(self) -> Article:
@@ -149,6 +153,12 @@ class AddFundingForm(forms.ModelForm):
         :rtype: Article
         """
         return self.article
+
+
+class RevisionAddFundingForm(AddFundingForm):
+    class Meta:
+        model = RevisionSubmissionArticleFunding
+        fields = ["country", "name", "fundref_id", "funding_id", "funding_statement"]
 
 
 class RevisionStep7Form(SubmissionStep7Form):

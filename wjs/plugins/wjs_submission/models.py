@@ -298,3 +298,44 @@ class SubmissionArticleFunding(ArticleFunding):
 
     def __str__(self):
         return self.name
+
+
+class RevisionSubmissionArticleFunding(models.Model):
+    revision_storage = models.ForeignKey(RevisionStorage, on_delete=models.CASCADE, related_name="funding")
+    name = models.CharField(
+        max_length=500,
+        blank=False,
+        null=False,
+        help_text="Funder name",
+    )
+    fundref_id = models.CharField(
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="Funder DOI (optional). Enter as a full Uniform "
+        "Resource Identifier (URI), such as "
+        "https://dx.doi.org/10.13039/501100021082",
+    )
+    funding_id = models.CharField(
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="The grant ID (optional). Enter the ID by itself",
+    )
+    funding_statement = models.TextField(
+        blank=True, help_text=_("Additional information regarding this funding entry")
+    )
+    country = models.CharField(max_length=128, blank=True)
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def article(self) -> Article:
+        """
+        Get the article associated with the current revision.
+
+        :return: The article object associated with the current revision.
+        :rtype: Article
+        """
+        return self.revision_storage.article
