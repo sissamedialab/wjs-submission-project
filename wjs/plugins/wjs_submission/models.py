@@ -4,6 +4,7 @@ from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 from submission.models import Article, ArticleAuthorOrder
 
+from .settings import ARXIV_BASE_DOI_
 from .signals import *  # noqa
 
 
@@ -81,6 +82,32 @@ class ArticleSubmission(models.Model):
 
     def __str__(self):
         return f"ArticleSubmission for {self.article}"
+
+    def get_arxiv_id(self) -> str:
+        """
+        Retrieve the arXiv identifier for the associated article.
+
+        :raises AttributeError: If the `article` object does not have the `get_identifier` method.
+        :raises ValueError: If the `article.get_identifier('arxiv')` call returns an invalid result.
+
+        :return: The arXiv identifier for the article.
+        :rtype: str
+        """
+        return self.article.get_identifier("arxiv")
+
+    def get_arxiv_doi(self) -> str:
+        """
+        Retrieve the DOI URL for the arXiv paper.
+
+        The method constructs the DOI URL using the format specified by arXiv and the
+        arXiv ID returned by the `get_arxiv_id` method.
+
+        :return: The DOI URL as a string.
+        :rtype: str
+        :raises: AttributeError if `get_arxiv_id` is not callable or does not return a valid value.
+        """
+        versionless_arxiv_id = self.get_arxiv_id().partition("v")[0]
+        return f"{ARXIV_BASE_DOI_}/arXiv.{versionless_arxiv_id}"
 
 
 class CollaborationRelation(models.TextChoices):
