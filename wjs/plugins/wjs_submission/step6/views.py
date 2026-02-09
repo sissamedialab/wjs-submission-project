@@ -55,48 +55,6 @@ def get_files(article: Article) -> dict:
     return files_by_type
 
 
-class TableRenderingContext:
-    @property
-    def _article(self) -> Article:
-        """Retrieve article object."""
-        return Article.objects.get(pk=self.kwargs["article_id"])
-
-    def get_context_data(self, **kwargs):
-        """
-        Add to context the files list & co.
-
-        The returned context is suitable both for the main template (article_form.html) and the single files-tables
-        templates (files_table.html).
-        Also, this method knows both about normal submissions and revisions and gets the files from the Article or the
-        RevisionStorage accordingly.
-
-        :param kwargs: Additional keyword arguments passed to the method.
-        :return: The modified context dictionary with additional article files and related attributes.
-        :rtype: dict
-        """
-        context = super().get_context_data(**kwargs)
-
-        context["article"] = self._article
-
-        file_type = self.kwargs.get("file_type")
-        context["button_name"] = f"trigger_{file_type}"
-        context["file_type"] = file_type
-
-        files_by_type = get_files(self._article)
-        if file_type == "manuscript":
-            context["files_list"] = files_by_type["manuscript_files"]
-            context["show_conversion"] = True
-            context["failed_conversion_log"] = core_models.File.objects.filter(
-                article_id=self._article.pk, label="Failed conversion log ConvertManuscriptToPdf"
-            ).first()
-        elif file_type == "data":
-            context["files_list"] = files_by_type["data_figure_files"]
-        elif file_type == "administrative":
-            context["files_list"] = files_by_type["administrative_files"]
-
-        return context
-
-
 class SubmissionStep6View(AuthorFilteringView, StepCheckView, UpdateView):
     model = Article
     step = 6
@@ -179,6 +137,42 @@ class SubmissionStep6View(AuthorFilteringView, StepCheckView, UpdateView):
         return context
 
 
+class TableRenderingContext:
+    @property
+    def _article(self) -> Article:
+        """Retrieve article object."""
+        return Article.objects.get(pk=self.kwargs["article_id"])
+
+    def get_context_data(self, **kwargs):
+        """
+        Add to context the data required to render the files table.
+
+        :param kwargs: Additional keyword arguments passed to the method.
+        :return: The modified context dictionary with additional article files and related attributes.
+        :rtype: dict
+        """
+        context = super().get_context_data(**kwargs)
+        context["article"] = self._article
+
+        file_type = self.kwargs.get("file_type")
+        context["button_name"] = f"trigger_{file_type}"
+        context["file_type"] = file_type
+
+        files_by_type = get_files(self._article)
+        if file_type == "manuscript":
+            context["files_list"] = files_by_type["manuscript_files"]
+            context["show_conversion"] = True
+            context["failed_conversion_log"] = core_models.File.objects.filter(
+                article_id=self._article.pk, label="Failed conversion log ConvertManuscriptToPdf"
+            ).first()
+        elif file_type == "data":
+            context["files_list"] = files_by_type["data_figure_files"]
+        elif file_type == "administrative":
+            context["files_list"] = files_by_type["administrative_files"]
+
+        return context
+
+
 class RenderSubmissionFile(HtmxMixin, AuthorFilteringView, TableRenderingContext, DetailView):
     model = Article
     pk_url_kwarg = "article_id"
@@ -242,7 +236,8 @@ class DeleteSubmissionFile(HtmxMixin, AuthorFilteringView, TableRenderingContext
                 if self.object.id in fileids_to_delete:
                     revision_storage.data["manuscript_files"] = None
                     revision_storage.data["source_files"] = None
-                    core_models.File.objects.filter(id__in=fileids_to_delete).delete()
+                    for f in core_models.File.objects.filter(id__in=fileids_to_delete):
+                        f.delete()
                 else:
                     logger.error(
                         f"Unexpected file to delete {self.object.id} not manuscript nor source"
