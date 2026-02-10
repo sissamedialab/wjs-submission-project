@@ -194,6 +194,7 @@ class PopulateStep7:
     Setup the following fields:
     - access_mode
     - special_request
+    - funding
     """
 
     revision_storage: RevisionStorage
