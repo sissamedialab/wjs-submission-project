@@ -407,7 +407,7 @@ def test_access_mode_form(
             initial={},
         )
         if access_mode_fixed:
-            assert not configuration.user_selectable
+            assert not configuration.user_can_select_access_mode
             assert isinstance(form.fields["license"].widget, forms.HiddenInput)
             assert isinstance(form.fields["rights"].widget, forms.HiddenInput)
             assert isinstance(form.fields["access_mode"].widget, forms.HiddenInput)
@@ -419,7 +419,7 @@ def test_access_mode_form(
             assert form.initial["rights"] == configuration.copyright_text
             assert form.initial["license"] == configuration.license
         else:
-            assert configuration.user_selectable
+            assert configuration.user_can_select_access_mode
             assert isinstance(form.fields["rights"].widget, forms.HiddenInput)
             assertQuerysetEqual(
                 form.fields["access_mode"].queryset,
@@ -435,6 +435,7 @@ def test_access_mode_form(
     [
         True,
         False,
+        None,
     ],
 )
 @pytest.mark.django_db
@@ -444,7 +445,7 @@ def test_access_mode_form_data(
     user: Account,
     article: Article,
     fake_request,
-    access_mode_fixed: bool,
+    access_mode_fixed: bool | None,
 ):
     """
     Values derived from access mode configuration are preserved on submission and stored in the submission data.
@@ -457,53 +458,72 @@ def test_access_mode_form_data(
         licence = Licence.objects.create(short_name="random", name="Random", journal=journal)
         journal_parameters = oa.parameters.get(journal=article.journal)
 
-        if access_mode_fixed:
+        if access_mode_fixed is True:
             configuration = AccessModeConfiguration(
                 access_mode=oa,
                 license=journal_parameters.licence,
                 copyright_text=journal_parameters.copyright,
-                user_selectable=False,
+                user_can_select_access_mode=False,
             )
-        else:
-            configuration = AccessModeConfiguration(
-                access_mode=oa,
-                license=journal_parameters.licence,
-                copyright_text=journal_parameters.copyright,
-                user_selectable=True,
-            )
-        form = SubmissionStep7Form(
-            data={
+            data = {
                 "license": licence,
                 "rights": "random text",
                 "access_mode": other,
-            },
+            }
+        elif access_mode_fixed is False:
+            configuration = AccessModeConfiguration(
+                access_mode=oa,
+                license=journal_parameters.licence,
+                copyright_text=journal_parameters.copyright,
+                user_can_select_access_mode=True,
+            )
+
+            data = {
+                "license": licence,
+                "rights": "random text",
+                "access_mode": other,
+            }
+        else:
+            configuration = None
+            data = {}
+        form = SubmissionStep7Form(
+            data=data,
             journal=journal,
             instance=article,
             step=7,
             configuration=configuration,
             initial={},
         )
-        if access_mode_fixed:
-            form.is_valid()
+        if access_mode_fixed is True:
+            assert form.is_valid()
             assert form.cleaned_data["access_mode"] == configuration.access_mode
             assert form.cleaned_data["rights"] == configuration.copyright_text
             assert form.cleaned_data["license"] == configuration.license
-        else:
-            form.is_valid()
+        elif access_mode_fixed is False:
+            assert form.is_valid()
             assert form.cleaned_data["access_mode"] == other
             assert form.cleaned_data["rights"] == "random text"
             assert form.cleaned_data["license"] == licence
+        else:
+            assert form.is_valid()
+            assert not form.cleaned_data["access_mode"]
+            assert not form.cleaned_data["rights"]
+            assert not form.cleaned_data["license"]
         form.save()
         article.refresh_from_db()
         article.submission_data.refresh_from_db()
-        if access_mode_fixed:
+        if access_mode_fixed is True:
             assert article.submission_data.access_mode == configuration.access_mode
             assert article.rights == configuration.copyright_text
             assert article.license == configuration.license
-        else:
+        elif access_mode_fixed is False:
             assert article.submission_data.access_mode == other
             assert article.rights == "random text"
             assert article.license == licence
+        else:
+            assert not article.submission_data.access_mode
+            assert not article.rights
+            assert not article.license
         raise_event.assert_called_once_with(
             SubmissionEvent.ON_ACCESS_MODE_SELECTION, article=article, submission_data=article.submission_data
         )

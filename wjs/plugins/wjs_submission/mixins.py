@@ -12,7 +12,7 @@ from submission.models import (
 )
 from utils.setting_handler import get_setting
 
-from .workflow import STEPS, Step
+from .workflow import STEPS, Step, is_revision
 
 
 class AuthorFilteringView(UserPassesTestMixin):
@@ -93,6 +93,7 @@ class StepCheckView(ModelFormMixin):
             journal=self.request.journal, article=self.object, user=self.request.user
         )
         context["step"] = self._step_object
+        kwargs["is_revision"] = is_revision(self.object)
         return context
 
 
