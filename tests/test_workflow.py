@@ -4,8 +4,9 @@ from unittest.mock import patch
 import pytest
 from django.urls import reverse
 from journal.models import Journal
+from plugins.wjs_submission.models import AccessMode, AccessModeJournal
 from plugins.wjs_submission.workflow import STEPS, Step
-from submission.models import Article
+from submission.models import Article, Licence
 
 
 @pytest.mark.parametrize(
@@ -280,3 +281,46 @@ def test_step_state_mapping(
         else:
             expected_available = state.step.step_number <= step_number + offset
             assert state.available == expected_available
+
+
+@pytest.mark.parametrize(
+    ("funding_active", "access_mode_active", "active"),
+    [
+        (True, True, True),
+        (False, True, True),
+        (True, False, True),
+        (False, False, False),
+    ],
+)
+@pytest.mark.django_db
+def test_step_7(
+    article: Article,
+    install_plugins: Callable,
+    funding_active: bool,
+    access_mode_active: bool,
+    active: bool,
+):
+    """
+    Verify conditions for enabling step 7.
+
+    :param article: An instance of a submitted article, used to test the mapping of steps to states.
+    :type article: Article
+    :param install_plugins: A callable function to set up required plugins for the journal test.
+    :type install_plugins: Callable
+    :param funding_active: Active funding section.
+    :type funding_active: bool
+    :param access_mode_active: Active access mode section.
+    :type access_mode_active: bool
+    :param active: Expected step status.
+    :type active: bool
+    """
+    article.journal.submissionconfiguration.funding = funding_active
+    article.journal.submissionconfiguration.save()
+    if access_mode_active:
+        access_mode = AccessMode.objects.all().first()
+        licence = Licence.objects.filter(journal=article.journal).first()
+        AccessModeJournal.objects.create(journal=article.journal, licence=licence, access_mode=access_mode)
+    else:
+        AccessModeJournal.objects.all().delete()
+    step = STEPS[7]
+    assert step.is_active(journal=article.journal, article=article) == active

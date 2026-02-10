@@ -2,7 +2,7 @@ from django.urls import reverse_lazy
 from django.views.generic import UpdateView
 from submission.models import Article
 
-from ..access_mode import get_access_mode_configuration
+from ..access_mode import AccessModeConfiguration, get_access_mode_configuration
 from ..mixins import AuthorFilteringView, StepCheckView
 from ..workflow import is_revision
 from .forms import RevisionStep7Form, SubmissionStep7Form
@@ -13,6 +13,7 @@ class SubmissionStep7View(AuthorFilteringView, StepCheckView, UpdateView):
     step = 7
     form_class = SubmissionStep7Form
     template_name = "wjs_submission/step7/article_form.html"
+    access_mode_configuration: AccessModeConfiguration | None
 
     def get_form_class(self):
         """

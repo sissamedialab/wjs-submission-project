@@ -41,6 +41,8 @@ class SubmissionStep7Form(forms.ModelForm):
         :param kwargs: Form kwargs
         :return: Updated kwargs
         """
+        if not self.configuration:
+            return kwargs
         for field in (
             (self.configuration.license, "license"),
             (self.configuration.copyright_text, "rights"),
@@ -50,7 +52,7 @@ class SubmissionStep7Form(forms.ModelForm):
                 kwargs["initial"][field[1]] = field[0]
             # form data is overwritten with initial values only if calculated values are not customisable by the user
             # in the form UI
-            if "data" in kwargs and not self.configuration.user_selectable:
+            if "data" in kwargs and not self.configuration.user_can_select_access_mode:
                 tmp = copy(kwargs["data"])
                 tmp[field[1]] = field[0]
                 kwargs["data"] = tmp
@@ -61,19 +63,22 @@ class SubmissionStep7Form(forms.ModelForm):
         Configure fields according to access mode configuration.
         """
         self.fields["license"].queryset = Licence.objects.filter(journal=self.journal)
-        if self.configuration.user_selectable:
-            self.fields["access_mode"].queryset = AccessMode.objects.filter(
-                parameters__journal=self.journal, user_selectable=True
-            )
-            self.fields["license"].widget = forms.HiddenInput()
-            self.fields["rights"].widget = forms.HiddenInput()
+        if self.configuration:
+            if self.configuration.user_can_select_access_mode:
+                self.fields["access_mode"].queryset = AccessMode.objects.filter(
+                    parameters__journal=self.journal, user_selectable=True
+                )
+                self.fields["license"].widget = forms.HiddenInput()
+                self.fields["rights"].widget = forms.HiddenInput()
+            else:
+                self.fields["access_mode"].queryset = AccessMode.objects.filter(
+                    parameters__journal=self.journal, user_selectable=False
+                )
+                self.fields["access_mode"].widget = forms.HiddenInput()
+                self.fields["license"].widget = forms.HiddenInput()
+                self.fields["rights"].widget = forms.HiddenInput()
         else:
-            self.fields["access_mode"].queryset = AccessMode.objects.filter(
-                parameters__journal=self.journal, user_selectable=False
-            )
-            self.fields["access_mode"].widget = forms.HiddenInput()
-            self.fields["license"].widget = forms.HiddenInput()
-            self.fields["rights"].widget = forms.HiddenInput()
+            self.fields["access_mode"].required = False
         for field in self.fields:
             if self.fields[field].required:
                 self.fields[field].widget.attrs["required"] = True
