@@ -76,9 +76,14 @@ class SubmissionStep7Form(forms.ModelForm):
                 self.fields["license"].widget = forms.HiddenInput()
                 self.fields["rights"].widget = forms.HiddenInput()
             else:
-                self.fields["access_mode"].queryset = AccessMode.objects.filter(
-                    parameters__journal=self.journal, user_selectable=False
-                )
+                if self.configuration.access_mode:
+                    self.fields["access_mode"].queryset = AccessMode.objects.filter(
+                        pk=self.configuration.access_mode.pk
+                    )
+                else:
+                    self.fields["access_mode"].queryset = AccessMode.objects.filter(
+                        parameters__journal=self.journal, user_selectable=False
+                    )
                 self.fields["access_mode"].widget = forms.HiddenInput()
                 self.fields["license"].widget = forms.HiddenInput()
                 self.fields["rights"].widget = forms.HiddenInput()

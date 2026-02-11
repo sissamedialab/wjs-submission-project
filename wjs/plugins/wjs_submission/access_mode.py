@@ -73,17 +73,22 @@ def noop(user: Account, article: Article) -> AccessModeConfiguration | None:
     :raises: No exceptions are raised.
     """
     try:
-        access_mode = AccessModeJournal.objects.get(journal=article.journal).access_mode
+        journal_parameters = AccessModeJournal.objects.get(journal=article.journal)
+        return AccessModeConfiguration(
+            access_mode=journal_parameters.access_mode,
+            license=journal_parameters.licence,
+            copyright_text=journal_parameters.copyright,
+            user_can_select_access_mode=False,
+        )
     except AccessModeJournal.MultipleObjectsReturned:
-        access_mode = None
+        return AccessModeConfiguration(
+            access_mode=None,
+            license=None,
+            copyright_text="",
+            user_can_select_access_mode=True,
+        )
     except AccessModeJournal.DoesNotExist:
         return None
-    return AccessModeConfiguration(
-        access_mode=access_mode,
-        license=None,
-        copyright_text="",
-        user_can_select_access_mode=access_mode is None,
-    )
 
 
 def get_affiliation_country(article: Article) -> Country:

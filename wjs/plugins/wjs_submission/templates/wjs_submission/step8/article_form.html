@@ -322,7 +322,8 @@
     {% endif %}
   </div>
 
-  <div class="wjs-submission-form__section mb-5">
+  {% if journal.submissionconfiguration.funding %}
+    <div class="wjs-submission-form__section mb-5">
     <div class="wjs-submission-form__form-label-title-container">
       <h2 class="wjs-submission-form__form-label-title">
         Funders
@@ -351,14 +352,16 @@
         </div>
       </div>
       {% if funding.funding_statement %}
-      <div class="wjs-submission-form__section-content mb-2">
-        <label class=" fw-bold">Statement</label>
-        <div class="wjs-submission-form__text-area">{{ funding.funding_statement }}</div>
-      </div>
+        <div class="wjs-submission-form__section-content mb-2">
+          <label class=" fw-bold">Statement</label>
+          <div class="wjs-submission-form__text-area">{{ funding.funding_statement }}</div>
+        </div>
       {% endif %}
-      {% if not forloop.last %}<hr class="mt-4 mb-4">{% endif %}
+      {% if not forloop.last %}
+        <hr class="mt-4 mb-4">{% endif %}
     {% endfor %}
-  </div>
+  {% endif %}
+</div>
 
 {% endblock submission_flow %}
 
