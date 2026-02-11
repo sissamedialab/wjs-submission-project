@@ -115,10 +115,12 @@
 
     const selector = document.getElementById("id_access_mode");
     document.addEventListener("DOMContentLoaded", function() {
-      checkAccessMode(selector.value);
-      selector.addEventListener("change", function(event) {
-        checkAccessMode(event.target.value);
-      });
+      if(selector) {
+        checkAccessMode(selector.value);
+        selector.addEventListener("change", function(event) {
+          checkAccessMode(event.target.value);
+        });
+      }
     });
 
     window.addEventListener("load", function() {
@@ -138,8 +140,10 @@
       const hiddenFunding = document.getElementById("id_funding_id");
       const addBtn = document.getElementById("add-funding-btn");
 
+          console.log(hiddenFunding, addBtn);
       if (hiddenFunding && addBtn) {
         hiddenFunding.addEventListener("change", function() {
+          console.log(addBtn.getAttribute("hx-vals"));
           const btnVals = JSON.parse(addBtn.getAttribute("hx-vals") || "{}");
           btnVals.fundref_id = hiddenFunding.value || "";
           btnVals.name = hiddenFunding.dataset.name || "";

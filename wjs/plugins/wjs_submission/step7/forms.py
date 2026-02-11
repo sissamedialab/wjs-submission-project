@@ -143,22 +143,28 @@ class AddFundingForm(forms.ModelForm):
         self.data["article_id"] = self.article.pk
         self.data["article"] = self.article
 
-    def clean_article(self) -> Article:
-        """
-        Force current article to be returned.
-
-        Avoid tampering attempts.
-
-        :return: Article instance associated with the form.
-        :rtype: Article
-        """
-        return self.article
-
 
 class RevisionAddFundingForm(AddFundingForm):
     class Meta:
         model = RevisionSubmissionArticleFunding
-        fields = ["country", "name", "fundref_id", "funding_id", "funding_statement"]
+        fields = ["country", "name", "fundref_id", "funding_id", "funding_statement", "revision_storage"]
+
+    def __init__(self, *args, **kwargs):
+        """
+        Initialize the instance and its attributes.
+
+        Force revision_storage data from article instance.
+
+        :param args: Positional arguments passed to the parent class.
+        :type args: tuple
+        :param kwargs: Keyword arguments containing initialization data such as article
+                       information, funding details, and other metadata.
+        :type kwargs: dict
+        """
+        super().__init__(*args, **kwargs)
+        self.data = self.data.copy()
+        self.data["revision_storage_id"] = self.article.revisionstorage.pk
+        self.data["revision_storage"] = self.article.revisionstorage
 
 
 class RevisionStep7Form(SubmissionStep7Form):
@@ -182,3 +188,20 @@ class RevisionStep7Form(SubmissionStep7Form):
                 continue
             kwargs["initial"][field] = value
         super().__init__(*args, **kwargs)
+
+    def save(self, commit=True):
+        """
+        Extend the save method to save data on revision_starage model.
+
+        :param commit: commit changes to database
+        :return:
+        """
+        revision_storage = RevisionStorage.objects.get(article=self.instance)
+        revision_storage.revision_step = max(revision_storage.revision_step, self.step)
+
+        revision_storage.data["access_mode"] = self.cleaned_data.get("access_mode").pk
+        revision_storage.data["special_request"] = self.cleaned_data.get("special_request")
+
+        revision_storage.save()
+
+        return self.instance

@@ -14,6 +14,7 @@
         </thead>
         <tbody>
         {% for funding in articles_funding %}
+          {% if forloop.first %}<input type="hidden" name="funding_id" id="id_funding_id" value="{{ funding.pk }}">{% endif %}
           <tr>
             <td>{{ funding.name }}</td>
             <td>{{ funding.fundref_id|default:"-" }}</td>
@@ -39,6 +40,8 @@
               </button>
             </td>
           </tr>
+        {% empty %}
+          <input type="hidden" name="funding_id" id="id_funding_id">
         {% endfor %}
         </tbody>
       </table>

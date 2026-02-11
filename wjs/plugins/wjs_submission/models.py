@@ -82,6 +82,39 @@ class ArticleSubmission(models.Model):
     def __str__(self):
         return f"ArticleSubmission for {self.article}"
 
+    def save(
+        self,
+        *,
+        force_insert=False,
+        force_update=False,
+        using=None,
+        update_fields=None,
+    ):
+        """
+        Save the current instance to the database, applying specific access mode rules if applicable.
+
+        :param force_insert: Force an SQL INSERT operation, even if the object has a primary key
+        :type force_insert: bool
+        :param force_update: Force an SQL UPDATE operation, even if the object is new
+        :type force_update: bool
+        :param using: The database alias to use for the save operation
+        :type using: str or None
+        :param update_fields: Specify names of fields to update if performing an update operation
+        :type update_fields: list[str] or None
+        """
+        super().save(force_insert=force_insert, force_update=force_update, using=using, update_fields=update_fields)
+        if self.access_mode:
+            try:
+                journal_access_mode_parameters = AccessModeJournal.objects.filter(
+                    access_mode=self.access_mode, journal=self.article.journal
+                )
+                if journal_access_mode_parameters.exists():
+                    self.article.licence = journal_access_mode_parameters.first().licence
+                    self.article.rigths = journal_access_mode_parameters.first().copyright
+            except AccessModeJournal.DoesNotExist:
+                # ignoring configuration error to avoid breaking submission process
+                pass
+
 
 class CollaborationRelation(models.TextChoices):
     BY = "by", _("by a collaboration")
