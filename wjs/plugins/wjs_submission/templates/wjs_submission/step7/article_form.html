@@ -2,6 +2,7 @@
 {% load django_bootstrap5 field hooks settings static wjs_articles %}
 
 {% block submission_flow %}
+            {% bootstrap_form_errors form %}
   {% if form.configuration %}
     <div class="wjs-submission-form__section mb-5">
       <h2 class="wjs-submission-form__form-label-title" id="step7-access-mode-section">Access mode</h2>
@@ -56,41 +57,43 @@
     </div>
   {% endif %}
 
-  <div class="wjs-submission-form__section mb-5">
-    <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label--required" id="step7-funding-section">Funding</h2>
-    <div class="wjs-submission-form__section-content">
-      <div class="mb-3">
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
-        quis nostrud exercitation ullamco laboris
+  {% if journal.submissionconfiguration.funding %}
+    <div class="wjs-submission-form__section mb-5">
+      <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label--required" id="step7-funding-section">Funding</h2>
+      <div class="wjs-submission-form__section-content">
+        <div class="mb-3">
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
+          quis nostrud exercitation ullamco laboris
+        </div>
+        <div class="wjs-submission-form__search-input-text" id="funding-search-wrapper"
+             hx-get="{% url 'search-typeahead-funding' %}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+        </div>
+        <div class="d-flex justify-content-end">
+          {% if is_revision %}
+            {% url 'add-funding-revision' as add_funding_url %}
+            {% url 'delete-funding-revision' as delete_funding_url %}
+          {% else %}
+            {% url 'add-funding' as add_funding_url %}
+            {% url 'delete-funding' as delete_funding_url %}
+          {% endif %}
+          <button id="add-funding-btn" type="button"
+                  class="btn btn-primary"
+                  data-bs-toggle="modal"
+                  data-bs-target="#htmxModal"
+                  hx-get="{{ add_funding_url }}"
+                  hx-trigger="click"
+                  hx-target="#htmxModalContent"
+                  hx-vals='{"article_id": "{{ article.pk }}"}'
+                  disabled="">
+            Add new funding
+          </button>
+        </div>
+        {% include "wjs_submission/step7/selected_funding.html" with add_funding_url=add_funding_url delete_funding_url=delete_funding_url %}
       </div>
-      <div class="wjs-submission-form__search-input-text" id="funding-search-wrapper"
-           hx-get="{% url 'search-typeahead-funding' %}"
-           hx-trigger="load"
-           hx-swap="innerHTML">
-      </div>
-      <div class="d-flex justify-content-end">
-        {% if is_revision %}
-          {% url 'add-funding-revision' as add_funding_url %}
-          {% url 'delete-funding-revision' as delete_funding_url %}
-        {% else %}
-          {% url 'add-funding' as add_funding_url %}
-          {% url 'delete-funding' as delete_funding_url %}
-        {% endif %}
-        <button id="add-funding-btn" type="button"
-                class="btn btn-primary"
-                data-bs-toggle="modal"
-                data-bs-target="#htmxModal"
-                hx-get="{{ add_funding_url }}"
-                hx-trigger="click"
-                hx-target="#htmxModalContent"
-                hx-vals='{"article_id": "{{ article.pk }}"}'
-                disabled="">
-          Add new funding
-        </button>
-      </div>
-      {% include "wjs_submission/step7/selected_funding.html" with add_funding_url=add_funding_url delete_funding_url=delete_funding_url %}
     </div>
-  </div>
+  {% endif %}
 {% endblock submission_flow %}
 
 {% block js %}
@@ -123,7 +126,7 @@
           checkAccessMode(event.target.value);
         });
       }
-      if(selector) {
+      if (selector) {
         checkAccessMode(selector.value);
         selector.addEventListener("change", function(event) {
           checkAccessMode(event.target.value);
@@ -148,7 +151,7 @@
       const hiddenFunding = document.getElementById("id_funding_id");
       const addBtn = document.getElementById("add-funding-btn");
 
-          console.log(hiddenFunding, addBtn);
+      console.log(hiddenFunding, addBtn);
       if (hiddenFunding && addBtn) {
         hiddenFunding.addEventListener("change", function() {
           console.log(addBtn.getAttribute("hx-vals"));

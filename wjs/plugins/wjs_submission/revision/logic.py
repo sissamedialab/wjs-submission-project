@@ -9,6 +9,7 @@ from submission.models import (
 
 from ..models import (
     ArticleCollaboration,
+    ArticleSubmission,
     CollaborationRelation,
     RevisionArticleAuthorOrder,
     RevisionArticleCollaboration,
@@ -48,6 +49,24 @@ class BaseSetupRevisionStorage:
         """Populate the RevisionStorage object with data based on the revision flow type."""
         raise NotImplementedError
 
+    def _ensure_submission_data(self) -> ArticleSubmission:
+        """
+        Ensure ArticleSubmission wrapper exists.
+
+        It is possible that articles submitted before the ArticleSubmission wrapper was introduced
+        do not have one such object associated, because it (the ArticleSubmission object) is created
+        only when the Article is created.
+
+        However, such object is needed in some steps (e.g. step6) of the revision process.
+
+        Here we ensure that it exists.
+        """
+        submission_data, created = ArticleSubmission.objects.get_or_create(article=self.revision_storage.article)
+        if created:
+            pass
+            # TODO: do I need to fix some of its data?
+        return submission_data
+
     def run(self):
         """Run the initialization of the RevisionStorage object according to the initialized revision flow."""
         with atomic():
@@ -56,6 +75,7 @@ class BaseSetupRevisionStorage:
             self._ensure_storage()
             self._populate_storage()
             self._populate_additional_models()
+            self._ensure_submission_data()
 
 
 @dataclasses.dataclass
@@ -187,6 +207,46 @@ class PopulateStep5:
 
 
 @dataclasses.dataclass
+class PopulateStep6:
+    """
+    Populate the RevisionStorage object with data for step 6 of the revision flow.
+
+    Setup the following fields:
+    - supplementary_files
+    - data_figure_files
+    """
+
+    revision_storage: RevisionStorage
+
+    def __call__(self, commit: bool = False):
+        """
+        Run the initialization of the RevisionStorage object according to the initialized revision flow.
+
+        :param commit: Save the updated models. Set to True if it's the last step to initialize RevisionStorage.
+        :type commit: bool
+        """
+        self.revision_storage.data["das"] = ""
+        self.revision_storage.data["das_url"] = ""
+        self.revision_storage.data["cas"] = ""
+        self.revision_storage.data["cas_url"] = ""
+        # Note that we keep the standard slot names (e.g. manuscript_fileS),
+        # even for fields where we know that only one item will be set.
+        self.revision_storage.data["manuscript_files"] = None
+        self.revision_storage.data["source_files"] = None
+        self.revision_storage.data["supplementary_files"] = list(
+            self.revision_storage.article.supplementary_files.all().values_list("id", flat=True),
+        )
+        self.revision_storage.data["data_figure_files"] = list(
+            self.revision_storage.article.data_figure_files.all().values_list("id", flat=True),
+        )
+        self.revision_storage.data["administrative_files"] = list(
+            self.revision_storage.article.submission_data.administrative_files.all().values_list("id", flat=True),
+        )
+        if commit:
+            self.revision_storage.save()
+
+
+@dataclasses.dataclass
 class PopulateStep7:
     """
     Populate the RevisionStorage object with data for step 7 of the revision flow.
@@ -278,6 +338,7 @@ class SetupRevisionStorageFull(BaseSetupRevisionStorage):
         PopulateStep1(self.revision_storage)()
         PopulateStep4(self.revision_storage)()
         PopulateStep5(self.revision_storage)()
+        PopulateStep6(self.revision_storage)()
         PopulateStep7(self.revision_storage)(commit=True)
 
     def _populate_additional_models(self):
