@@ -2,57 +2,59 @@
 {% load django_bootstrap5 field hooks settings static wjs_articles %}
 
 {% block submission_flow %}
-  <div class="wjs-submission-form__section mb-5">
-    <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label--required" id="step7-access-mode-section">Access mode</h2>
-    <div class="wjs-submission-form__section-content">
-      {% if settings.DEBUG %}{{ form.errors }}{% endif %}
-      <div class="mb-3">
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore
-        magna aliqua.
-        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-      </div>
-    </div>
-  </div>
-  {% if view.access_mode_configuration.access_mode == object.submission_data.access_mode %}
+  {% if form.configuration %}
     <div class="wjs-submission-form__section mb-5">
+      <h2 class="wjs-submission-form__form-label-title" id="step7-access-mode-section">Access mode</h2>
       <div class="wjs-submission-form__section-content">
-        Access mode has not changed, it's not possible to change it.
+        {% if settings.DEBUG %}{% bootstrap_form_errors form %}{% endif %}
+        <div class="mb-3">
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore
+          magna aliqua.
+          Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+        </div>
       </div>
     </div>
-  {% else %}
-    {% if view.access_mode_configuration.user_selectable %}
+    {% if is_revision and view.access_mode_configuration.access_mode and view.access_mode_configuration.access_mode == object.submission_data.access_mode %}
       <div class="wjs-submission-form__section mb-5">
         <div class="wjs-submission-form__section-content">
-          {{ form.errors }}
-          <p>Please select the way your paper will be published, if accepted:</p>
-          {% bootstrap_field form.access_mode label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" %}
-          {% bootstrap_field form.license label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" %}
-        </div>
-        <div id="js-access-mode-message" class="wjs-submission-form__alert-message-box wjs-submission-form__alert-message-box--warning d-none d-flex">
-          <i class="bi bi-exclamation-triangle"></i>&nbsp;&nbsp;
-          {{ request.journal|setting:'oat_disclaimer_message'|safe }}
-        </div>
-      </div>
-      <div class="wjs-submission-form__section mb-5">
-        <div class="wjs-submission-form__section-content">
-          {% bootstrap_field form.rights label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" %}
+          Access mode has not changed, it's not possible to change it.
         </div>
       </div>
     {% else %}
-      <div class="wjs-submission-form__section mb-5">
-        <div class="wjs-submission-form__section-content">
-          {{ form.errors }}
-          If accepted, your paper may be published {{ view.access_mode_configuration.access_mode }} in the framework of Transformative agreement, copyright "{{ view.access_mode_configuration.copyright_text }}",
-          licence {{ view.access_mode_configuration.license.short_name }}. Confirmation will be given after acceptance for publication.
+      {% if view.access_mode_configuration.user_can_select_access_mode %}
+        <div class="wjs-submission-form__section mb-5">
+          <div class="wjs-submission-form__section-content">
+            {% bootstrap_form_errors form %}
+            <p>Please select the way your paper will be published, if accepted:</p>
+            {% bootstrap_field form.access_mode label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" %}
+            {% bootstrap_field form.license label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" %}
+          </div>
+          <div id="js-access-mode-message" class="wjs-submission-form__alert-message-box wjs-submission-form__alert-message-box--warning d-none d-flex">
+            <i class="bi bi-exclamation-triangle"></i>&nbsp;&nbsp;
+            {{ request.journal|setting:'oat_disclaimer_message'|safe }}
+          </div>
         </div>
-      </div>
+        <div class="wjs-submission-form__section mb-5">
+          <div class="wjs-submission-form__section-content">
+            {% bootstrap_field form.rights label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" %}
+          </div>
+        </div>
+      {% else %}
+        <div class="wjs-submission-form__section mb-5">
+          <div class="wjs-submission-form__section-content">
+            {% bootstrap_form_errors form %}
+            If accepted, your paper may be published {{ view.access_mode_configuration.access_mode }} in the framework of Transformative agreement, copyright "{{ view.access_mode_configuration.copyright_text }}",
+            licence {{ view.access_mode_configuration.license.short_name }}. Confirmation will be given after acceptance for publication.
+          </div>
+        </div>
+      {% endif %}
     {% endif %}
-  {% endif %}
-  <div class="wjs-submission-form__section mb-5">
-    <div class="wjs-submission-form__section-content">
-      {% bootstrap_field form.special_request label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" placeholder="" %}
+    <div class="wjs-submission-form__section mb-5">
+      <div class="wjs-submission-form__section-content">
+        {% bootstrap_field form.special_request label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" placeholder="" %}
+      </div>
     </div>
-  </div>
+  {% endif %}
 
   <div class="wjs-submission-form__section mb-5">
     <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label--required" id="step7-funding-section">Funding</h2>
@@ -115,6 +117,12 @@
 
     const selector = document.getElementById("id_access_mode");
     document.addEventListener("DOMContentLoaded", function() {
+      if (selector) {
+        checkAccessMode(selector.value);
+        selector.addEventListener("change", function(event) {
+          checkAccessMode(event.target.value);
+        });
+      }
       if(selector) {
         checkAccessMode(selector.value);
         selector.addEventListener("change", function(event) {

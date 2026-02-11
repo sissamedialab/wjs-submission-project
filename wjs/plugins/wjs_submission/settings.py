@@ -23,7 +23,7 @@ DEFAULT_ARTICLE_LANGUAGES = {
 
 DEFAULT_ACCESS_MODE_CONTROL_FUNCTION = {
     None: "plugins.wjs_submission.access_mode.noop",
-    "JQUANT": "plugins.wjs_submission.access_mode.get_oa_transformative_agreement",
+    "JQUANT": "plugins.wjs_submission.access_mode.get_oa_cern",
 }
 
 DEFAULT_ACCESS_MODE_COUNTRIES = {
@@ -58,5 +58,8 @@ ACCESS_MODE_CONTROL_FUNCTION = getattr(
     DEFAULT_ACCESS_MODE_CONTROL_FUNCTION,
 )
 OA_CODE = getattr(settings, "SUBMISSION_OA_CODE", "oa-transformative-agreement")
+OA_CERN_CODE = getattr(settings, "SUBMISSION_OA_CERN_CODE", "oa-cern")
 
 SUBMISSION_FILE_TYPES = getattr(settings, "SUBMISSION_FILE_TYPES", DEFAULT_SUBMISSION_FILE_TYPES)
+
+ARXIV_BASE_DOI_ = getattr(settings, "SUBMISSION_ARXIV_BASE_DOI_", "https://doi.org/10.48550/")

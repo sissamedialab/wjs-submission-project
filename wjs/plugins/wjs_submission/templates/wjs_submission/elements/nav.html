@@ -2,7 +2,7 @@
   {% for step_state in steps.values %}
     {% if step_state.state %}
       <div
-        class="wjs-submission-navigation-step {% if step_state.available %}wjs-submission-navigation-step--active{% endif %}">
+        class="wjs-submission-navigation-step{% if step_state.step == step %} wjs-submission-navigation-step--current{% endif %}{% if step_state.available %} wjs-submission-navigation-step--done{% endif %}">
         {% if step_state.step.step_number > 1 %}
           <div class="wjs-submission-navigation-step__line"></div>{% endif %}
         <a {% if step_state.available and article %}href="{% url step_state.step.step_view_name article.pk %}"
