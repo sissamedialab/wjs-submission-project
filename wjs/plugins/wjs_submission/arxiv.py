@@ -16,7 +16,7 @@ from journal.models import Journal
 from submission.models import STAGE_REJECTED, STAGE_UNSUBMITTED, Article, ArticleAuthorOrder
 from utils.setting_handler import get_setting
 
-from .step6.views import get_feedback_ws_name, get_feedback_ws_url
+from .workflow import get_feedback_ws_name, get_feedback_ws_url
 
 ARXIV_API_URL = "https://export.arxiv.org/api/query?id_list={}"
 
