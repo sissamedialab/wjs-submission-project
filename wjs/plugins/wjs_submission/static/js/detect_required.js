@@ -219,6 +219,11 @@ function addTinyMceListener(field) {
         updateRequiredChecklist();
       }
     });
+    editor.on("keyup", function() {
+      if (typeof updateRequiredChecklist === "function") {
+        updateRequiredChecklist();
+      }
+    });
   }
 }
 

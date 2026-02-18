@@ -23,14 +23,71 @@ DEFAULT_ARTICLE_LANGUAGES = {
 
 DEFAULT_ACCESS_MODE_CONTROL_FUNCTION = {
     None: "plugins.wjs_submission.access_mode.noop",
-    "JQUANT": "plugins.wjs_submission.access_mode.get_oa_cern",
+    "JINST": "plugins.wjs_submission.access_mode.get_cern_journals_access_mode",
+    "JQUANT": "plugins.wjs_submission.access_mode.get_cern_journals_access_mode",
+    "JHEP": "plugins.wjs_submission.access_mode.get_cern_journals_access_mode",
 }
+
+COUNTRIES_TA = [
+    "AU",  # Australia
+    "AT",  # Austria
+    "BW",  # Botswana
+    "BG",  # Bulgaria
+    "CA",  # Canada
+    "CL",  # Chile
+    "CN",  # China
+    "CO",  # Colombia
+    "HR",  # Croatia
+    "CZ",  # Czechia
+    "DK",  # Denmark
+    "FI",  # Finland
+    "FR",  # France
+    "DE",  # Germany
+    "GR",  # Greece
+    "HK",  # Hong Kong, SAR
+    "HU",  # Hungary
+    "IN",  # India
+    "IE",  # Ireland
+    "IL",  # Israel
+    "IT",  # Italy
+    "JP",  # Japan
+    "LB",  # Lebanon
+    "LT",  # Lithuania
+    "MO",  # Macau
+    "MY",  # Malaysia
+    "MX",  # Mexico
+    "NZ",  # New Zealand
+    "NO",  # Norway
+    "PE",  # Peru
+    "PL",  # Poland
+    "PT",  # Portugal
+    "RO",  # Romania
+    "NL",  # The Netherlands
+    "SA",  # Saudi Arabia
+    "SK",  # Slovakia
+    "SI",  # Slovenia
+    "ZA",  # South Africa
+    "KR",  # South Korea
+    "ES",  # Spain
+    "SE",  # Sweden
+    "CH",  # Switzerland
+    "TW",  # Taiwan
+    "TN",  # Tunisia
+    "TR",  # Turkey
+    "GB",  # United Kingdom
+    "US",  # United States
+]
 
 DEFAULT_ACCESS_MODE_COUNTRIES = {
     None: [],
-    "JQUANT": ["FR", "IT", "GB"],
+    "JHEP": COUNTRIES_TA,
+    "JQUANT": COUNTRIES_TA,
+    "JSTAT": COUNTRIES_TA,
+    "JCAP": COUNTRIES_TA,
+    "JINST": COUNTRIES_TA,
 }
 
+CERN_AFFILIATIONS = ["alice", "lhcb", "lhcf", "atlas", "cms"]
 
 DEFAULT_SUBMISSION_FILE_TYPES = {
     None: ("text/x-tex", "application/zip", "application/gzip"),
@@ -49,7 +106,7 @@ KEYWORD_VALIDATORS = getattr(settings, "SUBMISSION_KEYWORD_VALIDATORS", DEFAULT_
 KEYWORD_FILTERS = getattr(settings, "SUBMISSION_KEYWORD_VALIDATORS", DEFAULT_KEYWORD_FILTERS)
 ARTICLE_LANGUAGES = getattr(settings, "SUBMISSION_ARTICLE_LANGUAGES", DEFAULT_ARTICLE_LANGUAGES)
 
-SIMULATE_YAKUNIN = getattr(settings, "SUBMISSION_SIMULATE_YAKUNIN", False)
+SIMULATE_YAKUNIN = getattr(settings, "SUBMISSION_SIMULATE_YAKUNIN", True)
 
 ACCESS_MODE_COUNTRIES = getattr(settings, "SUBMISSION_ACCESS_MODE_COUNTRIES", DEFAULT_ACCESS_MODE_COUNTRIES)
 ACCESS_MODE_CONTROL_FUNCTION = getattr(

@@ -4,6 +4,7 @@ from submission.forms import ArticleInfo
 from submission.models import KeywordArticle
 
 from ..fields import WjsSimpleBleach
+from ..models import RevisionStorage
 from ..settings_helpers import get_article_language_choices
 
 
@@ -52,4 +53,21 @@ class SubmissionStep5Form(ArticleInfo):
 
 
 class RevisionStep5Form(SubmissionStep5Form):
-    pass
+    def save(self, commit=True, request=None):
+        """
+        Extend the save method to save data on revision_storage model.
+
+        :param commit: commit changes to database
+        :return:
+        """
+        revision_storage = RevisionStorage.objects.get(article=self.instance)
+        revision_storage.revision_step = max(revision_storage.revision_step, self.step)
+
+        revision_storage.data["section"] = self.cleaned_data.get("section").pk
+        revision_storage.data["language"] = self.cleaned_data.get("language")
+        revision_storage.data["title"] = self.cleaned_data.get("title")
+        revision_storage.data["abstract"] = self.cleaned_data.get("abstract")
+
+        revision_storage.save()
+
+        return self.instance

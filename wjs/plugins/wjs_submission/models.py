@@ -2,7 +2,7 @@ from core.models import Account, Country
 from django.db import models
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
-from submission.models import Article, ArticleAuthorOrder
+from submission.models import Article, ArticleAuthorOrder, ArticleFunding
 
 from .settings import ARXIV_BASE_DOI_
 from .signals import *  # noqa
@@ -82,6 +82,39 @@ class ArticleSubmission(models.Model):
 
     def __str__(self):
         return f"ArticleSubmission for {self.article}"
+
+    def save(
+        self,
+        *,
+        force_insert=False,
+        force_update=False,
+        using=None,
+        update_fields=None,
+    ):
+        """
+        Save the current instance to the database, applying specific access mode rules if applicable.
+
+        :param force_insert: Force an SQL INSERT operation, even if the object has a primary key
+        :type force_insert: bool
+        :param force_update: Force an SQL UPDATE operation, even if the object is new
+        :type force_update: bool
+        :param using: The database alias to use for the save operation
+        :type using: str or None
+        :param update_fields: Specify names of fields to update if performing an update operation
+        :type update_fields: list[str] or None
+        """
+        super().save(force_insert=force_insert, force_update=force_update, using=using, update_fields=update_fields)
+        if self.access_mode:
+            try:
+                journal_access_mode_parameters = AccessModeJournal.objects.filter(
+                    access_mode=self.access_mode, journal=self.article.journal
+                )
+                if journal_access_mode_parameters.exists():
+                    self.article.licence = journal_access_mode_parameters.first().licence
+                    self.article.rigths = journal_access_mode_parameters.first().copyright
+            except AccessModeJournal.DoesNotExist:
+                # ignoring configuration error to avoid breaking submission process
+                pass
 
     def get_arxiv_id(self) -> str:
         """
@@ -318,3 +351,51 @@ def next_author_sort(self, revision: bool = False, *args, **kwargs) -> int:
 
 
 Article.next_author_sort = next_author_sort
+
+
+class SubmissionArticleFunding(ArticleFunding):
+    country = models.CharField(max_length=128, blank=True)
+
+    def __str__(self):
+        return self.name
+
+
+class RevisionSubmissionArticleFunding(models.Model):
+    revision_storage = models.ForeignKey(RevisionStorage, on_delete=models.CASCADE, related_name="funding")
+    name = models.CharField(
+        max_length=500,
+        blank=False,
+        null=False,
+        help_text="Funder name",
+    )
+    fundref_id = models.CharField(
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="Funder DOI (optional). Enter as a full Uniform "
+        "Resource Identifier (URI), such as "
+        "https://dx.doi.org/10.13039/501100021082",
+    )
+    funding_id = models.CharField(
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="The grant ID (optional). Enter the ID by itself",
+    )
+    funding_statement = models.TextField(
+        blank=True, help_text=_("Additional information regarding this funding entry")
+    )
+    country = models.CharField(max_length=128, blank=True)
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def article(self) -> Article:
+        """
+        Get the article associated with the current revision.
+
+        :return: The article object associated with the current revision.
+        :rtype: Article
+        """
+        return self.revision_storage.article

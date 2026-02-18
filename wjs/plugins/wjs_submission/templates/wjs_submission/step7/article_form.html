@@ -43,7 +43,7 @@
         <div class="wjs-submission-form__section mb-5">
           <div class="wjs-submission-form__section-content">
             {% bootstrap_form_errors form %}
-            If accepted, your paper may be published {{ view.access_mode_configuration.access_mode }} in the framework of Transformative agreement, copyright "{{ view.access_mode_configuration.copyright_text }}",
+            If accepted, your paper may be published {{ view.access_mode_configuration.access_mode }}, copyright "{{ view.access_mode_configuration.copyright_text }}",
             licence {{ view.access_mode_configuration.license.short_name }}. Confirmation will be given after acceptance for publication.
           </div>
         </div>
@@ -55,10 +55,41 @@
       </div>
     </div>
   {% endif %}
+
   {% if journal.submissionconfiguration.funding %}
     <div class="wjs-submission-form__section mb-5">
+      <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label--required" id="step7-funding-section">Funding</h2>
       <div class="wjs-submission-form__section-content">
-        FUDING
+        <div class="mb-3">
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
+          quis nostrud exercitation ullamco laboris
+        </div>
+        <div class="wjs-submission-form__search-input-text" id="funding-search-wrapper"
+             hx-get="{% url 'search-typeahead-funding' %}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+        </div>
+        <div class="d-flex justify-content-end">
+          {% if is_revision %}
+            {% url 'add-funding-revision' as add_funding_url %}
+            {% url 'delete-funding-revision' as delete_funding_url %}
+          {% else %}
+            {% url 'add-funding' as add_funding_url %}
+            {% url 'delete-funding' as delete_funding_url %}
+          {% endif %}
+          <button id="add-funding-btn" type="button"
+                  class="btn btn-primary"
+                  data-bs-toggle="modal"
+                  data-bs-target="#htmxModal"
+                  hx-get="{{ add_funding_url }}"
+                  hx-trigger="click"
+                  hx-target="#htmxModalContent"
+                  hx-vals='{"article_id": "{{ article.pk }}"}'
+                  disabled="">
+            Add new funding
+          </button>
+        </div>
+        {% include "wjs_submission/step7/selected_funding.html" with add_funding_url=add_funding_url delete_funding_url=delete_funding_url %}
       </div>
     </div>
   {% endif %}
@@ -66,7 +97,18 @@
 
 {% block js %}
   {{ block.super }}
+  <script src="{% static 'js/livesearch.js' %}"></script>
+  <script src="{% static 'js/funding.js' %}"></script>
+  <script src="{% static 'js/handlebars-v4.7.7.js' %}"></script>
+  <script src="{% static 'js/jquery-3.6.0.min.js' %}"></script>
+  <script src="{% static 'js/typeahead.custom.js' %}"></script>
+  <script src="{% static 'js/typeahead.bundle.js' %}"></script>
+
   <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      setupFundingSelection();
+    });
+
     function checkAccessMode(value) {
       if (value === "1") {
         document.getElementById("js-access-mode-message").classList.remove("d-none");
@@ -81,6 +123,38 @@
         checkAccessMode(selector.value);
         selector.addEventListener("change", function(event) {
           checkAccessMode(event.target.value);
+        });
+      }
+    });
+
+    window.addEventListener("load", function() {
+      document.body.addEventListener("close-active-modal", function() {
+        document.querySelector("#htmxModal").querySelector("[aria-label=Close]").click();
+      });
+    });
+
+    document.addEventListener("DOMContentLoaded", function() {
+      const modal = document.getElementById("htmxModal");
+      modal.addEventListener("hidden.bs.modal", function() {
+        document.getElementById("htmxModalContent").innerHTML = "";
+      });
+    });
+
+    document.addEventListener("DOMContentLoaded", function() {
+      const hiddenFunding = document.getElementById("id_funding_id");
+      const addBtn = document.getElementById("add-funding-btn");
+
+      console.log(hiddenFunding, addBtn);
+      if (hiddenFunding && addBtn) {
+        hiddenFunding.addEventListener("change", function() {
+          console.log(addBtn.getAttribute("hx-vals"));
+          const btnVals = JSON.parse(addBtn.getAttribute("hx-vals") || "{}");
+          btnVals.fundref_id = hiddenFunding.value || "";
+          btnVals.name = hiddenFunding.dataset.name || "";
+          btnVals.country = hiddenFunding.dataset.country || "";
+          addBtn.setAttribute("hx-vals", JSON.stringify(btnVals));
+          addBtn.click();
+          addBtn.setAttribute("hx-vals", JSON.stringify({ "article_id": "{{ article.pk }}" }));
         });
       }
     });
