@@ -160,7 +160,7 @@
                      name="keywords"
                      value="{{ keyword.id }}"
                      id="keyword{{ keyword.id }}"
-                     {% if keyword.id in form.selected_grouped_keywords or keyword.id in form.initial.keywords %}checked{% endif %}>
+                     {% if keyword.pk in form.selected_grouped_keywords or keyword in form.keywords.initial %}checked{% endif %}>
               <label class="form-check-label wjs-submission-form__keywords-checkbox-label" for="keyword{{ keyword.id }}">
                 {{ keyword }}
               </label>

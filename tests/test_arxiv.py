@@ -338,7 +338,7 @@ def test_not_found_error_bubbles_up_via_empty_feed(rf, author, journal, arxiv_fi
     request = make_arxiv_request(rf, author, journal, "9999.99999")
     response: HttpResponse = ArxivMicroservice.as_view()(request)
 
-    assert response.status_code == 200
+    assert response.status_code == 500
 
     data = json.loads(response.content.decode())
     assert data["status"] == "error"
@@ -379,7 +379,7 @@ def test_already_used_error_bubbles_up_when_article_exists(rf, author, journal, 
     resp2: HttpResponse = ArxivMicroservice.as_view()(req2)
     body2 = resp2.content.decode()
 
-    assert resp2.status_code == 200
+    assert resp2.status_code == 500
     assert "already been submitted to the Journal" in body2
 
 
@@ -393,7 +393,7 @@ def test_connection_error_bubbles_up_on_requests_timeout(rf, author, journal, ar
     request = make_arxiv_request(rf, author, journal, "1234.5678v1")
     response: HttpResponse = ArxivMicroservice.as_view()(request)
 
-    assert response.status_code == 200
+    assert response.status_code == 500
 
     data = json.loads(response.content.decode())
     assert data["status"] == "error"
@@ -413,5 +413,5 @@ def test_blank_arxiv_id_still_invokes_fetch_and_import(rf, author, journal, arxi
     response: HttpResponse = ArxivMicroservice.as_view()(request)
     body = response.content.decode()
 
-    assert response.status_code == 200
+    assert response.status_code == 500
     assert "cannot be found on arxiv.org" in body

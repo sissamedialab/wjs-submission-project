@@ -6,7 +6,12 @@ from events import logic as events_logic
 from submission.models import Article, Licence
 
 from ..events import SubmissionEvent
-from ..models import AccessMode, RevisionStorage
+from ..models import (
+    AccessMode,
+    RevisionStorage,
+    RevisionSubmissionArticleFunding,
+    SubmissionArticleFunding,
+)
 
 
 class SubmissionStep7Form(forms.ModelForm):
@@ -43,6 +48,9 @@ class SubmissionStep7Form(forms.ModelForm):
         """
         if not self.configuration:
             return kwargs
+        if kwargs.get("instance") and kwargs.get("instance").pk:
+            kwargs["initial"]["access_mode"] = kwargs.get("instance").submission_data.access_mode
+            kwargs["initial"]["special_request"] = kwargs.get("instance").submission_data.special_request
         for field in (
             (self.configuration.license, "license"),
             (self.configuration.copyright_text, "rights"),
@@ -56,6 +64,10 @@ class SubmissionStep7Form(forms.ModelForm):
                 tmp = copy(kwargs["data"])
                 tmp[field[1]] = field[0]
                 kwargs["data"] = tmp
+            if "initial" in kwargs and not self.configuration.user_can_select_access_mode:
+                tmp = copy(kwargs["initial"])
+                tmp[field[1]] = field[0]
+                kwargs["initial"] = tmp
         return kwargs
 
     def _setup_fields(self):
@@ -71,9 +83,14 @@ class SubmissionStep7Form(forms.ModelForm):
                 self.fields["license"].widget = forms.HiddenInput()
                 self.fields["rights"].widget = forms.HiddenInput()
             else:
-                self.fields["access_mode"].queryset = AccessMode.objects.filter(
-                    parameters__journal=self.journal, user_selectable=False
-                )
+                if self.configuration.access_mode:
+                    self.fields["access_mode"].queryset = AccessMode.objects.filter(
+                        pk=self.configuration.access_mode.pk
+                    )
+                else:
+                    self.fields["access_mode"].queryset = AccessMode.objects.filter(
+                        parameters__journal=self.journal, user_selectable=False
+                    )
                 self.fields["access_mode"].widget = forms.HiddenInput()
                 self.fields["license"].widget = forms.HiddenInput()
                 self.fields["rights"].widget = forms.HiddenInput()
@@ -105,6 +122,68 @@ class SubmissionStep7Form(forms.ModelForm):
         return instance
 
 
+class AddFundingForm(forms.ModelForm):
+    class Meta:
+        model = SubmissionArticleFunding
+        fields = ["country", "name", "fundref_id", "funding_id", "funding_statement", "article"]
+        labels = {
+            "country": "Country of Funding",
+        }
+        widgets = {
+            "article": forms.HiddenInput(),
+        }
+
+    def __init__(self, *args, **kwargs):
+        """
+        Initialize the instance and its attributes.
+
+        Sets up default and instance-specific initial values for form fields. Provides functionality to support
+        both creation (when an article is being assigned funding) and edit modes (when modifying the
+        funding information for an article). Additionally, ensures specific fields
+        (when information is coming from a typeahead dropdown) are set to readonly when
+        appropriate.
+
+        :param args: Positional arguments passed to the parent class.
+        :type args: tuple
+        :param kwargs: Keyword arguments containing initialization data such as article
+                       information, funding details, and other metadata.
+        :type kwargs: dict
+        """
+        self.is_revision = kwargs.pop("is_revision", False)
+        self.article = kwargs.pop("article")
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.fields["name"].widget.attrs["readonly"] = True
+            self.fields["fundref_id"].widget.attrs["readonly"] = True
+            self.fields["country"].widget.attrs["readonly"] = True
+        self.data = self.data.copy()
+        self.data["article_id"] = self.article.pk
+        self.data["article"] = self.article
+
+
+class RevisionAddFundingForm(AddFundingForm):
+    class Meta:
+        model = RevisionSubmissionArticleFunding
+        fields = ["country", "name", "fundref_id", "funding_id", "funding_statement", "revision_storage"]
+
+    def __init__(self, *args, **kwargs):
+        """
+        Initialize the instance and its attributes.
+
+        Force revision_storage data from article instance.
+
+        :param args: Positional arguments passed to the parent class.
+        :type args: tuple
+        :param kwargs: Keyword arguments containing initialization data such as article
+                       information, funding details, and other metadata.
+        :type kwargs: dict
+        """
+        super().__init__(*args, **kwargs)
+        self.data = self.data.copy()
+        self.data["revision_storage_id"] = self.article.revisionstorage.pk
+        self.data["revision_storage"] = self.article.revisionstorage
+
+
 class RevisionStep7Form(SubmissionStep7Form):
     def __init__(self, *args, **kwargs):
         """
@@ -126,3 +205,20 @@ class RevisionStep7Form(SubmissionStep7Form):
                 continue
             kwargs["initial"][field] = value
         super().__init__(*args, **kwargs)
+
+    def save(self, commit=True):
+        """
+        Extend the save method to save data on revision_storage model.
+
+        :param commit: commit changes to database
+        :return:
+        """
+        revision_storage = RevisionStorage.objects.get(article=self.instance)
+        revision_storage.revision_step = max(revision_storage.revision_step, self.step)
+
+        revision_storage.data["access_mode"] = self.cleaned_data.get("access_mode").pk
+        revision_storage.data["special_request"] = self.cleaned_data.get("special_request")
+
+        revision_storage.save()
+
+        return self.instance

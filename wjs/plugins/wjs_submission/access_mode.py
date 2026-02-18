@@ -5,7 +5,13 @@ from django.utils.module_loading import import_string
 from submission.models import Article, Licence
 
 from .models import AccessMode, AccessModeJournal, RevisionStorage
-from .settings import ACCESS_MODE_CONTROL_FUNCTION, ACCESS_MODE_COUNTRIES, OA_CERN_CODE, OA_CODE
+from .settings import (
+    ACCESS_MODE_CONTROL_FUNCTION,
+    ACCESS_MODE_COUNTRIES,
+    CERN_AFFILIATIONS,
+    OA_CERN_CODE,
+    OA_CODE,
+)
 
 
 class AccessModeConfiguration(NamedTuple):
@@ -73,17 +79,22 @@ def noop(user: Account, article: Article) -> AccessModeConfiguration | None:
     :raises: No exceptions are raised.
     """
     try:
-        access_mode = AccessModeJournal.objects.get(journal=article.journal).access_mode
+        journal_parameters = AccessModeJournal.objects.get(journal=article.journal)
+        return AccessModeConfiguration(
+            access_mode=journal_parameters.access_mode,
+            license=journal_parameters.licence,
+            copyright_text=journal_parameters.copyright,
+            user_can_select_access_mode=False,
+        )
     except AccessModeJournal.MultipleObjectsReturned:
-        access_mode = None
+        return AccessModeConfiguration(
+            access_mode=None,
+            license=None,
+            copyright_text="",
+            user_can_select_access_mode=True,
+        )
     except AccessModeJournal.DoesNotExist:
         return None
-    return AccessModeConfiguration(
-        access_mode=access_mode,
-        license=None,
-        copyright_text="",
-        user_can_select_access_mode=access_mode is None,
-    )
 
 
 def get_affiliation_country(article: Article) -> Country:
@@ -154,7 +165,7 @@ def get_oa_cern(user: Account, article: Article) -> AccessModeConfiguration:
     """
     Get the open access CERN agreement configuration for a given user and article.
 
-    Checks the authors affiliations to match CERN affiliation, it defaults to a configuration
+    Checks the article collaboration to match CERN collaborations, it defaults to a configuration
     indicating no access.
 
     :param user: The user whose access permissions are being determined.
@@ -167,9 +178,8 @@ def get_oa_cern(user: Account, article: Article) -> AccessModeConfiguration:
     :raises KeyError: If the journal code is not found in the ACCESS_MODE_COUNTRIES dictionary.
     """
     oa = AccessMode.objects.get(code=OA_CERN_CODE)
-    countries = ACCESS_MODE_COUNTRIES.get(article.journal.code, ACCESS_MODE_COUNTRIES[None])
-    affiliation_country = get_affiliation_country(article)
-    if affiliation_country.code in countries:
+    collaborations = {collaboration.name.lower() for collaboration in article.collaborations.all()}
+    if collaborations.intersection(CERN_AFFILIATIONS):
         journal_parameters = oa.parameters.get(journal=article.journal)
         return AccessModeConfiguration(
             access_mode=oa,
@@ -185,14 +195,12 @@ def get_oa_cern(user: Account, article: Article) -> AccessModeConfiguration:
     )
 
 
-def get_jquant_access_mode(user: Account, article: Article) -> AccessModeConfiguration:
+def get_cern_journals_access_mode(user: Account, article: Article) -> AccessModeConfiguration:
     """
     Determine the access mode configuration for a user's access to a specific article.
 
-    This function evaluates whether the user has an open-access transformative
-    agreement (OAT) for the given article. If such an agreement exists and has
-    an associated access mode, it returns the OAT configuration. Otherwise, it
-    defaults to evaluating access via CERN's open access mechanism.
+    This function evaluates whether the article is linked to any CERN collaboration and fallbacks
+    to open-access transformative agreement (OAT) if not.
 
     :param user: The account object representing the user.
     :type user: Account
@@ -202,7 +210,7 @@ def get_jquant_access_mode(user: Account, article: Article) -> AccessModeConfigu
     :rtype: AccessModeConfiguration
     :raises SomeSpecificException: Raised if an error occurs during OA agreement retrieval.
     """
-    oat = get_oa_transformative_agreement(user, article)
+    oat = get_oa_cern(user, article)
     if oat.access_mode:
         return oat
-    return get_oa_cern(user, article)
+    return get_oa_transformative_agreement(user, article)

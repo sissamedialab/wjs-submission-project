@@ -103,7 +103,7 @@ class ArxivMicroservice(HtmxMixin, AuthorFilteringView, View):
                 }
             )
         except Exception as e:  # noqa: BLE001
-            return JsonResponse({"status": "error", "message": f"Error: {e}"})
+            return JsonResponse({"status": "error", "message": f"Error: {e}"}, status=500)
 
 
 class FreeKeywordAutocomplete(KeywordAutocomplete):

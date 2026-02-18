@@ -14,6 +14,8 @@ from ..models import (
     RevisionArticleAuthorOrder,
     RevisionArticleCollaboration,
     RevisionStorage,
+    RevisionSubmissionArticleFunding,
+    SubmissionArticleFunding,
 )
 
 
@@ -252,6 +254,7 @@ class PopulateStep7:
     Setup the following fields:
     - access_mode
     - special_request
+    - funding
     """
 
     revision_storage: RevisionStorage
@@ -263,8 +266,22 @@ class PopulateStep7:
         :param commit: Save the updated models. Set to True if it's the last step to initialize RevisionStorage.
         :type commit: bool
         """
-        self.revision_storage.data["access_mode"] = self.revision_storage.article.submission_data.access_mode.pk
+        if self.revision_storage.article.submission_data.access_mode:
+            self.revision_storage.data["access_mode"] = self.revision_storage.article.submission_data.access_mode.pk
         self.revision_storage.data["special_request"] = self.revision_storage.article.submission_data.special_request
+
+        fundings = SubmissionArticleFunding.objects.filter(article=self.revision_storage.article)
+        for funding in fundings:
+            RevisionSubmissionArticleFunding.objects.get_or_create(
+                pk=funding.pk,
+                revision_storage=self.revision_storage,
+                name=funding.name,
+                fundref_id=funding.fundref_id,
+                funding_id=funding.funding_id,
+                funding_statement=funding.funding_statement,
+                country=funding.country,
+            )
+
         if commit:
             self.revision_storage.save()
 
