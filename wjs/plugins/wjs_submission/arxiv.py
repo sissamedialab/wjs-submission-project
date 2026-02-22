@@ -395,7 +395,7 @@ class ArXivToWjsArticle:
         event_logic.Events.raise_event(
             event_logic.Events.ON_ARTICLE_FILE_UPLOAD,
             request=self.request,
-            file_id=article.source_files.first().pk,
+            file_id=article.source_files.first(),
             original_filename=article.source_files.first().original_filename,
             file_type="manuscript:async",
             article=article,
