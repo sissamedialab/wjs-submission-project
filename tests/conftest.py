@@ -17,7 +17,7 @@ from plugins.wjs_submission import constants
 from plugins.wjs_submission.arxiv import fetch_arxiv_metadata
 from plugins.wjs_submission.data import create_access_mode
 from plugins.wjs_submission.models import AccessMode
-from plugins.wjs_submission.settings import OA_CODE
+from plugins.wjs_submission.settings import OA_CODE_TA
 from press.models import Press
 from submission import models as submission_models
 from submission.models import Article, Licence
@@ -84,7 +84,7 @@ def journal(press: Press, roles) -> Journal:
     # This is the same code run by `core.middleware.SiteSettingsMiddleware` ensuring the same behavior in the tests
     set_script_prefix(f"/{journal.code}")
     create_access_mode(apps=apps, schema_editor=None)
-    AccessMode.objects.filter(code=OA_CODE).update(user_selectable=False)
+    AccessMode.objects.filter(code=OA_CODE_TA).update(user_selectable=False)
     return journal
 
 

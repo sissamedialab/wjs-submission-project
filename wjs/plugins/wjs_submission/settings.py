@@ -23,7 +23,7 @@ DEFAULT_ARTICLE_LANGUAGES = {
 
 DEFAULT_ACCESS_MODE_CONTROL_FUNCTION = {
     None: "plugins.wjs_submission.access_mode.noop",
-    "JINST": "plugins.wjs_submission.access_mode.get_cern_journals_access_mode",
+    "JINST": "plugins.wjs_submission.access_mode.get_cern_oata_fallback_access_mode",
     "JQUANT": "plugins.wjs_submission.access_mode.get_cern_journals_access_mode",
     "JHEP": "plugins.wjs_submission.access_mode.get_cern_journals_access_mode",
 }
@@ -91,8 +91,6 @@ COUNTRIES_TA = [
 
 DEFAULT_ACCESS_MODE_COUNTRIES = {
     None: [],
-    "JHEP": COUNTRIES_TA,
-    "JQUANT": COUNTRIES_TA,
     "JSTAT": COUNTRIES_TA,
     "JCAP": COUNTRIES_TA,
     "JINST": COUNTRIES_TA,
@@ -125,8 +123,9 @@ ACCESS_MODE_CONTROL_FUNCTION = getattr(
     "SUBMISSION_ACCESS_MODE_CONTROL_FUNCTION",
     DEFAULT_ACCESS_MODE_CONTROL_FUNCTION,
 )
-OA_CODE = getattr(settings, "SUBMISSION_OA_CODE", "oa-transformative-agreement")
+OA_CODE_TA = getattr(settings, "SUBMISSION_OA_CODE_TA", "oa-transformative-agreement")
 OA_CERN_CODE = getattr(settings, "SUBMISSION_OA_CERN_CODE", "oa-cern")
+OA_CODE = getattr(settings, "SUBMISSION_OA_CODE", "open-access")
 
 CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION = getattr(
     settings, "SUBMISSION_CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION", DEFAULT_CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION
