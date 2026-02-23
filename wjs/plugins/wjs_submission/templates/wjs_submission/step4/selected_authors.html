@@ -125,15 +125,15 @@
         <div
           class="wjs-submission-form__alert-message-box{% if correspondence_author in form.disabled_accounts %} wjs-submission-form__alert-message-box--error{% else %} wjs-submission-form__alert-message-box--warning{% endif %}">
           <i class="bi bi-exclamation-triangle"></i>
-          {% if form.correspondence_author_error == "complete_profile" %}
+          {% if form.correspondence_author_error == form.statuses.INCOMPLETE_ACCOUNT %}
             {# fake field to block submission in case of error condition #}
             <input type="hidden" id="authors-blocker" name="authors-blocker" required="required">
             Please <a class="link-light" href="{% url 'core_edit_profile' %}?next={% url 'wjs_submission_4' form.instance.pk %}">complete your profile</a> before continuing.
-          {% elif form.correspondence_author_error == "disabled_account" %}
+          {% elif form.correspondence_author_error == form.statuses.INELIGIBLE_ACCOUNT %}
             {# fake field to block submission in case of error condition #}
             <input type="hidden" id="authors-blocker" name="authors-blocker" required="required">
             Correspondence author account is not complete.
-          {% elif form.correspondence_author_error == "missing_orcid" %}
+          {% elif form.correspondence_author_error == form.statuses.ORCID_MISSING_ACCOUNT %}
             Authors need to associate their Orcid id to their <a class="link-light" href="{% url 'core_edit_profile' %}?next={% url 'wjs_submission_4' form.instance.pk %}">profile</a> as soon as possible and in any case before publication of manuscripts.
           {% endif %}
         </div>

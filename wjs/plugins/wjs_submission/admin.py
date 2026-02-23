@@ -1,7 +1,14 @@
 from django.contrib import admin
 
 from .advanced_admin import advanced_admin  # noqa: F401
-from .models import AccessMode, AccessModeJournal, ArticleCollaboration, ArticleSubmission, Collaboration
+from .models import (
+    AccessMode,
+    AccessModeJournal,
+    ArticleCollaboration,
+    ArticleSubmission,
+    Collaboration,
+    WhitelistedCorrespondenceAuthors,
+)
 
 
 @admin.register(ArticleSubmission)
@@ -40,3 +47,10 @@ class AccessModeAdmin(admin.ModelAdmin):
     list_display = ("name", "code")
     search_fields = ("name", "code")
     inlines = [AccessModeJournalInlineAdmin]
+
+
+@admin.register(WhitelistedCorrespondenceAuthors)
+class WhitelistedCorrespondenceAuthorsAdmin(admin.ModelAdmin):
+    list_display = ("user", "validity_start_date", "validity_stop_date")
+    search_fields = ("user__email",)
+    list_filter = ["journal"]

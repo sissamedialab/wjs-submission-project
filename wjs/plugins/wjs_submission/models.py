@@ -399,3 +399,36 @@ class RevisionSubmissionArticleFunding(models.Model):
         :rtype: Article
         """
         return self.revision_storage.article
+
+
+class WhitelistedCorrespondenceAuthors(models.Model):
+    """
+    Represents a whitelisted correspondence author.
+
+    This model is used to store information about authors who are allowed
+    to be set as corresponding author bypassing validation logic in
+    :py:func:`wjs.plugins.wjs_submission.account_validation.wjs.plugins.wjs_submission.account_validation.is_user_eligible_for_correspondence_author
+
+    :ivar user: The account associated with the whitelisted author.
+    :type user: Account
+    :ivar journal: The journal to whitelist author on.
+    :type journal: Journal
+    :ivar validity_start_date: The optional start date indicating the validity period of
+        the author's whitelist status.
+    :type validity_start_date: datetime.date or None
+    :ivar validity_stop_date: The optional end date indicating the validity period of
+        the author's whitelist status.
+    :type validity_stop_date: datetime.date or None
+    """
+
+    user = models.ForeignKey(Account, on_delete=models.CASCADE)
+    journal = models.ForeignKey("journal.Journal", on_delete=models.CASCADE)
+    validity_start_date = models.DateField(null=True, blank=True)
+    validity_stop_date = models.DateField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = _("Whitelisted correspondence author")
+        verbose_name_plural = _("Whitelisted correspondence authors")
+
+    def __str__(self):
+        return f"{self.user.email} ({self.validity_start_date or ''} - {self.validity_stop_date or ''})"
