@@ -28,6 +28,17 @@ DEFAULT_ACCESS_MODE_CONTROL_FUNCTION = {
     "JHEP": "plugins.wjs_submission.access_mode.get_cern_journals_access_mode",
 }
 
+
+DEFAULT_CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION = {
+    "JCAP": "plugins.wjs_submission.account_validation.jcap_correspondence_author_validation",
+    None: "plugins.wjs_submission.account_validation.default_correspondence_author_validation",
+}
+
+DEFAULT_CORRESPONDENCE_AUTHOR_COMPLETION_FUNCTION = {
+    "JCAP": "plugins.wjs_submission.account_validation.default_correspondence_author_completion",
+    None: "plugins.wjs_submission.account_validation.default_correspondence_author_completion",
+}
+
 COUNTRIES_TA = [
     "AU",  # Australia
     "AT",  # Austria
@@ -116,6 +127,14 @@ ACCESS_MODE_CONTROL_FUNCTION = getattr(
 )
 OA_CODE = getattr(settings, "SUBMISSION_OA_CODE", "oa-transformative-agreement")
 OA_CERN_CODE = getattr(settings, "SUBMISSION_OA_CERN_CODE", "oa-cern")
+
+CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION = getattr(
+    settings, "SUBMISSION_CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION", DEFAULT_CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION
+)
+
+CORRESPONDENCE_AUTHOR_COMPLETION_FUNCTION = getattr(
+    settings, "SUBMISSION_CORRESPONDENCE_AUTHOR_COMPLETION_FUNCTION", DEFAULT_CORRESPONDENCE_AUTHOR_COMPLETION_FUNCTION
+)
 
 SUBMISSION_FILE_TYPES = getattr(settings, "SUBMISSION_FILE_TYPES", DEFAULT_SUBMISSION_FILE_TYPES)
 

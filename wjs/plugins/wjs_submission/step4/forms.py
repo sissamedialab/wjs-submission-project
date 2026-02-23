@@ -1,10 +1,16 @@
 from core import files as core_files
 from core.models import Account, Country
 from django import forms
+from django.db.models import QuerySet
 from django.utils.translation import gettext_lazy as _
 from review.models import RevisionRequest
 from submission.models import Article, ArticleAuthorOrder
 
+from ..account_validation import (
+    ProfileCompletionStatus,
+    is_user_eligible_for_correspondence_author,
+    verify_profile_completion,
+)
 from ..fields import WjsMiniHTMLFormField
 from ..models import (
     ArticleCollaboration,
@@ -26,6 +32,7 @@ class SubmissionStep4Form(forms.ModelForm):
         required=True,
         label=_("This article is written"),
     )
+    statuses = ProfileCompletionStatus
 
     class Meta:
         model = Article
@@ -45,20 +52,18 @@ class SubmissionStep4Form(forms.ModelForm):
         self.step = kwargs.pop("step", None)
         super().__init__(*args, **kwargs)
 
-        qs = Account.objects.filter(
-            id__in=ArticleAuthorOrder.objects.filter(article=self.instance).values_list("author_id", flat=True)
+        authors_list = self._get_correspondence_author_list(self.instance)
+        self.fields["correspondence_author"].queryset = authors_list
+
+        self.disabled_accounts = self._get_disabled_accounts(authors_list)
+        # The following error can be used by the view's template in order to
+        # indicate required/desirable actions to the operator:
+        self.correspondence_author_error = verify_profile_completion(
+            journal=self.instance.journal,
+            disabled_users=self.disabled_accounts,
+            user=self.instance.correspondence_author,
+            is_owner=self.instance.correspondence_author == self.instance.owner,
         )
-        self.fields["correspondence_author"].queryset = qs
-
-        self.disabled_accounts = {a.id for a in qs if ((not a.institution and not a.department) or (not a.last_name))}
-
-        if self.instance.correspondence_author.id in self.disabled_accounts:
-            if self.instance.correspondence_author == self.instance.owner:
-                self.correspondence_author_error = "complete_profile"
-            else:
-                self.correspondence_author_error = "disabled_account"
-        elif not self.instance.correspondence_author.orcid:
-            self.correspondence_author_error = "missing_orcid"
 
         if self.instance.correspondence_author:
             self.fields["correspondence_author"].initial = self.instance.correspondence_author
@@ -67,6 +72,36 @@ class SubmissionStep4Form(forms.ModelForm):
         self.fields["collaboration_relation"].initial = (
             ArticleCollaboration.objects.filter(article=self.instance).values_list("relation", flat=True).first()
         ) or CollaborationRelation.NONE
+
+    @staticmethod
+    def _get_correspondence_author_list(article: Article) -> QuerySet:
+        """
+        Retrieve the list of correspondence authors associated with the given article.
+
+        :param article: The article instance.
+        :type article: Article
+        :return: Queryset of Account objects representing the correspondence authors.
+        :rtype: QuerySet
+        :raises: None
+        """
+        return Account.objects.filter(
+            id__in=ArticleAuthorOrder.objects.filter(article=article).values_list("author_id", flat=True)
+        )
+
+    def _get_disabled_accounts(self, authors: QuerySet) -> set:
+        """
+        Identify and return the IDs of disabled accounts based on the given criteria.
+
+        :param authors: A QuerySet of author objects to evaluate
+        :type authors: QuerySet
+        :return: A set containing the IDs of authors whose accounts are considered disabled
+        :rtype: set
+        """
+        return {
+            author.pk
+            for author in authors
+            if not is_user_eligible_for_correspondence_author(self.instance.journal, author)
+        }
 
     def save(self, commit: bool = True) -> Account:
         """
@@ -241,16 +276,24 @@ class RevisionStep4Form(SubmissionStep4Form):
             `instance`, which refers to an `Article` instance.
         :type kwargs: dict
         """
-        revision_storage = RevisionStorage.objects.get(article=kwargs["instance"])
+        self.revision_storage = RevisionStorage.objects.get(article=kwargs["instance"])
         kwargs.setdefault("initial", {})
-        kwargs["initial"]["collaboration_relation"] = revision_storage.data.get("collaboration_relation")
+        kwargs["initial"]["collaboration_relation"] = self.revision_storage.data.get("collaboration_relation")
         super().__init__(*args, **kwargs)
-        qs = Account.objects.filter(
-            id__in=RevisionArticleAuthorOrder.objects.filter(revision_storage=revision_storage).values_list(
+
+    def _get_correspondence_author_list(self, article: Article) -> QuerySet:
+        """
+        Retrieve the list of correspondence authors associated with the given revision storage.
+
+        :return: Queryset of Account objects representing the correspondence authors.
+        :rtype: QuerySet
+        :raises: None
+        """
+        return Account.objects.filter(
+            id__in=RevisionArticleAuthorOrder.objects.filter(revision_storage=self.revision_storage).values_list(
                 "author_id", flat=True
             )
         )
-        self.fields["correspondence_author"].queryset = qs
 
     def save(self, commit: bool = True):
         """
