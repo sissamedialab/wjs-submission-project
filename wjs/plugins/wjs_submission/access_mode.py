@@ -2,6 +2,7 @@ from typing import NamedTuple
 
 from core.models import Account, Country
 from django.utils.module_loading import import_string
+from journal.models import Journal
 from submission.models import Article, Licence
 
 from .models import AccessMode, AccessModeJournal, RevisionStorage
@@ -11,6 +12,7 @@ from .settings import (
     CERN_AFFILIATIONS,
     OA_CERN_CODE,
     OA_CODE,
+    OA_CODE_TA,
 )
 
 
@@ -38,6 +40,35 @@ class AccessModeConfiguration(NamedTuple):
     license: Licence | None
     copyright_text: str
     user_can_select_access_mode: bool
+
+
+def get_configuration(access_mode: AccessMode | None, journal: Journal, user_selectable: bool | None = None):
+    """
+    Retrieve the configuration for a given journal based on the provided access mode.
+
+    :param access_mode: The access mode object or None
+    :type access_mode: AccessMode | None
+    :param journal: The journal for which the configuration is being retrieved
+    :type journal: Journal
+    :return: Configuration for the journal, including license, copyright text, and
+             user access mode selection
+    :rtype: AccessModeConfiguration
+    :raises AttributeError: If 'parameters', 'licence', or 'copyright' is accessed from
+                             an invalid or improperly defined access mode
+    """
+    journal_parameters = None
+    if access_mode:
+        journal_parameters = access_mode.parameters.get(journal=journal)
+    elif user_selectable is None:
+        user_selectable = AccessModeJournal.objects.filter(journal=journal).count() > 1
+    return AccessModeConfiguration(
+        access_mode=access_mode,
+        license=journal_parameters.licence if access_mode else None,
+        copyright_text=journal_parameters.copyright if access_mode else "",
+        user_can_select_access_mode=access_mode.user_selectable
+        if access_mode and user_selectable is None
+        else user_selectable,
+    )
 
 
 def get_access_mode_configuration(user: Account, article: Article) -> AccessModeConfiguration | None:
@@ -79,20 +110,10 @@ def noop(user: Account, article: Article) -> AccessModeConfiguration | None:
     :raises: No exceptions are raised.
     """
     try:
-        journal_parameters = AccessModeJournal.objects.get(journal=article.journal)
-        return AccessModeConfiguration(
-            access_mode=journal_parameters.access_mode,
-            license=journal_parameters.licence,
-            copyright_text=journal_parameters.copyright,
-            user_can_select_access_mode=False,
-        )
+        access_mode = AccessMode.objects.get(code=OA_CODE, parameters__journal=article.journal)
+        return get_configuration(access_mode, article.journal, user_selectable=False)
     except AccessModeJournal.MultipleObjectsReturned:
-        return AccessModeConfiguration(
-            access_mode=None,
-            license=None,
-            copyright_text="",
-            user_can_select_access_mode=True,
-        )
+        return get_configuration(None, article.journal, user_selectable=True)
     except AccessModeJournal.DoesNotExist:
         return None
 
@@ -142,23 +163,12 @@ def get_oa_transformative_agreement(user: Account, article: Article) -> AccessMo
     :raises AccessMode.DoesNotExist: If no access mode object with the specified code exists.
     :raises KeyError: If the journal code is not found in the ACCESS_MODE_COUNTRIES dictionary.
     """
-    oa = AccessMode.objects.get(code=OA_CODE)
+    oa = AccessMode.objects.get(code=OA_CODE_TA)
     countries = ACCESS_MODE_COUNTRIES.get(article.journal.code, ACCESS_MODE_COUNTRIES[None])
     affiliation_country = get_affiliation_country(article)
     if affiliation_country.code in countries:
-        journal_parameters = oa.parameters.get(journal=article.journal)
-        return AccessModeConfiguration(
-            access_mode=oa,
-            license=journal_parameters.licence,
-            copyright_text=journal_parameters.copyright,
-            user_can_select_access_mode=False,
-        )
-    return AccessModeConfiguration(
-        access_mode=None,
-        license=None,
-        copyright_text="",
-        user_can_select_access_mode=True,
-    )
+        return get_configuration(oa, article.journal)
+    return get_configuration(None, article.journal)
 
 
 def get_oa_cern(user: Account, article: Article) -> AccessModeConfiguration:
@@ -180,22 +190,33 @@ def get_oa_cern(user: Account, article: Article) -> AccessModeConfiguration:
     oa = AccessMode.objects.get(code=OA_CERN_CODE)
     collaborations = {collaboration.name.lower() for collaboration in article.collaborations.all()}
     if collaborations.intersection(CERN_AFFILIATIONS):
-        journal_parameters = oa.parameters.get(journal=article.journal)
-        return AccessModeConfiguration(
-            access_mode=oa,
-            license=journal_parameters.licence,
-            copyright_text=journal_parameters.copyright,
-            user_can_select_access_mode=False,
-        )
-    return AccessModeConfiguration(
-        access_mode=None,
-        license=None,
-        copyright_text="",
-        user_can_select_access_mode=True,
-    )
+        return get_configuration(oa, article.journal)
+    return get_configuration(None, article.journal)
 
 
 def get_cern_journals_access_mode(user: Account, article: Article) -> AccessModeConfiguration:
+    """
+    Determine the access mode configuration for a user's access to a specific article.
+
+    This function evaluates whether the article is linked to any CERN collaboration and fallbacks
+    to open-access (without user selection).
+
+    :param user: The account object representing the user.
+    :type user: Account
+    :param article: The article object for which access mode is determined.
+    :type article: Article
+    :return: The configuration specifying the access mode for the user and article.
+    :rtype: AccessModeConfiguration
+    :raises SomeSpecificException: Raised if an error occurs during OA agreement retrieval.
+    """
+    oat = get_oa_cern(user, article)
+    if oat.access_mode:
+        return oat
+    access_mode = AccessMode.objects.get(code=OA_CODE, parameters__journal=article.journal)
+    return get_configuration(access_mode, article.journal, user_selectable=False)
+
+
+def get_cern_oata_fallback_access_mode(user: Account, article: Article) -> AccessModeConfiguration:
     """
     Determine the access mode configuration for a user's access to a specific article.
 
