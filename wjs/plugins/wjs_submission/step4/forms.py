@@ -260,7 +260,7 @@ class AddCollaborationForm(forms.ModelForm):
 
 class RevisionStep4Form(SubmissionStep4Form):
     authors_contributions = WjsMiniHTMLFormField(
-        label=_("Authors contributions"),
+        label=_("Authors' contribution"),
         height="15rem",
         help_text=_("missing help text"),
         required=False,

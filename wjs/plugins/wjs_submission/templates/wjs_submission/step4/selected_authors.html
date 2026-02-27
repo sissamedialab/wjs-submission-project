@@ -1,12 +1,11 @@
-{% load django_bootstrap5 static field %}
+{% load django_bootstrap5 settings static field %}
 <div id="selected-authors-wrapper">
 
   <div class="wjs-submission-form__section mb-5">
-    <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Selected Authors</h2>
+    <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Selected authors</h2>
     <div class="wjs-submission-form__section-content">
       <p class="wjs-submission-form__authors-intro-text">
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
-        quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+        The following name(s) will appear on the manuscript author list. You can order them or delete them as appropriate.
       </p>
       {# In case authors_order is empty, we must output empty string for frontend control to consider the field empty #}
       <input type="hidden" id="authors-order" name="authors-order" value="{{ authors_order.exists|default:'' }}" required="">
@@ -77,8 +76,7 @@
     <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Corresponding author</h2>
     <div class="wjs-submission-form__section-content">
       <p class="wjs-submission-form__authors-intro-text">
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
-        quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+        {{ journal|setting:"step4_corresponding_author_text"|safe }}
       </p>
       <div class="row g-2">
         <div class="col-6">

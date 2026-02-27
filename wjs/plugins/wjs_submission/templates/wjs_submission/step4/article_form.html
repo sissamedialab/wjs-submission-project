@@ -1,5 +1,6 @@
 {% extends "wjs_submission/base.html" %}
-{% load django_bootstrap5 static field %}
+{% load django_bootstrap5 i18n settings static field %}
+
 
 {% block bootstrap5_extra_head %}
   {{ block.super }}
@@ -8,14 +9,12 @@
 
 {% block submission_flow %}
   <div class="wjs-submission-form__section mb-5" id="authors-section">
-    <h2 class="wjs-submission-form__form-label-title">Authors</h2>
+    <h2 class="wjs-submission-form__form-label-title">{% translate "Select co-authors" %}</h2>
     <div class="wjs-submission-form__section-content">
       {% if settings.DEBUG %}{{ form.errors }}{% endif %}
-      <p class="wjs-submission-form__authors-intro-text">
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
-        quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse
-        cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-      </p>
+      <div class="wjs-submission-form__authors-intro-text">
+        {{ journal|setting:"step4_intro_text"|safe }}
+      </div>
       <div
         class="wjs-submission-form__search-input-text"
         id="user-search-wrapper"
@@ -53,25 +52,13 @@
 
   {% include "wjs_submission/step4/selected_authors.html" %}
 
-  <div id="authors-contributions-wrapper" style="display: {% if show_special_fragment %}block{% else %}none{% endif %};">
-    <div class="wjs-submission-form__section mb-5">
-        <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Authors contributions</h2>
-        <div class="wjs-submission-form__section-content">
-          <p class="wjs-submission-form__authors-intro-text">
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
-            quis nostrud exercitation ullamco laboris
-          </p>
-          {{ form.authors_contributions }}
-        </div>
-    </div>
-  </div>
-
   <div class="wjs-submission-form__section mb-5" id="collaborations-section">
     <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Collaboration</h2>
     <div class="wjs-submission-form__section-content">
       <p class="wjs-submission-form__authors-intro-text">
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
-        quis nostrud exercitation ullamco laboris
+        State whether your paper is authored by a collaboration as a whole, or it is written by some authors writing on behalf of a collaboration or there is no collaboration involved.
+
+        In the first 2 cases, <b>search for registered collaborations</b>. If found, they will be added to the collaboration list (see “Selected collaborations” below). If it is not yet registered, use <b>Add new collaboration</b>.
       </p>
       <div class="mb-3">
         <label class="form-label"><strong>{{ form.collaboration_relation.label }}</strong></label>
@@ -121,6 +108,19 @@
 
       {% include "wjs_submission/step4/selected_collaborations.html" %}
 
+    </div>
+  </div>
+
+  <div id="authors-contributions-wrapper" style="display: {% if show_special_fragment %}block{% else %}none{% endif %};">
+    <div class="wjs-submission-form__section mb-5">
+        <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Authors contributions</h2>
+        <div class="wjs-submission-form__section-content">
+          <p class="wjs-submission-form__authors-intro-text">
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
+            quis nostrud exercitation ullamco laboris
+          </p>
+          {{ form.authors_contributions }}
+        </div>
     </div>
   </div>
 
