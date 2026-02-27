@@ -64,7 +64,7 @@
     <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required"> Conflict of interest</h2>
     <div class="wjs-submission-form__section-content">
       <div class="mb-3">
-        {{ form.competing_interests.help_text }}
+        {{ form.competing_interests.help_text|safe }}
       </div>
       {% bootstrap_field form.competing_interests show_help=False show_label=False %}
     </div>

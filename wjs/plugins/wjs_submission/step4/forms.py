@@ -128,7 +128,12 @@ class SubmissionStep4Form(forms.ModelForm):
 class AddAuthorForm(forms.ModelForm):
     class Meta:
         model = Account
-        fields = ["email", "first_name", "middle_name", "last_name", "institution", "country"]
+        fields = [
+            "email",
+            "first_name",
+            "middle_name",
+            "last_name",
+        ]
 
     def __init__(self, *args, **kwargs):
         """
