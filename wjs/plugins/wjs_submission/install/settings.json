@@ -88,13 +88,28 @@
         },
         "setting": {
             "description": "Message when OAT is not available.",
-            "is_translatable": false,
+            "is_translatable": true,
             "name": "oat_disclaimer_message",
             "pretty_name": "Non-OAT access message",
             "type": "rich-text"
         },
         "value": {
             "default": "<p>Since it seems that no Transformative Agreement is in place between your institutions and this journal, payment will be requested of you for Open Access publication. <a href='https://iopscience.iop.org/journal/1475-7516/page/publication-charges'>See fees</a>.</p>"
+        }
+    },
+    {
+        "group": {
+            "name": "wjs_submission"
+        },
+        "setting": {
+            "description": "Introductory text for Step 3 - Keywords.",
+            "is_translatable": true,
+            "name": "step3_intro_text",
+            "pretty_name": "Intro for Step 3 page",
+            "type": "rich-text"
+        },
+        "value": {
+            "default": "<p>Select from 1 to 3 keywords.</p>"
         }
     }
 ]
