@@ -156,5 +156,20 @@
         "value": {
             "default": "<p><b>Manuscript file</b>: accepted formats are tex, tar.gz and zip. Source files will be converted to pdf.</p><p><b>ESM</b>: additional material that you are submitting for publication along with the manuscript file. Authors take full responsibility for their content and they will not be transformed in any way during the production stage.</p><p><b>Administrative files</b>: any file that you wish to send the Journal for administrative purposes. They will neither be reviewed nor published.</p>"
         }
+    },
+    {
+        "group": {
+            "name": "wjs_submission"
+        },
+        "setting": {
+            "description": "Text shown to summarise the access mode, copyright and licence applied to the paper.",
+            "is_translatable": true,
+            "name": "access_mode_confirmation_text",
+            "pretty_name": "Summary of selected access mode, copyright and licence",
+            "type": "rich-text"
+        },
+        "value": {
+            "default": "<p>If accepted, your paper may be published {{ view.access_mode_configuration.access_mode }}, copyright \"{{ view.access_mode_configuration.copyright_text }}\", licence {{ view.access_mode_configuration.license.short_name }}. Confirmation will be given after acceptance for publication.</p>"
+        }
     }
 ]

@@ -5,6 +5,7 @@ from typing import NamedTuple
 from core.models import Account
 from django.http import HttpRequest
 from django.urls import reverse
+from django_filters.conf import is_callable
 from journal.models import Issue, Journal
 from submission.models import STAGE_UNSUBMITTED, Article
 
@@ -29,7 +30,7 @@ class Step:
     The number of the submission steps
     """
 
-    label: str
+    label: str | Callable[[Article], str]
     """
     Public label of the step
     """
@@ -48,6 +49,19 @@ class Step:
     """
     A generic function to check the availability of a single step for an article
     """
+
+    def get_title(self, article: Article) -> str:
+        """
+        Retrieve the title of the given article.
+
+        :param article: The article object for which to retrieve the title
+        :type article: Article
+        :return: The title of the article
+        :rtype: str
+        """
+        if is_callable(self.label):
+            return self.label(article)
+        return self.label
 
     @staticmethod
     def _get_incomplete_revision_step(article: Article) -> int:
@@ -298,6 +312,21 @@ def step_check_review_submit(
     return True
 
 
+def step7_label(article: Article) -> str:
+    """
+    Determine the appropriate label based on the article's funding configuration.
+
+    :param article: The Article object used to determine the label.
+    :type article: Article
+    :return: The label string based on the article's funding configuration.
+    :rtype: str
+    :raises AttributeError: If any required attribute is missing in the article object or its nested attributes.
+    """
+    if article and article.journal.submissionconfiguration.funding:
+        return "Access & funding"
+    return "Access"
+
+
 STEPS = {
     1: Step(
         step_number=1,
@@ -343,7 +372,7 @@ STEPS = {
     ),
     7: Step(
         step_number=7,
-        label="Access & funding",
+        label=step7_label,
         step_view_name="wjs_submission_7",
         check_function=step_check_access_funding,
         icon="bi-credit-card",

@@ -61,7 +61,7 @@ class StepCheckView(ModelFormMixin):
     @property
     def page_title(self) -> str:
         """View title used as title HTML element."""
-        return self._step_object.label
+        return self._step_object.get_title(self.object)
 
     def _verify_step(self, request, *args, **kwargs) -> HttpResponseRedirect | None:
         """Extract information about the current step and verify if it is active."""
