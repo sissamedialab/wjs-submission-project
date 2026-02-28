@@ -4,7 +4,7 @@ from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 from submission.models import Article, ArticleAuthorOrder, ArticleFunding
 
-from .settings import ARXIV_BASE_DOI_
+from .settings import ARXIV_BASE_DOI
 from .signals import *  # noqa
 
 
@@ -178,7 +178,7 @@ class ArticleSubmission(models.Model):
         :raises: AttributeError if `get_arxiv_id` is not callable or does not return a valid value.
         """
         versionless_arxiv_id = self.get_arxiv_id().partition("v")[0]
-        return f"{ARXIV_BASE_DOI_}/arXiv.{versionless_arxiv_id}"
+        return f"{ARXIV_BASE_DOI}/arXiv.{versionless_arxiv_id}"
 
 
 class CollaborationRelation(models.TextChoices):
