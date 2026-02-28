@@ -10,7 +10,11 @@
            {% else %}href="#"{% endif %}
            class="wjs-submission-navigation-step__link">
           <div class="wjs-submission-navigation-step__circle"><i class="bi {{ step_state.step.icon }}"></i></div>
-          <div class="wjs-submission-navigation-step__label">{{ step_state.step|step_title:article }}</div>
+          {% if article %}
+            <div class="wjs-submission-navigation-step__label">{{ step_state.step|step_title:article }}</div>
+          {% else %}
+            <div class="wjs-submission-navigation-step__label">{{ step_state.step|step_title:None }}</div>
+          {% endif %}
         </a>
       </div>
     {% endif %}

@@ -9,7 +9,8 @@
       <table class="table table-sm" id="collaborations-table">
         <thead>
         <tr>
-          <th width="90%">Name</th>
+          <th width="60%">Name</th>
+          <th width="30%">Type</th>
           <th class="text-center"><i class="bi bi-arrow-up"></i></th>
           <th class="text-center"><i class="bi bi-arrow-down"></i></th>
           <th class="text-end">Delete</th>
@@ -18,7 +19,8 @@
         <tbody>
         {% for collaboration in articles_collaborations %}
           <tr>
-            <td width="90%">{{ collaboration.collaboration.name }}</td>
+            <td>{{ collaboration.collaboration.name }}</td>
+            <td>{{ collaboration.get_relation_display }}</td>
             <td class="text-center">
               {% if not forloop.first %}
                 <button class="btn btn-sm btn-primary"
