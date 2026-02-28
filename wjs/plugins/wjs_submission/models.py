@@ -14,21 +14,59 @@ class ArticleSubmission(models.Model):
         ESM = "esm", _("My article has code included as electronic supplementary material")
         URL = "url", _("My article has associated code in a data repository")
 
+        @classmethod
+        def as_dict(cls) -> dict[str, str]:
+            """
+            Convert the choices attribute to a dictionary representation.
+
+            :return: A dictionary mapping the keys and values of choices
+            :rtype: dict[str, str]
+            """
+            return dict(cls.choices)
+
     class DasDeclaration(models.TextChoices):
         NO = "no", _("My article has no associated data or the data will not be deposited")
         ESM = "esm", _("My article has data included as electronic supplementary material")
         URL = "url", _("My article has associated data in a data repository")
+
+        @classmethod
+        def as_dict(cls) -> dict[str, str]:
+            """
+            Convert the choices attribute to a dictionary representation.
+
+            :return: A dictionary mapping the keys and values of choices
+            :rtype: dict[str, str]
+            """
+            return dict(cls.choices)
 
     class ManuscriptSourceFormat(models.TextChoices):
         AUTO = "auto", _("Auto")
         LATEX = "latex", _("Tex / LaTeX")
         DOC = "doc", _("Documents (odt/docx/rtf)")
 
+        def as_dict(self) -> dict[str, str]:
+            """
+            Convert the choices attribute to a dictionary representation.
+
+            :return: A dictionary mapping the keys and values of choices
+            :rtype: dict[str, str]
+            """
+            return dict(self.choices)
+
     class TexEngine(models.TextChoices):
         TEX = "tex", _("Tex")
         LATEX = "latex", _("LaTex")
         PDFLATEX = "pdflatex", _("PdflLaTex")
         XELATEX = "xelatex", _("XeLaTex")
+
+        def as_dict(self) -> dict[str, str]:
+            """
+            Convert the choices attribute to a dictionary representation.
+
+            :return: A dictionary mapping the keys and values of choices
+            :rtype: dict[str, str]
+            """
+            return dict(self.choices)
 
     article = models.OneToOneField(
         Article,

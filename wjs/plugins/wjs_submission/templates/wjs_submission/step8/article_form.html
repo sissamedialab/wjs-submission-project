@@ -129,7 +129,11 @@
         {% endif %}
       </div>
       <div class="wjs-submission-form__section-content">
-        <p>{{ article.projected_issue|display_title }}</p>
+        {% if article.projected_issue %}
+          <p>{{ article.projected_issue|display_title }}</p>
+        {% else %}
+          <p>Standard issue</p>
+        {% endif %}
       </div>
     </div>
   {% endif %}
@@ -314,7 +318,7 @@
       {% endif %}
     </div>
     <div class="wjs-submission-form__section-content">
-      <p>{{ article_data.get_das_display }}{% if article_data.das == article_data.DasDeclaration.URL %}:&nbsp;{{ article_data.das_url }}{% endif %}</p>
+      <p>{{ files_data.das_display }}{% if files_data.das == article_data.submission_data.DasDeclaration.URL %}:&nbsp;{{ files_data.das_url }}{% endif %}</p>
     </div>
   </div>
 
@@ -328,7 +332,7 @@
       {% endif %}
     </div>
     <div class="wjs-submission-form__section-content">
-      <p>{{ article_data.get_cas_display }}{% if article_data.cas == article_data.CasDeclaration.URL %}: &nbsp;{{ article_data.cas_url }}{% endif %}</p>
+      <p>{{ files_data.cas_display }}{% if files_data.cas == article_data.submission_data.CasDeclaration.URL %}: &nbsp;{{ files_data.cas_url }}{% endif %}</p>
     </div>
   </div>
 
@@ -344,7 +348,11 @@
       {% endif %}
     </div>
     <div class="wjs-submission-form__section-content">
-      <p>{{ access_mode }}</p>
+      <p>
+        <span class="fw-bold">Access Mode</span>: {{ access_mode.access_mode }}<br>
+        <span class="fw-bold">Copyright</span>: {{ access_mode.copyright }}<br>
+        <span class="fw-bold">License</span>: {{ access_mode.licence }}
+      </p>
     </div>
     {% if article_data.special_request %}
       <div class="wjs-submission-form__section-content">

@@ -7,7 +7,7 @@ from submission.models import Article, ArticleAuthorOrder
 from ..access_mode import get_access_mode_configuration
 from ..mixins import AuthorFilteringView, StepCheckView
 from ..models import (
-    AccessMode,
+    AccessModeJournal,
     ArticleCollaboration,
     RevisionArticleAuthorOrder,
     RevisionArticleCollaboration,
@@ -107,11 +107,36 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
         context["article_collaborations"] = get_article_collaborations(self.object)
         if is_revision(self.object):
             context["article_data"] = self.object.revisionstorage.data
-            context["access_mode"] = AccessMode.objects.get(pk=context["article_data"]["access_mode"])
+            context["files_data"] = {
+                "cas": self.object.revisionstorage.data["cas"],
+                "cas_display": self.object.submission_data.CasDeclaration.as_dict()[
+                    self.object.revisionstorage.data["cas"]
+                ],
+                "cas_url": self.object.revisionstorage.data["cas_url"],
+                "das": self.object.revisionstorage.data["das"],
+                "das_display": self.object.submission_data.CasDeclaration.as_dict()[
+                    self.object.revisionstorage.data["das"]
+                ],
+                "das_url": self.object.revisionstorage.data["das_url"],
+            }
+            context["access_mode"] = AccessModeJournal.objects.get(
+                journal=self.object.journal, access_mode_id=context["article_data"]["access_mode"]
+            )
             context["correspondence_author"] = Account.objects.get(pk=context["article_data"]["correspondence_author"])
         else:
             context["article_data"] = self.object
-            context["access_mode"] = self.object.submission_data.access_mode
+            context["files_data"] = {
+                "cas": self.object.submission_data.cas,
+                "cas_display": self.object.submission_data.get_cas_display(),
+                "cas_url": self.object.submission_data.cas_url,
+                "das": self.object.submission_data.das,
+                "das_display": self.object.submission_data.get_das_display(),
+                "das_url": self.object.submission_data.das_url,
+            }
+            context["access_mode"] = AccessModeJournal.objects.get(
+                journal=self.object.journal, access_mode_id=self.object.submission_data.access_mode.pk
+            )
+            context["article_data"].special_request = self.object.submission_data.special_request
             context["correspondence_author"] = self.object.correspondence_author
 
         # Include files (manuscript_files, data_figure_files, etc.)
