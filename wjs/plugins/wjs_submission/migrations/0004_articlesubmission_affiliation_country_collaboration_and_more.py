@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
         ("core", "0099_alter_accountrole_options"),
-        ("submission", "0085_submissionconfiguration_autocomplete_keywords"),
+        ("submission", "0089_keyword_created_keyword_deactivated_keyword_notes_and_more"),
         ("wjs_submission", "0003_articlesubmission_cover_letter_file"),
     ]
 
