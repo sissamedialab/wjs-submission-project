@@ -5,6 +5,7 @@ from repository.models import Author
 from submission.models import Article, ArticleAuthorOrder
 
 from ..access_mode import get_access_mode_configuration
+from ..data import RevisionValidationData
 from ..mixins import AuthorFilteringView, StepCheckView
 from ..models import (
     AccessModeJournal,
@@ -91,21 +92,27 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
         self._process_step7()
         return kwargs
 
-    def _validate_revision_data(self, article: Article) -> bool:  # noqa: PLR6301
+    def _validate_revision_data(self, article: Article) -> RevisionValidationData:  # noqa: PLR6301
         """
         Validate the revision data of an article to ensure completeness.
 
         :param article: The article object containing revision data
         :type article: Article
-        :return: True if all required revision data is present, otherwise False
-        :rtype: bool
+        :return: Validation results for different aspects of the revision data.
+        :rtype: RevisionValidationData
         :raises KeyError: If expected keys are missing in the revision data
         """
         submission_requirements = bool(article.revisionstorage.data["submission_requirements"])
         cover_letter = bool(article.revisionstorage.data["comments_editor"]) or bool(
             article.revisionstorage.data["cover_letter_file"]
         )
-        return submission_requirements and cover_letter
+        revision_files = bool(article.revisionstorage.data["source_files"])
+        return {
+            "valid": submission_requirements and cover_letter and revision_files,
+            "submission_requirements": submission_requirements,
+            "cover_letter": cover_letter,
+            "revision_files": revision_files,
+        }
 
     def get_context_data(self, **kwargs):
         """
@@ -139,7 +146,7 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                 journal=self.object.journal, access_mode_id=context["article_data"]["access_mode"]
             )
             context["correspondence_author"] = Account.objects.get(pk=context["article_data"]["correspondence_author"])
-            context["valid_revision_data"] = self._validate_revision_data(self.object)
+            context["validate_revision_data"] = self._validate_revision_data(self.object)
         else:
             context["article_data"] = self.object
             context["files_data"] = {

@@ -282,9 +282,16 @@ class RevisionStep4Form(SubmissionStep4Form):
         :type kwargs: dict
         """
         self.revision_storage = RevisionStorage.objects.get(article=kwargs["instance"])
+        self.has_author_list_changed = kwargs.pop("has_author_list_changed")
         kwargs.setdefault("initial", {})
         kwargs["initial"]["collaboration_relation"] = self.revision_storage.data.get("collaboration_relation")
         super().__init__(*args, **kwargs)
+        self.fields["authors_contributions"].required = self.has_author_list_changed
+        # Using a custom attribute to not trigger bootstrap validation as we use custom logic which checks tinymce
+        self.fields["authors_contributions"].widget.attrs["js_required"] = True
+        for field in self.fields:
+            if self.fields[field].required:
+                self.fields[field].help_text = _("Required")
 
     def _get_correspondence_author_list(self, article: Article) -> QuerySet:
         """
@@ -324,7 +331,10 @@ class RevisionStep4Form(SubmissionStep4Form):
             RevisionArticleCollaboration.objects.filter(revision_storage=revision_storage).delete()
 
         if self.cleaned_data.get("authors_contributions"):
-            revision_request = RevisionRequest.objects.get(article=self.instance)
+            # we pick the latest non complete revision request to store
+            revision_request = RevisionRequest.objects.filter(
+                article=self.instance, date_completed__isnull=True
+            ).latest("date_requested")
             revision_request.editorrevisionrequest.authors_contributions = self.cleaned_data.get(
                 "authors_contributions"
             )
