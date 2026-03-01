@@ -2,7 +2,7 @@ from core.models import Account
 from django.urls import reverse_lazy
 from django.views.generic import UpdateView
 from repository.models import Author
-from submission.models import Article, ArticleAuthorOrder
+from submission.models import LANGUAGE_CHOICES, Article, ArticleAuthorOrder, Section
 
 from ..access_mode import get_access_mode_configuration
 from ..data import RevisionValidationData
@@ -142,6 +142,10 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                 ],
                 "das_url": self.object.revisionstorage.data["das_url"],
             }
+            if context["article_data"].get("language"):
+                context["article_data"]["language"] = dict(LANGUAGE_CHOICES)[context["article_data"]["language"]]
+            if context["article_data"].get("section"):
+                context["article_data"]["section"] = Section.objects.get(pk=context["article_data"]["section"])
             context["access_mode"] = AccessModeJournal.objects.get(
                 journal=self.object.journal, access_mode_id=context["article_data"]["access_mode"]
             )

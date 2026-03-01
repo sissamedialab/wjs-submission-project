@@ -279,9 +279,21 @@
       <div class="wjs-submission-form__text-area">{{ article_data.title|safe }}</div>
     </div>
     {% if journal_settings.general.abstract_required %}
-      <div class="wjs-submission-form__section-content">
+      <div class="wjs-submission-form__section-content mb-3">
         <label class="fw-bold">Abstract</label>
         <div class="wjs-submission-form__text-area">{{ article_data.abstract|safe }}</div>
+      </div>
+    {% endif %}
+    {% if journal.submissionconfiguration.language %}
+      <div class="wjs-submission-form__section-content mb-3">
+        <label class="fw-bold">Language</label>:
+        {{ article_data.language }}
+      </div>
+    {% endif %}
+    {% if journal.submissionconfiguration.section %}
+      <div class="wjs-submission-form__section-content mb-3">
+        <label class="fw-bold">Section</label>:
+        {{ article_data.section }}
       </div>
     {% endif %}
   </div>
@@ -353,9 +365,9 @@
     </div>
     <div class="wjs-submission-form__section-content">
       <p>
-        <span class="fw-bold">Access Mode</span>: {{ access_mode.access_mode }}<br>
-        <span class="fw-bold">Copyright</span>: {{ access_mode.copyright }}<br>
-        <span class="fw-bold">License</span>: {{ access_mode.licence }}
+        <label class="fw-bold">Access Mode</label>: {{ access_mode.access_mode }}<br>
+        <label class="fw-bold">Copyright</label>: {{ access_mode.copyright }}<br>
+        <label class="fw-bold">License</label>: {{ access_mode.licence }}
       </p>
     </div>
     {% if article_data.special_request %}
