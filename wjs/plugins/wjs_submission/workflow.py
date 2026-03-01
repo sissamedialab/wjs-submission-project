@@ -5,7 +5,6 @@ from typing import NamedTuple
 from core.models import Account
 from django.http import HttpRequest
 from django.urls import reverse
-from django_filters.conf import is_callable
 from journal.models import Issue, Journal
 from submission.models import STAGE_UNSUBMITTED, Article
 
@@ -59,7 +58,7 @@ class Step:
         :return: The title of the article
         :rtype: str
         """
-        if is_callable(self.label):
+        if callable(self.label):
             return self.label(article)
         return self.label
 
