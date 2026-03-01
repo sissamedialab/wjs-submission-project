@@ -83,7 +83,8 @@ class SubmissionStep4View(HtmxMixin, AuthorFilteringView, StepCheckView, UpdateV
         """
         kwargs = super().get_form_kwargs()
         kwargs["step"] = self.step
-        kwargs["has_author_list_changed"] = is_revision(self.article) and has_author_list_changed(self.article)
+        if is_revision(self.article):
+            kwargs["has_author_list_changed"] = is_revision(self.article) and has_author_list_changed(self.article)
         return kwargs
 
     def get_template_names(self):
