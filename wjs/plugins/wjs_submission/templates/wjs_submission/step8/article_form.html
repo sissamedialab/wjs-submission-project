@@ -1,5 +1,5 @@
 {% extends "wjs_submission/base.html" %}
-{% load django_bootstrap5 field static submission_tags %}
+{% load django_bootstrap5 field static submission_tags wjs_tags %}
 
 {% block bootstrap5_extra_head %}
   {{ block.super }}
@@ -36,7 +36,11 @@
           {% include "wjs_submission/step8/includes/submission_field.html" with label=journal_settings.general.copyright_submission_label kind="check" answer=article.copyright_notice %}
         {% endif %}
         {% for answer in article.fieldanswer_set.all %}
-          {% include "wjs_submission/step8/includes/submission_field.html" with label=answer.field.name kind=answer.field.kind answer=answer.answer %}
+          {% if is_revision %}
+            {% include "wjs_submission/step8/includes/submission_field.html" with label=answer.field.name kind=answer.field.kind answer=article_data|get_value:answer.field.name %}
+          {% else %}
+            {% include "wjs_submission/step8/includes/submission_field.html" with label=answer.field.name kind=answer.field.kind answer=answer.answer %}
+          {% endif %}
         {% endfor %}
       </ul>
     </div>
