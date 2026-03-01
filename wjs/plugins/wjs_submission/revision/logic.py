@@ -17,6 +17,7 @@ from ..models import (
     RevisionSubmissionArticleFunding,
     SubmissionArticleFunding,
 )
+from ..settings import RESET_ARTICLE_CURRENT_STEP
 
 
 @dataclasses.dataclass
@@ -29,17 +30,28 @@ class BaseSetupRevisionStorage:
     revision_flow_type: RevisionStorage.RevisionFlowType = None
     revision_storage: RevisionStorage = None
     created: bool = False
+    article: Article = None
 
-    def _check_conditions(self) -> bool:
+    def _get_article(self):
+        return Article.objects.get(pk=self.article_id)
+
+    def _check_conditions(self, article: Article) -> bool:  # noqa: PLR6301
         """
         Check if the article is in a revision stage and if the revision flow type is valid.
+
+        :param article: The article to create submission data.
+        :type article: Article
         """
-        article = Article.objects.get(pk=self.article_id)
         return article.stage == STAGE_UNDER_REVISION
 
-    def _ensure_storage(self):
-        """Ensure that the RevisionStorage object exists."""
-        self.revision_storage, self.created = RevisionStorage.objects.get_or_create(article_id=self.article_id)
+    def _ensure_storage(self, article: Article):
+        """
+        Ensure that the RevisionStorage object exists.
+
+        :param article: The article to create submission data.
+        :type article: Article
+        """
+        self.revision_storage, self.created = RevisionStorage.objects.get_or_create(article=article)
         self.revision_storage.revision_flow_type = self.revision_flow_type
 
     def _populate_additional_models(self):
@@ -49,7 +61,19 @@ class BaseSetupRevisionStorage:
         """Populate the RevisionStorage object with data based on the revision flow type."""
         raise NotImplementedError
 
-    def _ensure_submission_data(self) -> ArticleSubmission:
+    def _reset_article_step(self, article: Article):  # noqa: PLR6301
+        """
+        Reset the current step of the article to the initial state if the RESET_ARTICLE_CURRENT_STEP flag is enabled.
+
+        :param article: The article to create submission data.
+        :type article: Article
+        """
+        if not RESET_ARTICLE_CURRENT_STEP:
+            return
+        article.current_step = 1
+        article.save()
+
+    def _ensure_submission_data(self, article: Article) -> ArticleSubmission:  # noqa: PLR6301
         """
         Ensure ArticleSubmission wrapper exists.
 
@@ -60,8 +84,11 @@ class BaseSetupRevisionStorage:
         However, such object is needed in some steps (e.g. step6) of the revision process.
 
         Here we ensure that it exists.
+
+        :param article: The article to create submission data.
+        :type article: Article
         """
-        submission_data, created = ArticleSubmission.objects.get_or_create(article=self.revision_storage.article)
+        submission_data, created = ArticleSubmission.objects.get_or_create(article=article)
         if created:
             pass
             # TODO: do I need to fix some of its data?
@@ -69,13 +96,15 @@ class BaseSetupRevisionStorage:
 
     def run(self):
         """Run the initialization of the RevisionStorage object according to the initialized revision flow."""
+        article = self._get_article()
         with atomic():
-            if not self._check_conditions():
+            if not self._check_conditions(article):
                 raise ValueError(f"Conditions for starting revision {self.revision_flow_type} not met.")
-            self._ensure_storage()
+            self._reset_article_step(article)
+            self._ensure_storage(article)
             self._populate_storage()
             self._populate_additional_models()
-            self._ensure_submission_data()
+            self._ensure_submission_data(article)
 
 
 @dataclasses.dataclass
