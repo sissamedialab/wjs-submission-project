@@ -91,6 +91,22 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
         self._process_step7()
         return kwargs
 
+    def _validate_revision_data(self, article: Article) -> bool:  # noqa: PLR6301
+        """
+        Validate the revision data of an article to ensure completeness.
+
+        :param article: The article object containing revision data
+        :type article: Article
+        :return: True if all required revision data is present, otherwise False
+        :rtype: bool
+        :raises KeyError: If expected keys are missing in the revision data
+        """
+        submission_requirements = bool(article.revisionstorage.data["submission_requirements"])
+        cover_letter = bool(article.revisionstorage.data["comments_editor"]) or bool(
+            article.revisionstorage.data["cover_letter_file"]
+        )
+        return submission_requirements and cover_letter
+
     def get_context_data(self, **kwargs):
         """
         Inject necessary data into the context.
@@ -123,6 +139,7 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                 journal=self.object.journal, access_mode_id=context["article_data"]["access_mode"]
             )
             context["correspondence_author"] = Account.objects.get(pk=context["article_data"]["correspondence_author"])
+            context["valid_revision_data"] = self._validate_revision_data(self.object)
         else:
             context["article_data"] = self.object
             context["files_data"] = {

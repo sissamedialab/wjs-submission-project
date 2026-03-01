@@ -124,6 +124,7 @@ class PopulateStep1:
         :param commit: Save the updated models. Set to True if it's the last step to initialize RevisionStorage.
         :type commit: bool
         """
+        self.revision_storage.data["competing_interests"] = self.revision_storage.article.competing_interests
         self.revision_storage.data["submission_requirements"] = False
         self.revision_storage.data["cover_letter_file"] = None
         self.revision_storage.data["comments_editor"] = ""
@@ -254,10 +255,10 @@ class PopulateStep6:
         :param commit: Save the updated models. Set to True if it's the last step to initialize RevisionStorage.
         :type commit: bool
         """
-        self.revision_storage.data["das"] = ""
-        self.revision_storage.data["das_url"] = ""
-        self.revision_storage.data["cas"] = ""
-        self.revision_storage.data["cas_url"] = ""
+        self.revision_storage.data["das"] = self.revision_storage.article.submission_data.das
+        self.revision_storage.data["das_url"] = self.revision_storage.article.submission_data.das_url
+        self.revision_storage.data["cas"] = self.revision_storage.article.submission_data.cas
+        self.revision_storage.data["cas_url"] = self.revision_storage.article.submission_data.cas_url
         # Note that we keep the standard slot names (e.g. manuscript_fileS),
         # even for fields where we know that only one item will be set.
         self.revision_storage.data["manuscript_files"] = None
