@@ -318,9 +318,9 @@ class RevisionStorage(models.Model):
     """
 
     class RevisionFlowType(models.TextChoices):
-        CONFIRM = "confirm", _("Confirm")
-        METADATA = "metadata", _("Metadata")
-        FULL = "full", _("Minor / Major")
+        CONFIRM = "confirm", _("Confirm previous version")
+        METADATA = "metadata", _("Metadata change")
+        FULL = "full", _("New version")
 
     article = models.OneToOneField(
         Article,
