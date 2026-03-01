@@ -288,7 +288,7 @@ class RevisionStep4Form(SubmissionStep4Form):
         super().__init__(*args, **kwargs)
         self.fields["authors_contributions"].required = self.has_author_list_changed
         # Using a custom attribute to not trigger bootstrap validation as we use custom logic which checks tinymce
-        self.fields["authors_contributions"].widget.attrs["js_required"] = True
+        self.fields["authors_contributions"].widget.attrs["js_required"] = self.has_author_list_changed
         for field in self.fields:
             if self.fields[field].required:
                 self.fields[field].help_text = _("Required")

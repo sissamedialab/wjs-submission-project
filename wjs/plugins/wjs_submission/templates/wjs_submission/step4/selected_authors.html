@@ -53,7 +53,7 @@
               {% endif %}
             </td>
             <td class="text-end">
-              {% if author.author != article.owner and author.author.pk != correspondence_author.pk %}
+              {% if author.author != article.owner and author.author != correspondence_author and author.author != request.user %}
                 <button class="btn btn-sm"
                         hx-post="{% url 'wjs_submission_4' article.pk %}"
                         hx-vals='{"entity": "author", "author_id": "{{ author.pk }}", "action": "delete"}'
