@@ -98,7 +98,7 @@ class StepCheckView(ModelFormMixin):
             journal=self.request.journal, article=self.object, user=self.request.user
         )
         context["step"] = self._step_object
-        kwargs["is_revision"] = is_revision(self.object)
+        context["is_revision"] = is_revision(self.object)
         return context
 
 

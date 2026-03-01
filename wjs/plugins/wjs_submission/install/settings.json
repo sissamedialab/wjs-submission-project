@@ -139,7 +139,7 @@
             "type": "rich-text"
         },
         "value": {
-            "default": "<p>Please select the the <b>person in charge of handling the correspondence</b> with the Journal and indicate the country of their affiliation exactly as stated in the manuscript file.</p><p>If the corresponding author is affiliated with more than one institution in different countries (as indicated in the manuscript), please select a country that has a Transformative Agreement in place with the journal’s publisher, IOP Publishing.: <a href=\\\"https://publishingsupport.iopscience.iop.org/questions/institutional-open-access-agreements/\\\" target=\\\"_blank\\\">https://publishingsupport.iopscience.iop.org/questions/institutional-open-access-agreements/</a>.</p><p>NB: authors can be selected as corresponding authors only if they have required information in their personal profile: name, email, affiliation, country and Orcid id.</p>\""
+            "default": "<p>Please select the <b>person in charge of handling the correspondence</b> with the Journal and indicate the country of their affiliation exactly as stated in the manuscript file.</p><p>If the corresponding author is affiliated with more than one institution in different countries (as indicated in the manuscript), please select a country that has a Transformative Agreement in place with the journal’s publisher, IOP Publishing.: <a href=\\\"https://publishingsupport.iopscience.iop.org/questions/institutional-open-access-agreements/\\\" target=\\\"_blank\\\">https://publishingsupport.iopscience.iop.org/questions/institutional-open-access-agreements/</a>.</p><p>NB: authors can be selected as corresponding authors only if they have required information in their personal profile: name, email, affiliation, country and Orcid id.</p>\""
         }
     },
     {
@@ -170,6 +170,51 @@
         },
         "value": {
             "default": "<p>If accepted, your paper may be published {{ view.access_mode_configuration.access_mode }}, copyright \"{{ view.access_mode_configuration.copyright_text }}\", licence {{ view.access_mode_configuration.license.short_name }}. Confirmation will be given after acceptance for publication.</p>"
+        }
+    },
+    {
+        "group": {
+            "name": "wjs_submission"
+        },
+        "setting": {
+            "description": "Introductory text displayed at the head of the revision page.",
+            "is_translatable": true,
+            "name": "revision_intro_text",
+            "pretty_name": "Revision Page Text",
+            "type": "rich-text"
+        },
+        "value": {
+            "default": "<p>The information from your previous submission has been partially carried over to this revision. Please review all fields carefully and update any details as needed to reflect your revised manuscript before completing the submission.</p>"
+        }
+    },
+    {
+        "group": {
+            "name": "wjs_submission"
+        },
+        "setting": {
+            "description": "Introductory text for Step 4 - Corresponding author section - Revision.",
+            "is_translatable": true,
+            "name": "step4_corresponding_author_text_revision",
+            "pretty_name": "Intro for Step 4 - Corresponding author - Revision",
+            "type": "rich-text"
+        },
+        "value": {
+            "default": "<p>You can change the person in charge of handling the correspondence with the Journal from now. Please select their Country exactly as stated in the manuscript file. If the corresponding author is affiliated with more than one institution in different countries (as indicated in the manuscript), please select a country that has a Transformative Agreement in place with the journal’s publisher, IOP Publishing.: <a href=\\\\\\\"https://publishingsupport.iopscience.iop.org/questions/institutional-open-access-agreements/\\\\\\\" target=\\\\\\\"_blank\\\\\\\">https://publishingsupport.iopscience.iop.org/questions/institutional-open-access-agreements/</a>.</p><p>NB: authors can be selected as corresponding authors only if they have required information in their personal profile: name, email, affiliation, country and Orcid id.</p>"
+        }
+    },
+    {
+        "group": {
+            "name": "wjs_submission"
+        },
+        "setting": {
+            "description": "Introductory text for Step 4 - Authors - Revision.",
+            "is_translatable": true,
+            "name": "step4_intro_text_revision",
+            "pretty_name": "Intro for Step 4 page - Revision",
+            "type": "rich-text"
+        },
+        "value": {
+            "default": "<p>Please select co-authors <b>only if</b> they need to be added to the current author list (see section “Selected authors” below).</p>"
         }
     }
 ]
