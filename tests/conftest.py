@@ -40,6 +40,7 @@ JOURNAL_CODE = "JCOM"
 
 @pytest.fixture(autouse=True)
 def install_plugins():
+    management.call_command("load_default_settings")
     management.call_command("install_plugins")
 
 

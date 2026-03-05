@@ -127,6 +127,7 @@ class SubmissionStep1View(AuthorFilteringView, StepCheckView, CreateView):
         kwargs["journal"] = self.request.journal
         kwargs["user"] = self.request.user
         kwargs["step"] = self.step
+        kwargs["request"] = self.request
         return kwargs
 
     def get_initial(self):
