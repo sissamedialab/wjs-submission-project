@@ -10,7 +10,6 @@ from django.utils.translation import gettext_lazy as _
 from events import logic as events_logic
 from plugins.wjs_submission.workflow import is_revision_confirm, is_revision_full
 from submission.models import Article, Field, FieldAnswer
-from utils.logic import get_current_request
 from utils.setting_handler import get_setting
 
 from .. import settings
@@ -80,6 +79,7 @@ class SubmissionStep1Form(forms.ModelForm):
         self.step = kwargs.pop("step")
         self.journal = kwargs.pop("journal")
         self.user = kwargs.pop("user")
+        self.request = kwargs.pop("request")
         self._additional_fields = Field.objects.filter(journal=self.journal, display=True).order_by("order")
         try:
             # As cover_letter_file is a Janeway core File, we can't just pass it to the form FileField, we must wrap it
@@ -312,7 +312,7 @@ class SubmissionStep1Form(forms.ModelForm):
         """Raise Janeway's ON_ARTICLE_SUBMISSION_START event on initial submission step to trigger further actions."""
         events_logic.Events.raise_event(
             events_logic.Events.ON_ARTICLE_SUBMISSION_START,
-            request=get_current_request(),
+            request=self.request,
             article=self.instance,
         )
 

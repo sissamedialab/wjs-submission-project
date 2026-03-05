@@ -3,6 +3,7 @@ from collections.abc import Callable
 import pytest
 from core.middleware import GlobalRequestMiddleware
 from core.models import Account
+from django.http import HttpRequest
 from identifiers.models import Identifier
 from journal.models import Journal
 from plugins.wjs_submission.arxiv import (
@@ -94,7 +95,7 @@ def test_create_article_with_arxiv_id(
 
 @pytest.mark.django_db
 def test_form_save_article_with_arxiv_id(
-    journal: Journal, install_plugins: Callable, user: Account, arxiv_metadata: Callable, fake_request
+    journal: Journal, install_plugins: Callable, user: Account, arxiv_metadata: Callable, fake_request: HttpRequest
 ):
     """
     Article created by ArxivMicroservice ignore the arxiv_id passed by the form to avoid arxiv_id inconsistencies.
@@ -109,6 +110,7 @@ def test_form_save_article_with_arxiv_id(
     """
     result, __ = arxiv_metadata("2504.10562v1")
 
+    fake_request.user = user
     service = HandleArticleCreation(user, result, journal)
     article = service.run()
     assert article.pk
@@ -132,10 +134,7 @@ def test_form_save_article_with_arxiv_id(
         "arxiv_article_id": article.pk,
         "arxiv_id": "2504.10562",
     }
-    # enriching the current request that will be used by SubmissionStep1Form.trigger_submissionstart_event()
-    # via get_current_request()
-    GlobalRequestMiddleware.process_request(fake_request)
-    form = SubmissionStep1Form(data=data, journal=journal, user=user, instance=article, step=1)
+    form = SubmissionStep1Form(data=data, journal=journal, user=user, instance=article, step=1, request=fake_request)
     assert form.is_valid()
     form.save()
     article.refresh_from_db()

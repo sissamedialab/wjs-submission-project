@@ -3,12 +3,11 @@ from core.models import Account, Country
 from django import forms
 from django.db.models import QuerySet
 from django.utils.translation import gettext_lazy as _
-from submission.models import Article, ArticleAuthorOrder
+from review.models import RevisionRequest
+from submission.models import Article, ArticleAuthorOrder, FrozenAuthor
 
 from ..account_validation import (
     ProfileCompletionStatus,
-    is_user_eligible_for_correspondence_author,
-    verify_profile_completion,
 )
 from ..fields import WjsMiniHTMLFormField
 from ..models import (
@@ -54,16 +53,6 @@ class SubmissionStep4Form(forms.ModelForm):
         authors_list = self._get_correspondence_author_list(self.instance)
         self.fields["correspondence_author"].queryset = authors_list
 
-        self.disabled_accounts = self._get_disabled_accounts(authors_list)
-        # The following error can be used by the view's template in order to
-        # indicate required/desirable actions to the operator:
-        self.correspondence_author_error = verify_profile_completion(
-            journal=self.instance.journal,
-            disabled_users=self.disabled_accounts,
-            user=self.instance.correspondence_author,
-            is_owner=self.instance.correspondence_author == self.instance.owner,
-        )
-
         if self.instance.correspondence_author:
             self.fields["correspondence_author"].initial = self.instance.correspondence_author
             self.fields["country"].initial = self.instance.correspondence_author.country
@@ -83,24 +72,7 @@ class SubmissionStep4Form(forms.ModelForm):
         :rtype: QuerySet
         :raises: None
         """
-        return Account.objects.filter(
-            id__in=ArticleAuthorOrder.objects.filter(article=article).values_list("author_id", flat=True)
-        )
-
-    def _get_disabled_accounts(self, authors: QuerySet) -> set:
-        """
-        Identify and return the IDs of disabled accounts based on the given criteria.
-
-        :param authors: A QuerySet of author objects to evaluate
-        :type authors: QuerySet
-        :return: A set containing the IDs of authors whose accounts are considered disabled
-        :rtype: set
-        """
-        return {
-            author.pk
-            for author in authors
-            if not is_user_eligible_for_correspondence_author(self.instance.journal, author)
-        }
+        return article.author_accounts.all()
 
     def save(self, commit: bool = True) -> Account:
         """
@@ -113,11 +85,6 @@ class SubmissionStep4Form(forms.ModelForm):
 
         instance.submission_data.affiliation_country = self.cleaned_data.get("country")
         instance.submission_data.save()
-
-        instance.authors.clear()
-        authors = ArticleAuthorOrder.objects.filter(article=instance).values_list("author", flat=True)
-
-        instance.authors.add(*authors)
 
         if self.cleaned_data.get("collaboration_relation") == "none":
             ArticleCollaboration.objects.filter(article=instance).delete()
@@ -145,37 +112,51 @@ class AddAuthorForm(forms.ModelForm):
         :param args: Positional arguments passed to the parent form.
         :param kwargs: Keyword arguments; must include 'article_id'.
         """
-        article_id = kwargs.pop("article_id")
         self.is_revision = kwargs.pop("is_revision", False)
-        self.article = Article.objects.get(pk=article_id)
+        self.article = kwargs.pop("article")
         super().__init__(*args, **kwargs)
 
-        self.fields["first_name"].required = True
-        self.fields["last_name"].required = True
-        self.fields["email"].required = True
+        self.fields["first_name"].required = self.instance is None
+        self.fields["last_name"].required = self.instance is None
+        self.fields["email"].required = self.instance is None
         for field in self.fields:
             if self.fields[field].required:
                 self.fields[field].help_text = _("Required")
 
     def save(self, commit: bool = True) -> Account:
         """
-        Save the author instance and create an ArticleAuthorOrder entry.
+        Save the author instance and create an FrozenAuthor entry.
 
         :param commit: Whether to commit the instance to the database.
         :return: The saved Account instance.
         """
         instance = super().save()
-        model, fk = (
-            (RevisionArticleAuthorOrder, {"revision_storage": RevisionStorage.objects.get(article=self.article)})
-            if self.is_revision
-            else (ArticleAuthorOrder, {"article": self.article})
-        )
-        model.objects.get_or_create(
-            **fk,
-            author=instance,
-            defaults={"order": self.article.next_author_sort(revision=self.is_revision)},
-        )
+        if self.is_revision:
+            model, fk = (
+                (RevisionArticleAuthorOrder, {"revision_storage": RevisionStorage.objects.get(article=self.article)})
+                if self.is_revision
+                else (FrozenAuthor, {"article": self.article})
+            )
+            model.objects.get_or_create(
+                **fk,
+                author=instance,
+                defaults={"order": self.article.next_author_sort(revision=self.is_revision)},
+            )
+        else:
+            FrozenAuthor.get_or_snapshot_if_email_found(email=instance.email, article=self.article)
         return instance
+
+
+class AddFrozenAutorForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        self.is_revision = kwargs.pop("is_revision", False)
+        self.instance = kwargs.pop("instance")
+        self.article = kwargs.pop("article")
+        super().__init__(*args, **kwargs)
+
+    def save(self, commit=True):
+        author, created = FrozenAuthor.get_or_snapshot_if_email_found(email=self.instance.email, article=self.article)
+        return author
 
 
 class AddCollaborationForm(forms.ModelForm):
