@@ -49,6 +49,7 @@ def test_clean_copyright_notice(
     user: Account,
     enabled: bool,
     selected: bool,
+    fake_request: HttpRequest,
 ):
     journal.submissionconfiguration.copyright_notice = enabled
     journal.submissionconfiguration.save()
@@ -58,7 +59,7 @@ def test_clean_copyright_notice(
         "competing_interests": "AAA",
         "submission_requirements": True,
     }
-    form = SubmissionStep1Form(data=data, journal=journal, user=user, step=1)
+    form = SubmissionStep1Form(data=data, journal=journal, user=user, step=1, request=fake_request)
     if enabled and not selected:
         assert not form.is_valid()
         assert form.errors == {"copyright_notice": ["This field is required."]}
@@ -101,7 +102,7 @@ def test_save_use_of_ai_flag(
         display=True,
     )
     with patch("plugins.wjs_submission.step1.forms.SubmissionStep1Form.trigger_submissionstart_event"):
-        form = SubmissionStep1Form(data=data, journal=journal, user=user, step=1)
+        form = SubmissionStep1Form(data=data, journal=journal, user=user, step=1, request=fake_request)
         assert form.is_valid()
         instance = form.save()
         assert instance.submission_data.use_of_ai_flag is result
@@ -143,8 +144,9 @@ def test_save_cover_letter_permission(
         "competing_interests": "AAA",
         "submission_requirements": True,
     }
+    fake_request.user = user
     files = {"cover_letter_file": SimpleUploadedFile(f"file.{extension}", b"file_content", content_type="image/jpeg")}
-    form = SubmissionStep1Form(data=data, journal=journal, user=user, files=files, step=1)
+    form = SubmissionStep1Form(data=data, journal=journal, user=user, files=files, step=1, request=fake_request)
     if not is_valid:
         assert not form.is_valid()
         assert form.errors == {"cover_letter_file": ["File extension not allowed."]}
@@ -184,6 +186,7 @@ def test_clean_submission_requirements(
     user: Account,
     enabled: bool,
     selected: bool,
+    fake_request: HttpRequest,
 ):
     journal.submissionconfiguration.submission_check = enabled
     journal.submissionconfiguration.save()
@@ -193,7 +196,7 @@ def test_clean_submission_requirements(
         "competing_interests": "AAA",
         "submission_requirements": selected,
     }
-    form = SubmissionStep1Form(data=data, journal=journal, user=user, step=1)
+    form = SubmissionStep1Form(data=data, journal=journal, user=user, step=1, request=fake_request)
     if enabled and not selected:
         assert not form.is_valid()
         assert form.errors == {"submission_requirements": ["This field is required."]}
@@ -224,7 +227,7 @@ def test_clean_submission_requirements(
 )
 @pytest.mark.django_db
 def test_clean_comments_editor_requirements(
-    journal: Journal, install_plugins: Callable, user: Account, text: bool, file: bool
+    journal: Journal, install_plugins: Callable, user: Account, text: bool, file: bool, fake_request: HttpRequest
 ):
     journal.submissionconfiguration.comments_to_the_editor = True
     journal.submissionconfiguration.save()
@@ -239,7 +242,7 @@ def test_clean_comments_editor_requirements(
         data["comments_editor"] = "AAA"
     if file:
         files = {"cover_letter_file": SimpleUploadedFile("file.docx", b"file_content", content_type="image/jpeg")}
-    form = SubmissionStep1Form(data=data, journal=journal, user=user, files=files, step=1)
+    form = SubmissionStep1Form(data=data, journal=journal, user=user, files=files, step=1, request=fake_request)
     assert form.is_valid() is (file or text)
     if not (file or text):
         assert form.errors == {
