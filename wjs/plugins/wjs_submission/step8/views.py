@@ -2,12 +2,13 @@ from core.models import Account
 from django.urls import reverse_lazy
 from django.views.generic import UpdateView
 from repository.models import Author
-from submission.models import Article, ArticleAuthorOrder
+from submission.models import LANGUAGE_CHOICES, Article, ArticleAuthorOrder, Section
 
 from ..access_mode import get_access_mode_configuration
+from ..data import RevisionValidationData
 from ..mixins import AuthorFilteringView, StepCheckView
 from ..models import (
-    AccessMode,
+    AccessModeJournal,
     ArticleCollaboration,
     RevisionArticleAuthorOrder,
     RevisionArticleCollaboration,
@@ -15,12 +16,18 @@ from ..models import (
 )
 from ..step6.views import get_files
 from ..step7.views import get_article_fundings
-from ..workflow import is_revision, step_check_access_funding, step_check_select_issue
+from ..workflow import (
+    is_revision,
+    is_revision_full,
+    is_revision_metadata,
+    step_check_access_funding,
+    step_check_select_issue,
+)
 from .forms import RevisionForm, SubmissionStep8Form
 
 
 def get_article_authors(article) -> list[Author]:
-    if is_revision(article):
+    if is_revision_full(article) or is_revision_metadata(article):
         return [
             author.author for author in RevisionArticleAuthorOrder.objects.filter(revision_storage__article=article)
         ]
@@ -28,7 +35,7 @@ def get_article_authors(article) -> list[Author]:
 
 
 def get_article_collaborations(article) -> list[RevisionArticleCollaboration] | list[ArticleCollaboration]:
-    if is_revision(article):
+    if is_revision_full(article) or is_revision_metadata(article):
         return list(RevisionArticleCollaboration.objects.filter(revision_storage__article=article))
     return list(ArticleCollaboration.objects.filter(article=article))
 
@@ -65,14 +72,14 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
         """
         Assign the access mode configuration if the step7 is skipped.
 
-        :param kwargs: Additional keyword arguments
         :raises Exception: If exceptions occur during the process of fetching or saving the configuration
         """
         configuration = get_access_mode_configuration(self.request.user, self.object)
-        if not is_revision(self.object) and self._step7_skipped and configuration.access_mode:
+        editable_revision = is_revision_full(self.object) or is_revision_metadata(self.object)
+        if not editable_revision and self._step7_skipped and configuration.access_mode:
             self.object.submission_data.access_mode = configuration.access_mode
             self.object.submission_data.save()
-        if is_revision(self.object) and self._step7_skipped and configuration.access_mode:
+        if editable_revision and self._step7_skipped and configuration.access_mode:
             revision_storage = RevisionStorage.objects.get(article=self.object)
             revision_storage.data["access_mode"] = configuration.access_mode.pk
             revision_storage.save()
@@ -91,6 +98,31 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
         self._process_step7()
         return kwargs
 
+    def _validate_revision_data(self, article: Article) -> RevisionValidationData:
+        """
+        Validate the revision data of an article to ensure completeness.
+
+        :param article: The article object containing revision data
+        :type article: Article
+        :return: Validation results for different aspects of the revision data.
+        :rtype: RevisionValidationData
+        :raises KeyError: If expected keys are missing in the revision data
+        """
+        submission_requirements = bool(article.revisionstorage.data["submission_requirements"])
+        cover_letter = bool(article.revisionstorage.data["comments_editor"]) or bool(
+            article.revisionstorage.data["cover_letter_file"]
+        )
+        if is_revision_full(self.object):
+            revision_files = bool(article.revisionstorage.data["source_files"])
+        else:
+            revision_files = True
+        return {
+            "valid": submission_requirements and cover_letter and revision_files,
+            "submission_requirements": submission_requirements,
+            "cover_letter": cover_letter,
+            "revision_files": revision_files,
+        }
+
     def get_context_data(self, **kwargs):
         """
         Inject necessary data into the context.
@@ -105,14 +137,54 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
         context["articles_fundings"] = get_article_fundings(self.object)
         context["article_authors"] = get_article_authors(self.object)
         context["article_collaborations"] = get_article_collaborations(self.object)
-        if is_revision(self.object):
+        if is_revision_full(self.object):
             context["article_data"] = self.object.revisionstorage.data
-            context["access_mode"] = AccessMode.objects.get(pk=context["article_data"]["access_mode"])
+            context["files_data"] = {
+                "cas": self.object.revisionstorage.data["cas"],
+                "cas_display": self.object.submission_data.CasDeclaration.as_dict()[
+                    self.object.revisionstorage.data["cas"]
+                ],
+                "cas_url": self.object.revisionstorage.data["cas_url"],
+                "das": self.object.revisionstorage.data["das"],
+                "das_display": self.object.submission_data.CasDeclaration.as_dict()[
+                    self.object.revisionstorage.data["das"]
+                ],
+                "das_url": self.object.revisionstorage.data["das_url"],
+            }
+            if context["article_data"].get("language"):
+                context["article_data"]["language"] = dict(LANGUAGE_CHOICES)[context["article_data"]["language"]]
+            if context["article_data"].get("section"):
+                context["article_data"]["section"] = Section.objects.get(pk=context["article_data"]["section"])
+            context["access_mode"] = AccessModeJournal.objects.get(
+                journal=self.object.journal, access_mode_id=context["article_data"]["access_mode"]
+            )
             context["correspondence_author"] = Account.objects.get(pk=context["article_data"]["correspondence_author"])
+            context["validate_revision_data"] = self._validate_revision_data(self.object)
         else:
             context["article_data"] = self.object
-            context["access_mode"] = self.object.submission_data.access_mode
+            context["files_data"] = {
+                "cas": self.object.submission_data.cas,
+                "cas_display": self.object.submission_data.get_cas_display(),
+                "cas_url": self.object.submission_data.cas_url,
+                "das": self.object.submission_data.das,
+                "das_display": self.object.submission_data.get_das_display(),
+                "das_url": self.object.submission_data.das_url,
+            }
+            context["access_mode"] = AccessModeJournal.objects.get(
+                journal=self.object.journal, access_mode_id=self.object.submission_data.access_mode.pk
+            )
+            context["article_data"].special_request = self.object.submission_data.special_request
             context["correspondence_author"] = self.object.correspondence_author
+            if is_revision(self.object):
+                if title := self.object.revisionstorage.data.get("title"):
+                    context["article_data"].title = title
+                if abstract := self.object.revisionstorage.data.get("abstract"):
+                    context["article_data"].abstract = abstract
+                if language := self.object.revisionstorage.data.get("language"):
+                    context["article_data"]["language"] = dict(LANGUAGE_CHOICES)[language]
+                if section := self.object.revisionstorage.data.get("section"):
+                    context["article_data"]["section"] = Section.objects.get(pk=section)
+            context["validate_revision_data"] = self._validate_revision_data(self.object)
 
         # Include files (manuscript_files, data_figure_files, etc.)
         context.update(get_files(article=self.object))

@@ -72,7 +72,7 @@ class SubmissionStep4View(HtmxMixin, AuthorFilteringView, StepCheckView, UpdateV
             if is_revision(self.article) and self.revision_storage
             else self.article.correspondence_author
         )
-        context["show_special_fragment"] = has_author_list_changed(self.article)
+        context["has_author_list_changed"] = is_revision(self.article) and has_author_list_changed(self.article)
         return context
 
     def get_form_kwargs(self):
@@ -83,6 +83,8 @@ class SubmissionStep4View(HtmxMixin, AuthorFilteringView, StepCheckView, UpdateV
         """
         kwargs = super().get_form_kwargs()
         kwargs["step"] = self.step
+        if is_revision(self.article):
+            kwargs["has_author_list_changed"] = is_revision(self.article) and has_author_list_changed(self.article)
         return kwargs
 
     def get_template_names(self):

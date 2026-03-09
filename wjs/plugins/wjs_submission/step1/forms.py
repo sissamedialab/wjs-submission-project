@@ -10,6 +10,7 @@ from submission.models import Article, Field, FieldAnswer
 from utils.logic import get_current_request
 from utils.setting_handler import get_setting
 
+from .. import settings
 from ..arxiv import HandleArticleCreation
 from ..fields import CoreFileWrapper, WjsMiniHTMLFormField
 from ..models import ArticleSubmission, RevisionStorage
@@ -33,7 +34,7 @@ class SubmissionStep1Form(forms.ModelForm):
         height="15rem",
         help_text=_(
             "Please disclose any relevant financial or personal relationships that could be viewed as inappropriately "
-            "influencing your work or hindering transparency. Write 'No CoI to declare' if there are no competing "
+            "influencing your work or hindering transparency.<br>Write 'No CoI to declare' if there are no competing "
             "interests to disclose."
         ),
         required=False,
@@ -77,7 +78,7 @@ class SubmissionStep1Form(forms.ModelForm):
         self.step = kwargs.pop("step")
         self.journal = kwargs.pop("journal")
         self.user = kwargs.pop("user")
-        self._additional_fields = Field.objects.filter(journal=self.journal).order_by("order")
+        self._additional_fields = Field.objects.filter(journal=self.journal, display=True).order_by("order")
         try:
             # As cover_letter_file is a Janeway core File, we can't just pass it to the form FileField, we must wrap it
             # in something which "resembles" a model FileField instance (ie: a File + a URL).
@@ -155,7 +156,12 @@ class SubmissionStep1Form(forms.ModelForm):
                 self.fields[element.name].help_text = element.help_text
                 self.fields[element.name].label = element.name
                 if element.required:
-                    self.fields[element.name].help_text = _("Required")
+                    if self.fields[element.name].help_text:
+                        self.fields[
+                            element.name
+                        ].help_text = f"{_('Required')} - {self.fields[element.name].help_text}"
+                    else:
+                        self.fields[element.name].help_text = _("Required")
 
                 if self.instance:
                     try:
@@ -266,7 +272,7 @@ class SubmissionStep1Form(forms.ModelForm):
                     defaults={"answer": answer},
                 )
             # Set dependent value on submission_data
-            if field.name == "Use of AI":
+            if field.name == settings.USE_OF_AI_FIELD_LABEL:
                 self.instance.submission_data.use_of_ai_flag = bool(answer) if answer else False
                 self.instance.submission_data.save()
 

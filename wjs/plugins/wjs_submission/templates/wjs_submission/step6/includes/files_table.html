@@ -48,15 +48,15 @@
             {% url 'wjs_submission_6_render' article.pk file_type as render_url %}
             {% url "download_single_file" article_id=file.article_id file_id=file.pk as download_url %}
             {% if not read_only %}
-              {% bootstrap_button button_class="btn btn-sm btn-outline" type="button" hx_post=delete_url hx_target=container_id hx_confirm="Are you sure you wish to delete the file?" content="<i class='bi bi-trash3'></i>" title="Delete" %}
+              {% bootstrap_button button_class="btn btn-sm btn-outline ps-0" type="button" hx_post=delete_url hx_target=container_id hx_confirm="Are you sure you wish to delete the file?" content="<i class='bi bi-trash3'></i>" title="Delete" %}
               {# the refresh button is used either explicitly during the debug or programmatically by show_feedback js function to re-render the file listing after a succesful conversion to provide the actual backend data of the converted file #}
               {% if settings.DEBUG %}
-                {% bootstrap_button button_class="btn btn-sm btn-outline js-refresh" type="button" hx_get=render_url hx_target=container_id content="<i class='bi bi-arrow-clockwise'></i>" title="DEBUG: Reload table" %}
+                {% bootstrap_button button_class="btn btn-sm btn-outline js-refresh ps-0" type="button" hx_get=render_url hx_target=container_id content="<i class='bi bi-arrow-clockwise'></i>" title="DEBUG: Reload table" %}
               {% else %}
-                {% bootstrap_button button_class="js-refresh d-none" type="button" hx_get=render_url hx_target=container_id content="" %}
+                {% bootstrap_button button_class="js-refresh d-none ps-0" type="button" hx_get=render_url hx_target=container_id content="" %}
               {% endif %}
             {% endif %}
-            <a class="btn btn-sm btn-outline" href="{{ download_url }}" title="Download"><i class="bi bi-cloud-arrow-down"></i></a>
+            <a class="btn btn-sm btn-outline ps-0 pe-2" href="{{ download_url }}" title="Download"><i class="bi bi-cloud-arrow-down"></i></a>
           {% endwith %}
         </td>
       </tr>

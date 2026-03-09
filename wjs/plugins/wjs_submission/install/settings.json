@@ -88,13 +88,133 @@
         },
         "setting": {
             "description": "Message when OAT is not available.",
-            "is_translatable": false,
+            "is_translatable": true,
             "name": "oat_disclaimer_message",
             "pretty_name": "Non-OAT access message",
             "type": "rich-text"
         },
         "value": {
             "default": "<p>Since it seems that no Transformative Agreement is in place between your institutions and this journal, payment will be requested of you for Open Access publication. <a href='https://iopscience.iop.org/journal/1475-7516/page/publication-charges'>See fees</a>.</p>"
+        }
+    },
+    {
+        "group": {
+            "name": "wjs_submission"
+        },
+        "setting": {
+            "description": "Introductory text for Step 3 - Keywords.",
+            "is_translatable": true,
+            "name": "step3_intro_text",
+            "pretty_name": "Intro for Step 3 page",
+            "type": "rich-text"
+        },
+        "value": {
+            "default": "<p>Select from 1 to 3 keywords.</p>"
+        }
+    },
+    {
+        "group": {
+            "name": "wjs_submission"
+        },
+        "setting": {
+            "description": "Introductory text for Step 4 - Authors.",
+            "is_translatable": true,
+            "name": "step4_intro_text",
+            "pretty_name": "Intro for Step 4 page",
+            "type": "rich-text"
+        },
+        "value": {
+            "default": "<p><b>Search for registered users</b>. If found, they will be added automatically to the author list (See “Selected authors” below). If a user has an outdated email address, select them and ask them to update their profile after submission. If a co-author is not yet registered, use <b>Add new author</b> to pre-register them. NB: <b>if the author list includes more than 10 names</b>, please do not select them. You will be asked for the complete author list at a later stage of the process.</p>"
+        }
+    },
+    {
+        "group": {
+            "name": "wjs_submission"
+        },
+        "setting": {
+            "description": "Introductory text for Step 4 - Corresponding author section.",
+            "is_translatable": true,
+            "name": "step4_corresponding_author_text",
+            "pretty_name": "Intro for Step 4 - Corresponding author",
+            "type": "rich-text"
+        },
+        "value": {
+            "default": "<p>Please select the <b>person in charge of handling the correspondence</b> with the Journal and indicate the country of their affiliation exactly as stated in the manuscript file.</p><p>If the corresponding author is affiliated with more than one institution in different countries (as indicated in the manuscript), please select a country that has a Transformative Agreement in place with the journal’s publisher, IOP Publishing.: <a href=\"https://publishingsupport.iopscience.iop.org/questions/institutional-open-access-agreements/\" target=\\\"_blank\\\">https://publishingsupport.iopscience.iop.org/questions/institutional-open-access-agreements/</a>.</p><p>NB: authors can be selected as corresponding authors only if they have required information in their personal profile: name, email, affiliation, country and Orcid id.</p>"
+        }
+    },
+    {
+        "group": {
+            "name": "wjs_submission"
+        },
+        "setting": {
+            "description": "Introductory text for Step 6 - Files.",
+            "is_translatable": true,
+            "name": "step6_intro_text",
+            "pretty_name": "Intro for Step 6 - Files",
+            "type": "rich-text"
+        },
+        "value": {
+            "default": "<p><b>Manuscript file</b>: accepted formats are tex, tar.gz and zip. Source files will be converted to pdf.</p><p><b>ESM</b>: additional material that you are submitting for publication along with the manuscript file. Authors take full responsibility for their content and they will not be transformed in any way during the production stage.</p><p><b>Administrative files</b>: any file that you wish to send the Journal for administrative purposes. They will neither be reviewed nor published.</p>"
+        }
+    },
+    {
+        "group": {
+            "name": "wjs_submission"
+        },
+        "setting": {
+            "description": "Text shown to summarise the access mode, copyright and licence applied to the paper.",
+            "is_translatable": true,
+            "name": "access_mode_confirmation_text",
+            "pretty_name": "Summary of selected access mode, copyright and licence",
+            "type": "rich-text"
+        },
+        "value": {
+            "default": "<p>If accepted, your paper may be published {{ view.access_mode_configuration.access_mode }}, copyright \"{{ view.access_mode_configuration.copyright_text }}\", licence {{ view.access_mode_configuration.license.short_name }}. Confirmation will be given after acceptance for publication.</p>"
+        }
+    },
+    {
+        "group": {
+            "name": "wjs_submission"
+        },
+        "setting": {
+            "description": "Introductory text displayed at the head of the revision page.",
+            "is_translatable": true,
+            "name": "revision_intro_text",
+            "pretty_name": "Revision Page Text",
+            "type": "rich-text"
+        },
+        "value": {
+            "default": "<p>The information from your previous submission has been partially carried over to this revision. Please review all fields carefully and update any details as needed to reflect your revised manuscript before completing the submission.</p>"
+        }
+    },
+    {
+        "group": {
+            "name": "wjs_submission"
+        },
+        "setting": {
+            "description": "Introductory text for Step 4 - Corresponding author section - Revision.",
+            "is_translatable": true,
+            "name": "step4_corresponding_author_text_revision",
+            "pretty_name": "Intro for Step 4 - Corresponding author - Revision",
+            "type": "rich-text"
+        },
+        "value": {
+            "default": "<p>You can change the person in charge of handling the correspondence with the Journal from now. Please select their Country exactly as stated in the manuscript file. If the corresponding author is affiliated with more than one institution in different countries (as indicated in the manuscript), please select a country that has a Transformative Agreement in place with the journal’s publisher, IOP Publishing.: <a href=\"https://publishingsupport.iopscience.iop.org/questions/institutional-open-access-agreements/\" target=\"_blank\">https://publishingsupport.iopscience.iop.org/questions/institutional-open-access-agreements/</a>.</p><p>NB: authors can be selected as corresponding authors only if they have required information in their personal profile: name, email, affiliation, country and Orcid id.</p>"
+        }
+    },
+    {
+        "group": {
+            "name": "wjs_submission"
+        },
+        "setting": {
+            "description": "Introductory text for Step 4 - Authors - Revision.",
+            "is_translatable": true,
+            "name": "step4_intro_text_revision",
+            "pretty_name": "Intro for Step 4 page - Revision",
+            "type": "rich-text"
+        },
+        "value": {
+            "default": "<p>Please select co-authors <b>only if</b> they need to be added to the current author list (see section “Selected authors” below).</p>"
         }
     }
 ]

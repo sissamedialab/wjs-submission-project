@@ -7,9 +7,9 @@
     <div class="wjs-submission-form__section-content">
       {% if settings.DEBUG %}{{ form.errors }}{% endif %}
       <div class="mb-3">
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore
-        magna aliqua.
-        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+        {% if is_revision %}
+          Please update the metadata below if needed to match those on your manuscript file
+        {% endif %}
       </div>
     </div>
   </div>

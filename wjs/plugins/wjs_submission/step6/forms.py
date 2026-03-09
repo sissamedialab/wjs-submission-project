@@ -20,12 +20,12 @@ class SubmissionStep6Form(forms.ModelForm):
         choices=ArticleSubmission.DasDeclaration.choices,
         widget=forms.RadioSelect(attrs={"data-name": "das", "data-type": "radio-select"}),
     )
-    das_url = forms.URLField(required=False, label="Please insert URL", help_text=_("Required"))
+    das_url = forms.URLField(required=False, label="Please insert complete URL", help_text=_("Required"))
     cas = forms.ChoiceField(
         choices=ArticleSubmission.CasDeclaration.choices,
         widget=forms.RadioSelect(attrs={"data-name": "das", "data-type": "radio-select"}),
     )
-    cas_url = forms.URLField(required=False, label="Please insert URL", help_text=_("Required"))
+    cas_url = forms.URLField(required=False, label="Please insert complete URL", help_text=_("Required"))
 
     class Meta:
         model = Article
@@ -47,13 +47,13 @@ class SubmissionStep6Form(forms.ModelForm):
     def clean_cas_url(self):
         """Check cas_url field when cas required URL."""
         if self.data.get("cas") == "url" and not self.data.get("cas_url"):
-            raise forms.ValidationError(_("Please insert URL"))
+            raise forms.ValidationError(_("Please insert complete URL"))
         return self.cleaned_data["cas_url"]
 
     def clean_das_url(self):
         """Check das_url field when cas required URL."""
         if self.data.get("das") == "url" and not self.data.get("das_url"):
-            raise forms.ValidationError(_("Please insert URL"))
+            raise forms.ValidationError(_("Please insert complete URL"))
         return self.cleaned_data["das_url"]
 
     def save(self, commit=True):

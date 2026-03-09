@@ -1,4 +1,5 @@
 from django import forms
+from django.utils.translation import gettext_lazy as _
 from journal.models import ArticleOrdering, Issue
 from submission.models import Article
 
@@ -36,8 +37,9 @@ class SubmissionStep2Form(forms.ModelForm):
         queryset=None,
         required=True,
         blank=True,
-        empty_label="First standard issue available",
+        empty_label="Standard issue",
         widget=forms.RadioSelect(),
+        label=_("Issue"),
     )
 
     class Meta:
