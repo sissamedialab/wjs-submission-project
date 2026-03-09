@@ -6,7 +6,7 @@
  */
 function handleUseAiToggle() {
   // Find the input field by name
-  const aiInput = document.querySelector("input[name=\"Use of AI\"]");
+  const aiInput = document.querySelector("input[name=\"Author(s) take full responsibility for any use of Artificial Intelligence made in preparing this paper\"]");
   if (!aiInput) return;
   const aiLabel = document.querySelector(`label[for="${aiInput.id}"]`);
   const aiHelpText = document.querySelector(`div[id="${aiInput.id}_helptext"]`);
@@ -30,7 +30,7 @@ function handleUseAiToggle() {
   const switchLabel = document.createElement("label");
   switchLabel.className = "form-check-label";
   switchLabel.setAttribute("for", switchAIInput.id);
-  switchLabel.textContent = "Use of AI";
+  switchLabel.textContent = "Author(s) take full responsibility for any use of Artificial Intelligence made in preparing this paper";
 
   switchAI.appendChild(switchAIInput);
   switchAI.appendChild(switchLabel);

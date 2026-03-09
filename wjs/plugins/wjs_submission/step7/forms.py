@@ -2,10 +2,8 @@ from copy import copy
 
 from django import forms
 from django.utils.translation import gettext_lazy as _
-from events import logic as events_logic
 from submission.models import Article, Licence
 
-from ..events import SubmissionEvent
 from ..models import (
     AccessMode,
     RevisionStorage,
@@ -114,11 +112,6 @@ class SubmissionStep7Form(forms.ModelForm):
         instance.submission_data.access_mode = self.cleaned_data["access_mode"]
         instance.submission_data.special_request = self.cleaned_data["special_request"]
         instance.submission_data.save()
-        events_logic.Events.raise_event(
-            SubmissionEvent.ON_ACCESS_MODE_SELECTION,
-            article=instance,
-            submission_data=instance.submission_data,
-        )
         return instance
 
 

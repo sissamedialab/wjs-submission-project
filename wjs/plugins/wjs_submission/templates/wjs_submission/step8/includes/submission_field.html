@@ -3,16 +3,16 @@
   {% if kind == "check" %}
     {% if answer == "True" or answer == True %}
       <span class="ms-2 d-inline-flex align-items-center">
-              <i class="bi bi-check text-success" aria-hidden="true"></i>
-            </span>
+        <i class="bi bi-check text-success" aria-hidden="true"></i>
+      </span>
     {% else %}
       <span class="ms-2 d-inline-flex align-items-center">
-              <i class="bi bi-x text-danger" aria-hidden="true"></i>
-            </span>
+        <i class="bi bi-x text-danger" aria-hidden="true"></i>
+      </span>
     {% endif %}
   {% elif kind == "text" %}
     <span class="ms-2 d-inline-flex align-items-center">
-            {{ answer }}
-          </span>
+      {{ answer }}
+    </span>
   {% endif %}
 </li>

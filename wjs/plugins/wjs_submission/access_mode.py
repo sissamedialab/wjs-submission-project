@@ -188,7 +188,7 @@ def get_oa_cern(user: Account, article: Article) -> AccessModeConfiguration:
     :raises KeyError: If the journal code is not found in the ACCESS_MODE_COUNTRIES dictionary.
     """
     oa = AccessMode.objects.get(code=OA_CERN_CODE)
-    collaborations = {collaboration.name.lower() for collaboration in article.collaborations.all()}
+    collaborations = {collaboration.collaboration.name.lower() for collaboration in article.collaborations.all()}
     if collaborations.intersection(CERN_AFFILIATIONS):
         return get_configuration(oa, article.journal)
     return get_configuration(None, article.journal)

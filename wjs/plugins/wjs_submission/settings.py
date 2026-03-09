@@ -137,4 +137,13 @@ CORRESPONDENCE_AUTHOR_COMPLETION_FUNCTION = getattr(
 
 SUBMISSION_FILE_TYPES = getattr(settings, "SUBMISSION_FILE_TYPES", DEFAULT_SUBMISSION_FILE_TYPES)
 
-ARXIV_BASE_DOI_ = getattr(settings, "SUBMISSION_ARXIV_BASE_DOI_", "https://doi.org/10.48550/")
+ARXIV_BASE_DOI = getattr(settings, "SUBMISSION_ARXIV_BASE_DOI", "https://doi.org/10.48550")
+
+RESET_ARTICLE_CURRENT_STEP = getattr(settings, "REVISION_RESET_ARTICLE_CURRENT_STEP", False)
+
+DEFAULT_USE_OF_AI_FIELD_LABEL = getattr(
+    settings,
+    "SUBMISSION_DEFAULT_USE_OF_AI_FIELD_LABEL",
+    "Author(s) take full responsibility for any use of Artificial Intelligence made in preparing this paper",
+)
+USE_OF_AI_FIELD_LABEL = getattr(settings, "SUBMISSION_USE_OF_AI_FIELD_LABEL", DEFAULT_USE_OF_AI_FIELD_LABEL)

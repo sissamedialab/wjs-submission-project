@@ -4,7 +4,7 @@ from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 from submission.models import Article, ArticleAuthorOrder, ArticleFunding
 
-from .settings import ARXIV_BASE_DOI_
+from .settings import ARXIV_BASE_DOI
 from .signals import *  # noqa
 
 
@@ -14,21 +14,59 @@ class ArticleSubmission(models.Model):
         ESM = "esm", _("My article has code included as electronic supplementary material")
         URL = "url", _("My article has associated code in a data repository")
 
+        @classmethod
+        def as_dict(cls) -> dict[str, str]:
+            """
+            Convert the choices attribute to a dictionary representation.
+
+            :return: A dictionary mapping the keys and values of choices
+            :rtype: dict[str, str]
+            """
+            return dict(cls.choices)
+
     class DasDeclaration(models.TextChoices):
         NO = "no", _("My article has no associated data or the data will not be deposited")
         ESM = "esm", _("My article has data included as electronic supplementary material")
         URL = "url", _("My article has associated data in a data repository")
+
+        @classmethod
+        def as_dict(cls) -> dict[str, str]:
+            """
+            Convert the choices attribute to a dictionary representation.
+
+            :return: A dictionary mapping the keys and values of choices
+            :rtype: dict[str, str]
+            """
+            return dict(cls.choices)
 
     class ManuscriptSourceFormat(models.TextChoices):
         AUTO = "auto", _("Auto")
         LATEX = "latex", _("Tex / LaTeX")
         DOC = "doc", _("Documents (odt/docx/rtf)")
 
+        def as_dict(self) -> dict[str, str]:
+            """
+            Convert the choices attribute to a dictionary representation.
+
+            :return: A dictionary mapping the keys and values of choices
+            :rtype: dict[str, str]
+            """
+            return dict(self.choices)
+
     class TexEngine(models.TextChoices):
         TEX = "tex", _("Tex")
         LATEX = "latex", _("LaTex")
         PDFLATEX = "pdflatex", _("PdflLaTex")
         XELATEX = "xelatex", _("XeLaTex")
+
+        def as_dict(self) -> dict[str, str]:
+            """
+            Convert the choices attribute to a dictionary representation.
+
+            :return: A dictionary mapping the keys and values of choices
+            :rtype: dict[str, str]
+            """
+            return dict(self.choices)
 
     article = models.OneToOneField(
         Article,
@@ -140,7 +178,7 @@ class ArticleSubmission(models.Model):
         :raises: AttributeError if `get_arxiv_id` is not callable or does not return a valid value.
         """
         versionless_arxiv_id = self.get_arxiv_id().partition("v")[0]
-        return f"{ARXIV_BASE_DOI_}/arXiv.{versionless_arxiv_id}"
+        return f"{ARXIV_BASE_DOI}/arXiv.{versionless_arxiv_id}"
 
 
 class CollaborationRelation(models.TextChoices):
@@ -280,9 +318,9 @@ class RevisionStorage(models.Model):
     """
 
     class RevisionFlowType(models.TextChoices):
-        CONFIRM = "confirm", _("Confirm")
-        METADATA = "metadata", _("Metadata")
-        FULL = "full", _("Minor / Major")
+        CONFIRM = "confirm", _("Confirm previous version")
+        METADATA = "metadata", _("Metadata change")
+        FULL = "full", _("New version")
 
     article = models.OneToOneField(
         Article,

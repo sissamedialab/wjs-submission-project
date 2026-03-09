@@ -21,9 +21,11 @@ def get_files(article: Article) -> dict:
 
     This is intended to be used to update the context data of step6 and step8 views
     and those of Upload/Delete files views.
+
+    Files are taken from revisionstorage only for full revision, in the other cases we will get them from article.
     """
     files_by_type = {}
-    if is_revision(article):
+    if is_revision_full(article):
         data = RevisionStorage.objects.get(article=article).data
 
         if file_id := data["manuscript_files"]:
