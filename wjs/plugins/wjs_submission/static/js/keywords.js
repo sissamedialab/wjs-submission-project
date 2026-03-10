@@ -1,33 +1,38 @@
 document.addEventListener("DOMContentLoaded", function () {
   const toggleBtn = document.getElementById("toggleAllAccordions");
-  let expanded = false;
 
   if (toggleBtn) {
+    const accordionContainer = document.getElementById("groupAccordion");
+
+    function getAccordionState() {
+      if (!accordionContainer) return { buttons: [], allExpanded: false };
+      const buttons = accordionContainer.querySelectorAll('.accordion-button[type="button"][data-bs-toggle="collapse"]');
+      const allExpanded = buttons.length > 0 && Array.from(buttons).every(btn => btn.getAttribute('aria-expanded') === 'true');
+      return { buttons, allExpanded };
+    }
+
+    function updateToggleAllButtonState() {
+      const { allExpanded } = getAccordionState();
+      toggleBtn.setAttribute('aria-expanded', allExpanded);
+      toggleBtn.textContent = allExpanded ? "Close All" : "Open All";
+    }
+
     toggleBtn.addEventListener("click", function () {
-      const buttons = document.querySelectorAll(
-        '.accordion-button[type="button"][data-bs-toggle="collapse"]'
-      );
+      const { buttons, allExpanded } = getAccordionState();
       buttons.forEach(function (btn) {
-        const target = document.querySelector(
-          btn.getAttribute("data-bs-target")
-        );
-        if (!expanded) {
-          btn.classList.remove("collapsed");
-          btn.setAttribute("aria-expanded", "true");
-          if (target && !target.classList.contains("show")) {
-            target.classList.add("show");
-          }
-        } else {
-          btn.classList.add("collapsed");
-          btn.setAttribute("aria-expanded", "false");
-          if (target && target.classList.contains("show")) {
-            target.classList.remove("show");
-          }
+        const target = document.querySelector(btn.getAttribute("data-bs-target"));
+        if (target) {
+          const instance = bootstrap.Collapse.getOrCreateInstance(target);
+          allExpanded ? instance.hide() : instance.show();
         }
       });
-      expanded = !expanded;
-      toggleBtn.textContent = expanded ? "Close All" : "Open  All";
     });
+
+    if (accordionContainer) {
+      accordionContainer.addEventListener('shown.bs.collapse', updateToggleAllButtonState);
+      accordionContainer.addEventListener('hidden.bs.collapse', updateToggleAllButtonState);
+      updateToggleAllButtonState();
+    }
   }
 
   function updateKeywordSelectionState() {
