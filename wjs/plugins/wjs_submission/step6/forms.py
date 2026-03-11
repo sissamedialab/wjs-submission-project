@@ -3,14 +3,11 @@ import logging
 from core import files
 from django import forms
 from django.utils.translation import gettext_lazy as _
-from django_q.tasks import async_task
-from events import logic as event_logic
 from submission.models import Article
 
-from .. import settings as submission_settings
+from ..conversion import start_source_conversion
 from ..models import ArticleSubmission, RevisionStorage
 from ..settings import SUBMISSION_FILE_TYPES
-from ..workflow import get_feedback_ws_name, get_feedback_ws_url, simulate_yakunin_call
 
 logger = logging.getLogger(__name__)
 
@@ -195,23 +192,7 @@ class UploadArticleForm(forms.Form):
 
             if file_type == "manuscript":
                 self.instance.source_files.set([new_file])
-                article_id = self.instance.pk
-                user_id = self.request.user.pk
-                feedback_ws_name = get_feedback_ws_name(article_id, user_id)
-                feedback_ws_url = get_feedback_ws_url(self.request, article_id, user_id)
-                event_logic.Events.raise_event(
-                    event_logic.Events.ON_ARTICLE_FILE_UPLOAD,
-                    request=self.request,
-                    file_id=new_file,
-                    original_filename=new_file.original_filename,
-                    file_type="manuscript:async",
-                    article=self.instance,
-                    feedback_ws_url=feedback_ws_url,
-                    feedback_ws_name=feedback_ws_name,
-                    is_revision=False,  # we know it, because this form is only used for first submissions
-                )
-                if submission_settings.SIMULATE_YAKUNIN:
-                    async_task(simulate_yakunin_call, feedback_ws_name, task_name="simulate-feedback")
+                start_source_conversion(self.instance, self.request, new_file)
 
             elif file_type == "data":
                 self.instance.data_figure_files.add(new_file)
@@ -262,23 +243,7 @@ class RevisionUploadArticleForm(UploadArticleForm):
                 revision_storage.data["source_files"] = new_file.id
                 revision_storage.save()
 
-                article_id = self.instance.pk
-                user_id = self.request.user.pk
-                feedback_ws_name = get_feedback_ws_name(article_id, user_id)
-                feedback_ws_url = get_feedback_ws_url(self.request, article_id, user_id)
-                event_logic.Events.raise_event(
-                    event_logic.Events.ON_ARTICLE_FILE_UPLOAD,
-                    request=self.request,
-                    file_id=new_file,
-                    original_filename=new_file.original_filename,
-                    file_type="manuscript:async",
-                    article=self.instance,
-                    feedback_ws_url=feedback_ws_url,
-                    feedback_ws_name=feedback_ws_name,
-                    is_revision=True,  # this form is only used for revisions
-                )
-                if submission_settings.SIMULATE_YAKUNIN:
-                    async_task(simulate_yakunin_call, feedback_ws_name, task_name="simulate-feedback")
+                start_source_conversion(self.instance, self.request, new_file, is_revision=True)
 
             elif file_type == "data":
                 revision_storage.data["data_figure_files"].append(new_file.pk)

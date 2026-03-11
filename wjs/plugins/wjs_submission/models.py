@@ -114,6 +114,13 @@ class ArticleSubmission(models.Model):
         on_delete=models.SET_NULL,
     )
 
+    feedback_uuid = models.UUIDField(
+        verbose_name=_("Feedback UUID"),
+        blank=True,
+        null=True,
+        help_text=_("Unique identifier for websocket feedback channel"),
+    )
+
     class Meta:
         verbose_name = _("Article submission")
         verbose_name_plural = _("Articles submission")
