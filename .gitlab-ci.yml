@@ -80,12 +80,16 @@ run-tests:
     - pytest ${CI_PROJECT_DIR}/ -v -n 6 --create-db
 
 
+
+
 pre-commit:
   # Always run linting, except for tags
   except:
     - tags
   extends:
     - .run-pre-commit
+
+
 
 
 upload-package:
@@ -95,11 +99,53 @@ upload-package:
     - .upload-package
 
 
-deploy-to-dev:
+
+
+deploy-to-pre-production:
+  environment: pre-production
+  extends:
+    - .deploy
+  variables:
+    SERVER_IP: "$TEST_SERVER_IP"
+    SERVER_USER: "$TEST_SERVER_USER"
+    DEPLOY_CMD: "deploy-pp-wjs-submission"
+  rules:
+    - if: $CI_COMMIT_REF_NAME == "wjs-production"
+      when: on_success
+    - when: manual
+
+
+deploy-to-test:
+  # Deploy the current commit to test instance
+  # Warning! Be sure not to disrupt other peoples work 🙂
   extends:
     - .deploy
   when: manual
   variables:
     SERVER_IP: "$TEST_SERVER_IP"
     SERVER_USER: "$TEST_SERVER_USER"
+    DEPLOY_CMD: "deploy-test-wjs-submission:${CI_COMMIT_SHA}"
+
+
+deploy-to-dev:
+  extends:
+    - .deploy
+  variables:
+    SERVER_IP: "$TEST_SERVER_IP"
+    SERVER_USER: "$TEST_SERVER_USER"
     DEPLOY_CMD: "deploy-dev-wjs-submission:${CI_COMMIT_SHA}"
+  rules:
+    - if: $CI_COMMIT_REF_NAME == "wjs-develop"
+      when: on_success
+    - when: manual
+
+
+deploy-to-production:
+  extends:
+    - .deploy
+  when: manual
+  environment: production
+  variables:
+    SERVER_IP: "$PROD_SERVER_IP"
+    SERVER_USER: "$PROD_SERVER_USER"
+    DEPLOY_CMD: "deploy-prod-wjs-submission"
