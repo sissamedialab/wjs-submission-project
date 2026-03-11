@@ -4,7 +4,8 @@
 {% block bootstrap5_extra_head %}
   {{ block.super }}
   {{ form.media.css }}
-{% endblock %}
+  <script src="{% static "js/conversion_websocket.js" %}"></script>
+{% endblock bootstrap5_extra_head %}
 
 {% block submission_flow %}
 

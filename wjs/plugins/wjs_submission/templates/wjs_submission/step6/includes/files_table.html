@@ -21,23 +21,16 @@
     </thead>
     <tbody>
     {% for file in files_list.all %}
-      {% if show_conversion %}<input class="js-converted-file" type="hidden" id="{{ file_type }}_id" name="{{ file_type }}" value="{% if not failed_conversion_log %}{{ file.pk }}{% endif %}" required="">{% endif %}
+      {% if show_conversion %}<input class="js-converted-file" type="hidden" id="{{ file_type }}_id" name="{{ file_type }}" value="{% if conversion_result != 'error' and conversion_result != 'failed' %}{{ file.pk }}{% endif %}" required="">{% endif %}
       <tr>
         <td>{{ file.label }}</td>
         <td>{{ file.original_filename }}</td>
         {% if show_conversion %}
           <td>
-            {% if failed_conversion_log %}
-              <div id="conversion-status" class="d-flex align-items-center gap-2">
-                <span class="dot bg-danger"></span>
-                <span class="content text-danger">Error</span>
-              </div>
-            {% else %}
-              <div id="conversion-status" class="d-flex align-items-center gap-2 {% if file.mime_type != "application/pdf" %}d-none{% endif %}">
-                <span class="dot bg-success"></span>
-                <span class="content text-success">Success</span>
-              </div>
-            {% endif %}
+            <div id="conversion-status" class="d-flex align-items-center gap-2">
+              <span class="dot bg-{{ conversion_result_color }}"></span>
+              <span class="content text-{{ conversion_result_color }} text-capitalize">{{ conversion_result }}</span>
+            </div>
           </td>
         {% else %}
           <th></th>
@@ -50,11 +43,11 @@
             {% if not read_only %}
               {% bootstrap_button button_class="btn btn-sm btn-outline ps-0" type="button" hx_post=delete_url hx_target=container_id hx_confirm="Are you sure you wish to delete the file?" content="<i class='bi bi-trash3'></i>" title="Delete" %}
               {# the refresh button is used either explicitly during the debug or programmatically by show_feedback js function to re-render the file listing after a succesful conversion to provide the actual backend data of the converted file #}
-              {% if settings.DEBUG %}
-                {% bootstrap_button button_class="btn btn-sm btn-outline js-refresh ps-0" type="button" hx_get=render_url hx_target=container_id content="<i class='bi bi-arrow-clockwise'></i>" title="DEBUG: Reload table" %}
-              {% else %}
-                {% bootstrap_button button_class="js-refresh d-none ps-0" type="button" hx_get=render_url hx_target=container_id content="" %}
-              {% endif %}
+            {% endif %}
+            {% if settings.DEBUG %}
+              {% bootstrap_button button_class="btn btn-sm btn-outline js-refresh ps-0" type="button" hx_get=render_url hx_target=container_id content="<i class='bi bi-arrow-clockwise'></i>" title="DEBUG: Reload table" %}
+            {% else %}
+              {% bootstrap_button button_class="js-refresh d-none ps-0" type="button" hx_get=render_url hx_target=container_id content="" %}
             {% endif %}
             <a class="btn btn-sm btn-outline ps-0 pe-2" href="{{ download_url }}" title="Download"><i class="bi bi-cloud-arrow-down"></i></a>
           {% endwith %}
@@ -65,19 +58,31 @@
     {% endfor %}
     </tbody>
   </table>
-  {% if show_conversion %}
-    <div id="js-conversion-message" class="wjs-submission-form__alert-message-box wjs-submission-form__alert-message-box--warning d-none d-flex flex-column">
+  <div>
+    {% if show_conversion %}
+    <div id="js-conversion-message" class="wjs-submission-form__alert-message-box wjs-submission-form__alert-message-box--warning {% if not conversion_log %}d-none{% endif %} d-flex flex-column">
       <i class="bi bi-exclamation-triangle"></i>
-      <div id="conversion-message"></div>
-      <div id="js-conversion-log" class="d-none">
-        Download the file to see details: <a id="js-conversion-log-url" href="">download</a>
+      {% if show_detailed_log %}
+        <div id="conversion-message" class="tex2jax_ignore">{{ conversion_log|linebreaksbr }}</div>
+      {% endif %}
+      <div id="js-conversion-log"{% if conversion_status != "completed" %} class="d-none"{% endif %}>
+        Download the file to see details: <a target="_blank" id="js-conversion-log-url" href="{{ conversion_log_url }}">download</a>
       </div>
     </div>
+    <script>
+      {% if not skip_connect_websocket %}
+        conversion_websocket_connect("{{ feedback_ws_url }}");
+      {% endif %}
+    </script>
   {% endif %}
 </div>
-
-<script>
-  document.body.addEventListener("htmx:afterSwap", function(evt) {
-    updateRequiredChecklist();
-  });
-</script>
+{# This template is also included in step-8, where there is not a checklist of required fields to check. #}
+{# Fortunately, there we have "read_only" set to true. #}
+{# Also, we need to update the check-list only when show_conversion is True. #}
+{% if not read_only and show_conversion %}
+  <script>
+    document.body.addEventListener("htmx:afterSwap", function(evt) {
+      updateRequiredChecklist();
+    });
+  </script>
+{% endif %}

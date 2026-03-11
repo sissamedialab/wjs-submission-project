@@ -10,13 +10,12 @@ from django.db import transaction
 from django.db.models import Q, QuerySet
 from django.http import HttpRequest
 from django.utils.translation import gettext_lazy as _
-from events import logic as event_logic
 from identifiers.models import Identifier
 from journal.models import Journal
 from submission.models import STAGE_REJECTED, STAGE_UNSUBMITTED, Article, ArticleAuthorOrder
 from utils.setting_handler import get_setting
 
-from .workflow import get_feedback_ws_name, get_feedback_ws_url
+from .conversion import start_source_conversion
 
 ARXIV_API_URL = "https://export.arxiv.org/api/query?id_list={}"
 
@@ -390,18 +389,7 @@ class ArXivToWjsArticle:
     request: HttpRequest
 
     def _convert_source_archive(self, article: Article):
-        feedback_ws_name = get_feedback_ws_name(article.pk, self.request.user.pk)
-        feedback_ws_url = get_feedback_ws_url(self.request, article.pk, self.request.user.pk)
-        event_logic.Events.raise_event(
-            event_logic.Events.ON_ARTICLE_FILE_UPLOAD,
-            request=self.request,
-            file_id=article.source_files.first(),
-            original_filename=article.source_files.first().original_filename,
-            file_type="manuscript:async",
-            article=article,
-            feedback_ws_url=feedback_ws_url,
-            feedback_ws_name=feedback_ws_name,
-        )
+        start_source_conversion(article, self.request, article.source_files.first())
 
     def run(self):
         """

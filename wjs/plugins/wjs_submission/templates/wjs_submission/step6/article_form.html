@@ -1,6 +1,11 @@
 {% extends "wjs_submission/base.html" %}
 {% load django_bootstrap5 settings static %}
 
+{% block bootstrap5_extra_head %}
+  {{ block.super }}
+  <script src="{% static "js/conversion_websocket.js" %}"></script>
+{% endblock bootstrap5_extra_head %}
+
 {% block submission_flow %}
   <div class="wjs-submission-form__section mb-5">
     <h2 class="wjs-submission-form__form-label-title" id="step6-files-section">Files upload</h2>
@@ -47,7 +52,6 @@
 
 {% block js %}
   {{ block.super }}
-  <script src="{% static "js/conversion_websocket.js" %}"></script>
   <script src="{% static "js/cas_das.js" %}"></script>
   <script>
 
@@ -55,8 +59,8 @@
       const modal = bootstrap.Modal.getInstance(document.getElementById("htmxModal"));
       modal.hide();
     });
+
     document.addEventListener("DOMContentLoaded", function() {
-      conversion_websocket_connect("{{ feedback_ws_url }}");
       urlSelectedCheck("cas", document.querySelector("input[name=cas]:checked")?.value);
       urlSelectedCheck("das", document.querySelector("input[name=das]:checked")?.value);
       document.querySelectorAll("input[name=cas]").forEach((button) => {

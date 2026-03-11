@@ -14,7 +14,7 @@ from ..models import (
     RevisionArticleCollaboration,
     RevisionStorage,
 )
-from ..step6.views import get_files
+from ..step6.views import get_conversion_status, get_files
 from ..step7.views import get_article_fundings
 from ..workflow import (
     is_revision,
@@ -108,14 +108,19 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
         :rtype: RevisionValidationData
         :raises KeyError: If expected keys are missing in the revision data
         """
-        submission_requirements = bool(article.revisionstorage.data["submission_requirements"])
-        cover_letter = bool(article.revisionstorage.data["comments_editor"]) or bool(
-            article.revisionstorage.data["cover_letter_file"]
-        )
-        if is_revision_full(self.object):
-            revision_files = bool(article.revisionstorage.data["source_files"])
+        if is_revision(article):
+            submission_requirements = bool(article.revisionstorage.data["submission_requirements"])
+            cover_letter = bool(article.revisionstorage.data["comments_editor"]) or bool(
+                article.revisionstorage.data["cover_letter_file"]
+            )
+            if is_revision_full(self.object):
+                revision_files = bool(article.revisionstorage.data["source_files"])
+            else:
+                revision_files = True
         else:
-            revision_files = True
+            submission_requirements = bool(article.submission_requirements)
+            cover_letter = bool(article.comments_editor) or bool(article.submissiondata.cover_letter_file)
+            revision_files = False
         return {
             "valid": submission_requirements and cover_letter and revision_files,
             "submission_requirements": submission_requirements,
@@ -188,5 +193,8 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
 
         # Include files (manuscript_files, data_figure_files, etc.)
         context.update(get_files(article=self.object))
+
+        # Include info about the conversion status
+        context.update(get_conversion_status(article=self.object, view=self))
 
         return context

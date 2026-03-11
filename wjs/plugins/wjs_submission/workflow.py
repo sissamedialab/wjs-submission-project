@@ -3,12 +3,10 @@ from dataclasses import dataclass
 from typing import NamedTuple
 
 from core.models import Account
-from django.http import HttpRequest
 from django.urls import reverse
 from journal.models import Issue, Journal
 from submission.models import STAGE_UNSUBMITTED, Article
 
-from .management.commands.send_feedback import Command as FakeYakunin
 from .models import AccessModeJournal, RevisionStorage
 
 
@@ -384,18 +382,3 @@ STEPS = {
         icon="bi-search",
     ),
 }
-
-
-def get_feedback_ws_name(workflow_pk: int, user_pk: int) -> str:
-    """Compute a paper/user/situation unique name for the feedback channel."""
-    return f"submission-{workflow_pk}-{user_pk}"
-
-
-def get_feedback_ws_url(request: HttpRequest, workflow_pk: int, user_pk: int) -> str:
-    """Compute the full URL of the websocket feedback consumer."""
-    feedback_ws_name = get_feedback_ws_name(workflow_pk, user_pk)
-    return f"{'wss' if request.is_secure() else 'ws'}://{request.get_host()}/ws/feedback/{feedback_ws_name}/"
-
-
-def simulate_yakunin_call(ws_name):
-    FakeYakunin().handle(ws_name=ws_name)
