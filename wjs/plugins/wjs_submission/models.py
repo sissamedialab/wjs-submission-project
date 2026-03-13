@@ -413,24 +413,28 @@ class RevisionSubmissionArticleFunding(models.Model):
         null=False,
         help_text="Funder name",
     )
-    fundref_id = models.CharField(
+    fundref_id = models.CharField(  # noqa: DJ001
         max_length=500,
         blank=True,
         default="",
+        null=True,
         help_text="Funder DOI (optional). Enter as a full Uniform "
         "Resource Identifier (URI), such as "
         "https://dx.doi.org/10.13039/501100021082",
     )
-    funding_id = models.CharField(
+    funding_id = models.CharField(  # noqa: DJ001
         max_length=500,
         blank=True,
         default="",
+        null=True,
         help_text="The grant ID (optional). Enter the ID by itself",
     )
-    funding_statement = models.TextField(
-        blank=True, help_text=_("Additional information regarding this funding entry")
+    funding_statement = models.TextField(  # noqa: DJ001
+        blank=True,
+        help_text=_("Additional information regarding this funding entry"),
+        null=True,
     )
-    country = models.CharField(max_length=128, blank=True)
+    country = models.CharField(max_length=128, blank=True, null=True)  # noqa: DJ001
 
     def __str__(self):
         return self.name
