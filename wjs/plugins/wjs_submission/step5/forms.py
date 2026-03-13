@@ -75,8 +75,14 @@ class RevisionStep5Form(SubmissionStep5Form):
         revision_storage = RevisionStorage.objects.get(article=self.instance)
         revision_storage.revision_step = max(revision_storage.revision_step, self.step)
 
-        revision_storage.data["section"] = self.instance.section.pk
-        revision_storage.data["language"] = self.instance.language
+        if "section" in self.fields and self.cleaned_data.get("section"):
+            revision_storage.data["section"] = self.cleaned_data.get("section").pk
+        else:
+            revision_storage.data["section"] = self.instance.section.pk
+        if "language" in self.fields and self.cleaned_data.get("language"):
+            revision_storage.data["language"] = self.cleaned_data.get("language")
+        else:
+            revision_storage.data["language"] = self.instance.language
         revision_storage.data["title"] = self.cleaned_data.get("title")
         revision_storage.data["abstract"] = self.cleaned_data.get("abstract")
 
