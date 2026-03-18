@@ -11,13 +11,21 @@
       {% bootstrap_field form.label show_help=True %}
       {% bootstrap_field form.file show_help=True %}
       {% bootstrap_field form.source_format show_help=True %}
-      {% bootstrap_field form.tex_engine wrapper_class="wjs-submission-form__form-label-wrapper d-none" %}
-      {% bootstrap_field form.tex_master wrapper_class="wjs-submission-form__form-label-wrapper d-none" %}
+      {% if form.source_format.is_hidden %}
+        {% bootstrap_field form.tex_engine wrapper_class="wjs-submission-form__form-label-wrapper" %}
+        {% bootstrap_field form.tex_master wrapper_class="wjs-submission-form__form-label-wrapper" %}
+      {% else %}
+        {% bootstrap_field form.tex_engine wrapper_class="wjs-submission-form__form-label-wrapper d-none" %}
+        {% bootstrap_field form.tex_master wrapper_class="wjs-submission-form__form-label-wrapper d-none" %}
+      {% endif %}
+    </div>
+    <div class="mb-3">
       {% bootstrap_button button_class="btn-primary" button_type="submit" aria_label="Upload" content="Upload" %}
     </div>
   </form>
 </div>
 
+{% if not form.source_format.is_hidden %}
 <script>
   function texSelectedCheck(value) {
     const fields = [
@@ -41,3 +49,4 @@
   })
   ;
 </script>
+{% endif %}

@@ -129,6 +129,9 @@ class UploadArticleForm(forms.Form):
             self.fields["source_format"].widget = forms.HiddenInput()
             self.fields["tex_engine"].widget = forms.HiddenInput()
             self.fields["tex_master"].widget = forms.HiddenInput()
+        elif "application/vnd.oasis.opendocument.text" not in self.supported_file_types:
+            self.fields["source_format"].required = False
+            self.fields["source_format"].widget = forms.HiddenInput()
         for field in self.fields:
             if self.fields[field].required:
                 self.fields[field].widget.attrs["required"] = True
