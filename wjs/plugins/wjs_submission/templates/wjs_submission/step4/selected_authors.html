@@ -130,13 +130,22 @@
           {% if form.correspondence_author_error == "incomplete_account" %}
             {# fake field to block submission in case of error condition #}
             <input type="hidden" id="authors-blocker" name="authors-blocker" required="required">
-            Please <a class="link-light" href="{% url 'core_edit_profile' %}?next={% url 'wjs_submission_4' form.instance.pk %}">complete your profile</a> before continuing.
+            {% if correspondence_author == request.user %}
+              Please <a class="link-light" href="{% url 'core_edit_profile' %}?next={% url 'wjs_submission_4' form.instance.pk %}">complete your profile</a> before continuing.
+            {% else %}
+              {# With current backend user filetering, this cannot appear, but tracking the option anyway in case some journal have different UX requirements. hidden field above ensure form cannot proceed #}
+              Correspondence author must complete the profile before continuing.
+            {% endif %}
           {% elif form.correspondence_author_error == "ineligible_account" %}
             {# fake field to block submission in case of error condition #}
             <input type="hidden" id="authors-blocker" name="authors-blocker" required="required">
             Correspondence author account is not complete.
           {% elif form.correspondence_author_error == "orcid_missing_account" %}
-            Authors need to associate their Orcid id to their <a class="link-light" href="{% url 'core_edit_profile' %}?next={% url 'wjs_submission_4' form.instance.pk %}">profile</a> as soon as possible and in any case before publication of manuscripts.
+            {% if correspondence_author == request.user %}
+              Authors need to associate their Orcid id to their <a class="link-light" href="{% url 'core_edit_profile' %}?next={% url 'wjs_submission_4' form.instance.pk %}">profile</a> as soon as possible and in any case before publication of manuscripts.
+            {% else %}
+              Authors need to associate their Orcid id to their profile as soon as possible and in any case before publication of manuscripts.
+            {% endif %}
           {% endif %}
         </div>
       {% endif %}
