@@ -97,9 +97,6 @@ class ArticleSubmission(models.Model):
         default="",
     )
     das_url = models.URLField(verbose_name=_("DAS URL"), default="")
-    administrative_files = models.ManyToManyField(
-        "core.File", null=True, blank=True, related_name="administrative_files"
-    )
     access_mode = models.ForeignKey("AccessMode", on_delete=models.SET_NULL, null=True, blank=True)
     special_request = models.TextField(verbose_name=_("Special request"), blank=True, default="")
     use_of_ai_flag = models.BooleanField(verbose_name=_("Use of AI"), default=False)

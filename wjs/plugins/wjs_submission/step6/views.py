@@ -46,23 +46,27 @@ def get_files(article: Article) -> dict:
         else:
             files_by_type["manuscript_files"] = core_models.File.objects.none()
 
-        # TODO specs#2330: review data-figure vs supplementary vs administrative files relation
-        files_by_type["supplementary_files"] = core_models.File.objects.filter(
+        # supplementary files aka electronic supplementary material
+        files_by_type["esm"] = core_models.File.objects.filter(
             id__in=data["supplementary_files"],
         )
-        files_by_type["data_figure_files"] = core_models.File.objects.filter(
+
+        # data/figure files aka administrative files
+        files_by_type["data"] = core_models.File.objects.filter(
             id__in=data["data_figure_files"],
-        )
-        files_by_type["administrative_files"] = core_models.File.objects.filter(
-            id__in=data["administrative_files"],
         )
 
     else:
         files_by_type["manuscript_files"] = (
             article.manuscript_files if article.manuscript_files.exists() else article.source_files
         )
-        files_by_type["data_figure_files"] = article.data_figure_files
-        files_by_type["administrative_files"] = article.submission_data.administrative_files
+        files_by_type["data"] = article.data_figure_files
+
+        # ESM are core.SupplementaryFiles objects (i.e. not simple core.File objects)
+        # we need to "convert" them (otherwise calls such as file.original_filename won't work)
+        files_by_type["esm"] = core_models.File.objects.filter(
+            pk__in=article.supplementary_files.all().values_list("file_id", flat=True),
+        )
 
     return files_by_type
 
@@ -249,9 +253,9 @@ class TableRenderingContext:
             context.update(get_conversion_status(self._article, view=self))
 
         elif file_type == "data":
-            context["files_list"] = files_by_type["data_figure_files"]
-        elif file_type == "administrative":
-            context["files_list"] = files_by_type["administrative_files"]
+            context["files_list"] = files_by_type["data"]
+        elif file_type == "esm":
+            context["files_list"] = files_by_type["esm"]
 
         return context
 
@@ -335,6 +339,7 @@ class DeleteSubmissionFile(HtmxMixin, AuthorFilteringView, TableRenderingContext
                 for f in self._article.source_files.all():
                     f.delete()
                 self._delete_conversion_log()
+            # Note that SupplementaryFile objects are cascade-deleted when the relative File is deleted.
             self.object.delete()
             self._article.refresh_from_db()
         else:
@@ -371,18 +376,13 @@ class DeleteSubmissionFile(HtmxMixin, AuthorFilteringView, TableRenderingContext
                 if self.object.id not in set(self._article.data_figure_files.values_list("id", flat=True)):
                     self.object.delete()
 
-            elif file_type == "supplementary_files":
-                # TODO specs#2330: ⚠ supplementary files are not core.File, but core.SupplementaryFiles!
+            elif file_type == "esm":
+                # Note that supplementary files are core.SupplementaryFiles, not core.File.
+                # Also, RevisionStorage holds a reference to a File object.
                 revision_storage.data["supplementary_files"].remove(self.object.id)
-                if self.object.id not in set(self._article.supplementary_files.values_list("id", flat=True)):
-                    self.object.delete()
-
-            elif file_type == "administrative":
-                revision_storage.data["administrative_files"].remove(self.object.id)
-                if self.object.id not in set(
-                    self._article.submission_data.administrative_files.values_list("id", flat=True)
-                ):
-                    self.object.delete()
+                if esm := self.object.supplementaryfile_set.first():  # noqa: SIM102
+                    if esm.id not in set(self._article.supplementary_files.values_list("id", flat=True)):
+                        self.object.delete()
 
             else:
                 logger.error(f"""Trying to delete unexpected file type "{file_type}" for article {self._article.id}""")
@@ -406,14 +406,13 @@ class UploadSubmissionFile(HtmxMixin, AuthorFilteringView, TableRenderingContext
     """
     A view to allow an author to upload files during the submission or a revision.
 
-    Uploaded files can be manuscript, data-figure files and cover letter file.
+    Uploaded files can be manuscript, administrative files (aka data-figure files) and supplementary files.
 
     This view is intended to be used from inside a small modal.
     """
 
-    # HELP: IIC, we are mimicing a DetailView, but I don't see the gain (and this confuses me...)
-    # A: We need to get the article object anyway, instead of doing Article.objects.get in
-    # multiple places (get_form_kwargs, get_form_class
+    # We are "mimicing" a DetailView because we need to get the article object anyway,
+    # instead of doing Article.objects.get in multiple places (get_form_kwargs, get_form_class,...)
     model = Article
     pk_url_kwarg = "article_id"
     render_table = False

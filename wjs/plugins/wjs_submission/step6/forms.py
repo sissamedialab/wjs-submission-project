@@ -1,6 +1,7 @@
 import logging
 
 from core import files
+from core.models import SupplementaryFile
 from django import forms
 from django.utils.translation import gettext_lazy as _
 from submission.models import Article
@@ -185,7 +186,11 @@ class UploadArticleForm(forms.Form):
         uploaded_file = self.cleaned_data["file"]
         label = self.cleaned_data["label"]
         file_type = self.cleaned_data["file_type"]
-        if file_type in ["manuscript", "data", "administrative"]:
+        if file_type in {
+            "manuscript",
+            "data",  # aka administrative files
+            "esm",
+        }:
             new_file = files.save_file_to_article(
                 uploaded_file,
                 self.instance,
@@ -197,12 +202,11 @@ class UploadArticleForm(forms.Form):
                 self.instance.source_files.set([new_file])
                 start_source_conversion(self.instance, self.request, new_file)
 
-            elif file_type == "data":
+            elif file_type == "data":  # administrative files are saved here also
                 self.instance.data_figure_files.add(new_file)
 
-            elif file_type == "administrative":
-                self.instance.submission_data.administrative_files.add(new_file)
-                self.instance.submission_data.save()  # HELP: is this needed?
+            elif file_type == "esm":
+                self.instance.supplementary_files.add(SupplementaryFile.objects.create(file=new_file))
 
             self.new_file = new_file
 
@@ -229,7 +233,11 @@ class RevisionUploadArticleForm(UploadArticleForm):
         uploaded_file = self.cleaned_data["file"]
         label = self.cleaned_data["label"]
         file_type = self.cleaned_data["file_type"]
-        if file_type in ["manuscript", "data", "administrative"]:
+        if file_type in {
+            "manuscript",
+            "data",  # aka administrative files
+            "esm",
+        }:
             new_file = files.save_file_to_article(
                 uploaded_file,
                 self.instance,
@@ -251,12 +259,11 @@ class RevisionUploadArticleForm(UploadArticleForm):
             elif file_type == "data":
                 revision_storage.data["data_figure_files"].append(new_file.pk)
                 revision_storage.save()
-                # TODO specs#2330:
-                # ...  esm = SupplementaryFile.objects.create(file=new_file)
-                # ...  revision_storage.data["supplementary_files"].append(esm.id)
 
-            elif file_type == "administrative":
-                revision_storage.data["administrative_files"].append(new_file.pk)
+            elif file_type == "esm":
+                # Store the File id into the revision-storage.
+                # It will be "converted" into a SupplementaryFile at the end of the revision
+                revision_storage.data["supplementary_files"].append(new_file.pk)
                 revision_storage.save()
 
             self.new_file = new_file
@@ -292,7 +299,6 @@ class RevisionStep6Form(SubmissionStep6Form):
         kwargs["initial"]["manuscript"] = revision_storage.data.get("manuscript")
         kwargs["initial"]["data_figure_files"] = revision_storage.data.get("data_figure_files")
         kwargs["initial"]["supplementary_files"] = revision_storage.data.get("supplementary_files")
-        kwargs["initial"]["administrative_files"] = revision_storage.data.get("administrative_files")
         super().__init__(*args, **kwargs)
 
     def save(self, commit: bool = True) -> Article:
