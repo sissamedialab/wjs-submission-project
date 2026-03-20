@@ -255,22 +255,22 @@ class PopulateStep6:
         :param commit: Save the updated models. Set to True if it's the last step to initialize RevisionStorage.
         :type commit: bool
         """
-        self.revision_storage.data["das"] = self.revision_storage.article.submission_data.das
-        self.revision_storage.data["das_url"] = self.revision_storage.article.submission_data.das_url
-        self.revision_storage.data["cas"] = self.revision_storage.article.submission_data.cas
-        self.revision_storage.data["cas_url"] = self.revision_storage.article.submission_data.cas_url
+        article = self.revision_storage.article
+        self.revision_storage.data["das"] = article.submission_data.das
+        self.revision_storage.data["das_url"] = article.submission_data.das_url
+        self.revision_storage.data["cas"] = article.submission_data.cas
+        self.revision_storage.data["cas_url"] = article.submission_data.cas_url
         # Note that we keep the standard slot names (e.g. manuscript_fileS),
         # even for fields where we know that only one item will be set.
         self.revision_storage.data["manuscript_files"] = None
         self.revision_storage.data["source_files"] = None
+        # Supplementary files are core.SupplementaryFiles, not core.Files,
+        # but we store the File pk in the revision storage
         self.revision_storage.data["supplementary_files"] = list(
-            self.revision_storage.article.supplementary_files.all().values_list("id", flat=True),
+            article.supplementary_files.all().values_list("file_id", flat=True),
         )
         self.revision_storage.data["data_figure_files"] = list(
-            self.revision_storage.article.data_figure_files.all().values_list("id", flat=True),
-        )
-        self.revision_storage.data["administrative_files"] = list(
-            self.revision_storage.article.submission_data.administrative_files.all().values_list("id", flat=True),
+            article.data_figure_files.all().values_list("id", flat=True),
         )
         if commit:
             self.revision_storage.save()

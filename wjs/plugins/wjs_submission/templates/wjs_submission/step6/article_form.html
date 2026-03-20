@@ -25,13 +25,13 @@
   <div class="wjs-submission-form__section mb-5">
     <div class="wjs-submission-form__section-content">
       <h3 class="wjs-submission-form__form-label">Electronic Supplementary Material (ESM)</h3>
-      {% include "wjs_submission/step6/includes/files_table.html" with files_list=data_figure_files button_name="trigger_data" file_type="data" %}
+      {% include "wjs_submission/step6/includes/files_table.html" with files_list=esm button_name="trigger_esm" file_type="esm" %}
     </div>
   </div>
   <div class="wjs-submission-form__section mb-5">
     <div class="wjs-submission-form__section-content">
       <h3 class="wjs-submission-form__form-label">Administrative files (not for publication)</h3>
-      {% include "wjs_submission/step6/includes/files_table.html" with files_list=administrative_files button_name="trigger_administrative" file_type="administrative" %}
+      {% include "wjs_submission/step6/includes/files_table.html" with files_list=data button_name="trigger_data" file_type="data" %}
     </div>
   </div>
   <div class="wjs-submission-form__section mb-5">

@@ -32,8 +32,6 @@
               <span class="content text-{{ conversion_result_color }} text-capitalize">{{ conversion_result }}</span>
             </div>
           </td>
-        {% else %}
-          <th></th>
         {% endif %}
         <td>
           {% with container_id="#files_table_"|add:file_type %}
@@ -86,3 +84,4 @@
     });
   </script>
 {% endif %}
+</div>
