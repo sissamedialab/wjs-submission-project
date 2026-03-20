@@ -53,9 +53,21 @@ class SubmissionStep5Form(ArticleInfo):
 
 
 class RevisionStep5Form(SubmissionStep5Form):
+    def __init__(self, *args, **kwargs):
+        """
+        Remove language and section fields hidden because they cannot be changed by the author.
+        """
+        super().__init__(*args, **kwargs)
+        if "language" in self.fields:
+            del self.fields["language"]
+        if "section" in self.fields:
+            del self.fields["section"]
+
     def save(self, commit=True, request=None):
         """
         Extend the save method to save data on revision_storage model.
+
+        Section and language fields are overwritten from the original article value.
 
         :param commit: commit changes to database
         :return:
@@ -63,8 +75,14 @@ class RevisionStep5Form(SubmissionStep5Form):
         revision_storage = RevisionStorage.objects.get(article=self.instance)
         revision_storage.revision_step = max(revision_storage.revision_step, self.step)
 
-        revision_storage.data["section"] = self.cleaned_data.get("section").pk
-        revision_storage.data["language"] = self.cleaned_data.get("language")
+        if "section" in self.fields and self.cleaned_data.get("section"):
+            revision_storage.data["section"] = self.cleaned_data.get("section").pk
+        else:
+            revision_storage.data["section"] = self.instance.section.pk
+        if "language" in self.fields and self.cleaned_data.get("language"):
+            revision_storage.data["language"] = self.cleaned_data.get("language")
+        else:
+            revision_storage.data["language"] = self.instance.language
         revision_storage.data["title"] = self.cleaned_data.get("title")
         revision_storage.data["abstract"] = self.cleaned_data.get("abstract")
 

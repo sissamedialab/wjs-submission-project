@@ -1,68 +1,119 @@
 /**
- * Displays feedback based on the provided data's status.
+ * Maps result values to appropriate CSS class suffixes for styling.
+ *
+ * @param {string} result - The result value from the WebSocket message ("debug", "info", "warning", "error").
+ * @return {string} The CSS class suffix to use for styling (e.g., "success", "info", "warning", "danger").
+ */
+function get_result_class(result) {
+  const resultClassMap = {
+    debug: "info",
+    info: "info",
+    warning: "warning",
+    error: "danger",
+    failed: "danger"
+  };
+  return resultClassMap[result] || "info";
+}
+
+
+/**
+ * Displays the conversion log URL if available.
+ *
+ * @param {Object} data - The data object containing feedback information.
+ * @return {void} This function does not return a value.
+ */
+function show_feedback_log(data) {
+  const warningContainer = document.getElementById("js-conversion-message");
+  const conversionStatusMessage = document.getElementById("conversion-message");
+  const conversionLogContainer = document.getElementById("js-conversion-log");
+  const conversionLogContainerUrl = document.getElementById("js-conversion-log-url");
+
+  if (data.log_url && conversionLogContainer && conversionLogContainerUrl) {
+    conversionLogContainerUrl.href = data.log_url;
+    conversionLogContainer.classList.remove("d-none");
+  }
+
+  // Append warning or error messages while running
+  if ((data.result === "warning" || data.result === "error") && data.status_log) {
+    if (conversionStatusMessage && warningContainer) {
+      if (conversionStatusMessage.innerHTML) {
+        conversionStatusMessage.innerHTML += "<br>";
+      }
+      conversionStatusMessage.innerHTML += data.status_log;
+      warningContainer.classList.remove("d-none");
+    }
+  }
+
+}
+
+
+/**
+ * Displays feedback based on the provided data's status and result.
  * Updates the visual indicators such as message and status dot.
  *
- * When the status is set to completed, the refresh button is clicked to refresh (via HTMX) the file listing to provide
+ * When the status is "completed", the refresh button is clicked to refresh (via HTMX) the file listing to provide
  * proper rendering of the newly converted file with correct link, filename and status, which are not available to
  * the websocket payload.
  *
+ * When the status is "running" and result is "warning" or "error", appends status_log messages to the conversion
+ * message container.
+ *
  * @param {Object} data - The data object containing feedback information.
- * @param {string} data.status - The current status, which can be "success", "working", or "error".
- * @param {string} [data.status_log] - Optional log message associated with the "error" status.
+ * @param {string} data.status - The current status, which can be "running", "completed", or "failed".
+ * @param {string} data.result - The result level, which can be "debug", "info", "warning", or "error".
+ * @param {string} [data.status_log] - Optional log message to display.
+ * @param {WebSocket} chatSocket - The websocket
  * @return {void} This function does not return a value.
  */
-function show_feedback(data) {
+function show_feedback(data, chatSocket) {
+  if (!data.status) {
+    return;
+  }
 
-  if (data.status) {
-    const conversionStatusContainer = document.getElementById("conversion-status");
-    const refresh = document.querySelector(".js-refresh");
+  const conversionStatusContainer = document.getElementById("conversion-status");
+  const refresh = document.querySelector(".js-refresh");
 
-    console.log("show_feedback", data);
-    switch (data.status) {
-      case "completed": {
-        console.log("Status: completed");
-        conversionStatusContainer.classList.remove("d-none");
-        conversionStatusContainer.querySelector(".dot").className = "dot bg-success";
-        conversionStatusContainer.querySelector(".content").className = "content text-success";
-        conversionStatusContainer.querySelector(".content").textContent = "Success";
+  console.log("show_feedback", data);
+
+  switch (data.status) {
+    case "completed":
+    case "failed": {
+      console.log(`Status: ${data.status}`);
+      const resultClass = get_result_class(data.result);
+
+      conversionStatusContainer.classList.remove("d-none");
+      conversionStatusContainer.querySelector(".dot").className = `dot bg-${resultClass}`;
+      conversionStatusContainer.querySelector(".content").className = `content text-${resultClass} text-capitalize`;
+      conversionStatusContainer.querySelector(".content").textContent = data.status_log || "";
+
+      // Refresh the file listing on completion
+      if (data.status === "completed") {
         setTimeout(() => {
           refresh.click();
         }, 500);
-        break;
       }
-      case "running": {
-        console.log("Status: running");
-        conversionStatusContainer.classList.remove("d-none");
-        conversionStatusContainer.querySelector(".dot").className = "dot bg-running";
-        conversionStatusContainer.querySelector(".content").className = "content text-running";
-        conversionStatusContainer.querySelector(".content").textContent = "Running";
-        break;
-      }
-      case "error": {
-        console.log("Status: error");
-        conversionStatusContainer.classList.remove("d-none");
-        conversionStatusContainer.querySelector(".dot").className = "dot bg-danger";
-        conversionStatusContainer.querySelector(".content").className = "content text-danger";
-        conversionStatusContainer.querySelector(".content").textContent = "Error";
-        if (data.status_log) {
-          const convertedFile = document.querySelector(".js-converted-file");
-          convertedFile.value = null;
-          const conversionStatusMessage = document.getElementById("conversion-message");
-          const warningContainer = document.getElementById("js-conversion-message");
-          const conversionLogContainer = document.getElementById("js-conversion-log");
-          const conversionLogContainerUrl = document.getElementById("js-conversion-log-url");
-          if (conversionStatusMessage) conversionStatusMessage.textContent = data.status_log;
-          if (conversionStatusMessage) conversionStatusMessage.textContent.length > 0 ? warningContainer.classList.remove("d-none") : warningContainer.classList.add("d-none");
-          if (conversionLogContainer && data.log_file) {
-            conversionLogContainer.classList.remove("d-none");
-            conversionLogContainerUrl.href = data.log_file;
-          }
-        }
-        break;
-      }
+
+      // Disconnect the WS
+      // Since message can arrive from two sources
+      // (from Yakunin: the conversion process feedback messages; from WJS: when the logic completes handling of the converted files)
+      // there is no guarantee that they reach us in the same order that they were generated;
+      // it's possible that a "feedback" message reaches us after a "completed" messages,
+      // so we disconnect after a "completed" message:
+      chatSocket.close()
+      break;
     }
-    updateRequiredChecklist();
+    case "running": {
+      console.log("Status: running");
+      conversionStatusContainer.classList.remove("d-none");
+      conversionStatusContainer.querySelector(".dot").className = "dot bg-running";
+      conversionStatusContainer.querySelector(".content").className = "content text-running text-capitalize";
+      conversionStatusContainer.querySelector(".content").textContent = "running";
+      break;
+    }
   }
+
+  show_feedback_log(data);
+  updateRequiredChecklist();
 }
 
 
@@ -75,16 +126,23 @@ function show_feedback(data) {
  */
 function conversion_websocket_connect(url) {
   console.log(`Feedback URL: ${url}`);
+  if (!url){
+    console.log("No url, quitting here!")
+    return;
+  }
+  if (url==="None"){
+    console.log("Url is 'None'??? Probable programming error. Quitting here!")
+    return;
+  }
   const chatSocket = new WebSocket(url);
-
   chatSocket.onopen = () => console.log("WS connected");
 
   chatSocket.onmessage = function(e) {
-    console.log("WS data", e.data);
+    console.log("WS event", e);
     try {
       const data = JSON.parse(e.data);
       console.log("WS message", data);
-      show_feedback(data);
+      show_feedback(data, chatSocket);
     } catch (_) {
       console.warn("Malformed WS message", e.data);
     }
@@ -96,9 +154,6 @@ function conversion_websocket_connect(url) {
   };
 
   chatSocket.onclose = function(e) {
-    console.warn("WS closed, attempting reconnect in 3s", e);
-    setTimeout(() => {
-      conversion_websocket_connect(url);
-    }, 3000);
+    console.warn("WS closed.", e);
   };
 }

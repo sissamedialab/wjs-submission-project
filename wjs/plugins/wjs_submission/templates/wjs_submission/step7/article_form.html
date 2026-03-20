@@ -1,16 +1,13 @@
 {% extends "wjs_submission/base.html" %}
-{% load django_bootstrap5 field hooks settings static wjs_articles %}
+{% load django_bootstrap5 field hooks settings static submission_tags wjs_articles %}
 
 {% block submission_flow %}
   {% if form.configuration %}
     <div class="wjs-submission-form__section mb-5">
-      <h2 class="wjs-submission-form__form-label-title" id="step7-access-mode-section">Access mode</h2>
+      <h2 class="wjs-submission-form__form-label-title" id="step7-access-mode-section">Access, copyright and licence</h2>
       <div class="wjs-submission-form__section-content">
         {% if settings.DEBUG %}{% bootstrap_form_errors form %}{% endif %}
         <div class="mb-3">
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore
-          magna aliqua.
-          Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
         </div>
       </div>
     </div>
@@ -43,8 +40,8 @@
         <div class="wjs-submission-form__section mb-5">
           <div class="wjs-submission-form__section-content">
             {% bootstrap_form_errors form %}
-            If accepted, your paper may be published {{ view.access_mode_configuration.access_mode }}, copyright "{{ view.access_mode_configuration.copyright_text }}",
-            licence {{ view.access_mode_configuration.license.short_name }}. Confirmation will be given after acceptance for publication.
+            {% setting_var article.journal "access_mode_confirmation_text" as access_mode_confirmation_text %}
+            {% render_template_string access_mode_confirmation_text %}
           </div>
         </div>
       {% endif %}
@@ -61,8 +58,6 @@
       <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label--required" id="step7-funding-section">Funding</h2>
       <div class="wjs-submission-form__section-content">
         <div class="mb-3">
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
-          quis nostrud exercitation ullamco laboris
         </div>
         <div class="wjs-submission-form__search-input-text" id="funding-search-wrapper"
              hx-get="{% url 'search-typeahead-funding' %}"
@@ -144,7 +139,6 @@
       const hiddenFunding = document.getElementById("id_funding_id");
       const addBtn = document.getElementById("add-funding-btn");
 
-      console.log(hiddenFunding, addBtn);
       if (hiddenFunding && addBtn) {
         hiddenFunding.addEventListener("change", function() {
           console.log(addBtn.getAttribute("hx-vals"));

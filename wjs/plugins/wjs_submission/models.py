@@ -4,7 +4,7 @@ from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 from submission.models import Article, ArticleAuthorOrder, ArticleFunding
 
-from .settings import ARXIV_BASE_DOI_
+from .settings import ARXIV_BASE_DOI
 from .signals import *  # noqa
 
 
@@ -14,21 +14,59 @@ class ArticleSubmission(models.Model):
         ESM = "esm", _("My article has code included as electronic supplementary material")
         URL = "url", _("My article has associated code in a data repository")
 
+        @classmethod
+        def as_dict(cls) -> dict[str, str]:
+            """
+            Convert the choices attribute to a dictionary representation.
+
+            :return: A dictionary mapping the keys and values of choices
+            :rtype: dict[str, str]
+            """
+            return dict(cls.choices)
+
     class DasDeclaration(models.TextChoices):
         NO = "no", _("My article has no associated data or the data will not be deposited")
         ESM = "esm", _("My article has data included as electronic supplementary material")
         URL = "url", _("My article has associated data in a data repository")
+
+        @classmethod
+        def as_dict(cls) -> dict[str, str]:
+            """
+            Convert the choices attribute to a dictionary representation.
+
+            :return: A dictionary mapping the keys and values of choices
+            :rtype: dict[str, str]
+            """
+            return dict(cls.choices)
 
     class ManuscriptSourceFormat(models.TextChoices):
         AUTO = "auto", _("Auto")
         LATEX = "latex", _("Tex / LaTeX")
         DOC = "doc", _("Documents (odt/docx/rtf)")
 
+        def as_dict(self) -> dict[str, str]:
+            """
+            Convert the choices attribute to a dictionary representation.
+
+            :return: A dictionary mapping the keys and values of choices
+            :rtype: dict[str, str]
+            """
+            return dict(self.choices)
+
     class TexEngine(models.TextChoices):
         TEX = "tex", _("Tex")
         LATEX = "latex", _("LaTex")
         PDFLATEX = "pdflatex", _("PdflLaTex")
         XELATEX = "xelatex", _("XeLaTex")
+
+        def as_dict(self) -> dict[str, str]:
+            """
+            Convert the choices attribute to a dictionary representation.
+
+            :return: A dictionary mapping the keys and values of choices
+            :rtype: dict[str, str]
+            """
+            return dict(self.choices)
 
     article = models.OneToOneField(
         Article,
@@ -74,6 +112,13 @@ class ArticleSubmission(models.Model):
         blank=True,
         verbose_name=_("Affiliation country"),
         on_delete=models.SET_NULL,
+    )
+
+    feedback_uuid = models.UUIDField(
+        verbose_name=_("Feedback UUID"),
+        blank=True,
+        null=True,
+        help_text=_("Unique identifier for websocket feedback channel"),
     )
 
     class Meta:
@@ -140,7 +185,7 @@ class ArticleSubmission(models.Model):
         :raises: AttributeError if `get_arxiv_id` is not callable or does not return a valid value.
         """
         versionless_arxiv_id = self.get_arxiv_id().partition("v")[0]
-        return f"{ARXIV_BASE_DOI_}/arXiv.{versionless_arxiv_id}"
+        return f"{ARXIV_BASE_DOI}/arXiv.{versionless_arxiv_id}"
 
 
 class CollaborationRelation(models.TextChoices):
@@ -280,9 +325,9 @@ class RevisionStorage(models.Model):
     """
 
     class RevisionFlowType(models.TextChoices):
-        CONFIRM = "confirm", _("Confirm")
-        METADATA = "metadata", _("Metadata")
-        FULL = "full", _("Minor / Major")
+        CONFIRM = "confirm", _("Confirm previous version")
+        METADATA = "metadata", _("Metadata change")
+        FULL = "full", _("New version")
 
     article = models.OneToOneField(
         Article,
@@ -368,24 +413,28 @@ class RevisionSubmissionArticleFunding(models.Model):
         null=False,
         help_text="Funder name",
     )
-    fundref_id = models.CharField(
+    fundref_id = models.CharField(  # noqa: DJ001
         max_length=500,
         blank=True,
         default="",
+        null=True,
         help_text="Funder DOI (optional). Enter as a full Uniform "
         "Resource Identifier (URI), such as "
         "https://dx.doi.org/10.13039/501100021082",
     )
-    funding_id = models.CharField(
+    funding_id = models.CharField(  # noqa: DJ001
         max_length=500,
         blank=True,
         default="",
+        null=True,
         help_text="The grant ID (optional). Enter the ID by itself",
     )
-    funding_statement = models.TextField(
-        blank=True, help_text=_("Additional information regarding this funding entry")
+    funding_statement = models.TextField(  # noqa: DJ001
+        blank=True,
+        help_text=_("Additional information regarding this funding entry"),
+        null=True,
     )
-    country = models.CharField(max_length=128, blank=True)
+    country = models.CharField(max_length=128, blank=True, null=True)  # noqa: DJ001
 
     def __str__(self):
         return self.name

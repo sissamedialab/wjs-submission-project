@@ -3,6 +3,7 @@
 {% load django_bootstrap5 static field %}
 
 {% block content %}
+<div class="col-sm-12">
   <div class="wjs-submission-container">
     <form method="post" action="" class="wjs-submission-form" enctype="multipart/form-data">
       {% csrf_token %}
@@ -26,6 +27,7 @@
       {% endblock submission_footer %}
     </form>
   </div>
+</div>
 {% endblock content %}
 
 {% block js %}

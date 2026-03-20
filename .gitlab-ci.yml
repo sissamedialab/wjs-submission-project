@@ -102,17 +102,20 @@ upload-package:
 
 
 deploy-to-pre-production:
-  environment: pre-production
   extends:
     - .deploy
+  environment: pre-production
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: never
+    - if: $CI_COMMIT_REF_NAME == "wjs-production"
+      when: on_success
+    - when: manual
+  allow_failure: true
   variables:
     SERVER_IP: "$TEST_SERVER_IP"
     SERVER_USER: "$TEST_SERVER_USER"
     DEPLOY_CMD: "deploy-pp-wjs-submission"
-  rules:
-    - if: $CI_COMMIT_REF_NAME == "wjs-production"
-      when: on_success
-    - when: manual
 
 
 deploy-to-test:
@@ -120,7 +123,12 @@ deploy-to-test:
   # Warning! Be sure not to disrupt other peoples work 🙂
   extends:
     - .deploy
-  when: manual
+  environment: test
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: never
+    - when: manual
+  allow_failure: true
   variables:
     SERVER_IP: "$TEST_SERVER_IP"
     SERVER_USER: "$TEST_SERVER_USER"
@@ -130,21 +138,29 @@ deploy-to-test:
 deploy-to-dev:
   extends:
     - .deploy
+  environment: dev
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: never
+    - if: $CI_COMMIT_REF_NAME == "wjs-develop"
+      when: on_success
+    - when: manual
+  allow_failure: true
   variables:
     SERVER_IP: "$TEST_SERVER_IP"
     SERVER_USER: "$TEST_SERVER_USER"
     DEPLOY_CMD: "deploy-dev-wjs-submission:${CI_COMMIT_SHA}"
-  rules:
-    - if: $CI_COMMIT_REF_NAME == "wjs-develop"
-      when: on_success
-    - when: manual
 
 
 deploy-to-production:
   extends:
     - .deploy
-  when: manual
   environment: production
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: never
+    - when: manual
+  allow_failure: true
   variables:
     SERVER_IP: "$PROD_SERVER_IP"
     SERVER_USER: "$PROD_SERVER_USER"

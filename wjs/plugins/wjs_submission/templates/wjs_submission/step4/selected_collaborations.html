@@ -1,17 +1,16 @@
 <div id="selected-collaborations-wrapper">
   <div class="wjs-submission-form__section mb-5 {% if not articles_collaborations.exists %}d-none{% endif %}">
-    <h2 class="wjs-submission-form__form-label-title">Selected Collaborations</h2>
+    <h2 class="wjs-submission-form__form-label-title">Selected collaborations</h2>
     <div class="wjs-submission-form__section-content">
       <p class="wjs-submission-form__collaborations-intro-text">
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
-        quis nostrud exercitation ullamco laboris
       </p>
 
       <input type="hidden" id="collaborations-order" name="collaborations-order" value="{{ articles_collaborations.exists|default:'' }}" required="">
       <table class="table table-sm" id="collaborations-table">
         <thead>
         <tr>
-          <th width="90%">Name</th>
+          <th width="60%">Name</th>
+          <th width="30%">Type</th>
           <th class="text-center"><i class="bi bi-arrow-up"></i></th>
           <th class="text-center"><i class="bi bi-arrow-down"></i></th>
           <th class="text-end">Delete</th>
@@ -20,7 +19,8 @@
         <tbody>
         {% for collaboration in articles_collaborations %}
           <tr>
-            <td width="90%">{{ collaboration.collaboration.name }}</td>
+            <td>{{ collaboration.collaboration.name }}</td>
+            <td>{{ collaboration.get_relation_display }}</td>
             <td class="text-center">
               {% if not forloop.first %}
                 <button class="btn btn-sm btn-primary"

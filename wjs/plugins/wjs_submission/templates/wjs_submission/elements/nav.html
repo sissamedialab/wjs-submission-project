@@ -1,15 +1,23 @@
+{% load submission_tags %}
 <div class="wjs-submission-navigation">
   {% for step_state in steps.values %}
     {% if step_state.state %}
       <div
-        class="wjs-submission-navigation-step{% if step_state.step == step %} wjs-submission-navigation-step--current{% endif %}{% if step_state.available %} wjs-submission-navigation-step--done{% endif %}">
+        class="wjs-submission-navigation-step{% if step_state.step == step %} wjs-submission-navigation-step--current{% endif %}{% if step_state.available %} wjs-submission-navigation-step--done{% endif %}"
+        aria-label="navigation step submission">
         {% if step_state.step.step_number > 1 %}
           <div class="wjs-submission-navigation-step__line"></div>{% endif %}
         <a {% if step_state.available and article %}href="{% url step_state.step.step_view_name article.pk %}"
-           {% else %}href="#"{% endif %}
-           class="wjs-submission-navigation-step__link">
+          {% else %}href="#"{% endif %}
+          class="wjs-submission-navigation-step__link"
+          {% if step_state.step == step %}aria-current="page"{% endif %}>
           <div class="wjs-submission-navigation-step__circle"><i class="bi {{ step_state.step.icon }}"></i></div>
-          <div class="wjs-submission-navigation-step__label">{{ step_state.step.label }}</div>
+          {% if article %}
+            <div class="wjs-submission-navigation-step__label"><span class="visually-hidden">Step {{ step_state.step.step_number }}</span>{{ step_state.step|step_title:article }}</div>
+          {% else %}
+            <div class="wjs-submission-navigation-step__label"><span class="visually-hidden">Step {{ step_state.step.step_number }}</span>{{ step_state.step|step_title:None }}</div>
+          {% endif %}
+          <span class="visually-hidden">{% if not step_state.available %}{% translate "Blocked" %}{% endif %}</span>
         </a>
       </div>
     {% endif %}

@@ -80,8 +80,8 @@ def default_correspondence_author_validation(user: Account) -> bool:
     :rtype: bool
     """
     is_active = user.is_active
-    personal_data = user.last_name and user.first_name
-    professional_data = user.institution and user.department
+    personal_data = (user.last_name or user.first_name) and user.email
+    professional_data = user.institution
     return is_active and personal_data and professional_data
 
 

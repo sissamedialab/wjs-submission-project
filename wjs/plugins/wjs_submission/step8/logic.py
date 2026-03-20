@@ -6,6 +6,8 @@ from django.utils.timezone import now
 from events import logic as event_logic
 from submission.models import STAGE_UNASSIGNED, Article
 
+from ..events import SubmissionEvent
+
 
 @dataclasses.dataclass
 class CompleteSubmission:
@@ -41,6 +43,10 @@ class CompleteSubmission:
                 article=self.article,
                 request=self.request,
             )
-
+            event_logic.Events.raise_event(
+                SubmissionEvent.ON_ACCESS_MODE_SELECTION,
+                article=self.article,
+                submission_data=self.article.submission_data,
+            )
             self.article.refresh_from_db()
             return self.article

@@ -1,12 +1,11 @@
-{% load django_bootstrap5 static field %}
+{% load django_bootstrap5 settings static field %}
 <div id="selected-authors-wrapper">
 
   <div class="wjs-submission-form__section mb-5">
-    <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Selected Authors</h2>
+    <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Selected authors</h2>
     <div class="wjs-submission-form__section-content">
       <p class="wjs-submission-form__authors-intro-text">
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
-        quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+        The following name(s) will appear on the manuscript author list. You can order them or delete them as appropriate.
       </p>
       {# In case authors_order is empty, we must output empty string for frontend control to consider the field empty #}
       <input type="hidden" id="authors-order" name="authors-order" value="{{ authors_order.exists|default:'' }}" required="">
@@ -54,7 +53,7 @@
               {% endif %}
             </td>
             <td class="text-end">
-              {% if author.author != article.owner and author.author.pk != correspondence_author.pk %}
+              {% if author.author != article.owner and author.author != correspondence_author and author.author != request.user %}
                 <button class="btn btn-sm"
                         hx-post="{% url 'wjs_submission_4' article.pk %}"
                         hx-vals='{"entity": "author", "author_id": "{{ author.pk }}", "action": "delete"}'
@@ -77,8 +76,11 @@
     <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Corresponding author</h2>
     <div class="wjs-submission-form__section-content">
       <p class="wjs-submission-form__authors-intro-text">
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
-        quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+        {% if is_revision %}
+          {{ journal|setting:"step4_corresponding_author_text_revision"|safe }}
+        {% else %}
+          {{ journal|setting:"step4_corresponding_author_text"|safe }}
+        {% endif %}
       </p>
       <div class="row g-2">
         <div class="col-6">
@@ -125,15 +127,15 @@
         <div
           class="wjs-submission-form__alert-message-box{% if correspondence_author in form.disabled_accounts %} wjs-submission-form__alert-message-box--error{% else %} wjs-submission-form__alert-message-box--warning{% endif %}">
           <i class="bi bi-exclamation-triangle"></i>
-          {% if form.correspondence_author_error == form.statuses.INCOMPLETE_ACCOUNT %}
+          {% if form.correspondence_author_error == "incomplete_account" %}
             {# fake field to block submission in case of error condition #}
             <input type="hidden" id="authors-blocker" name="authors-blocker" required="required">
             Please <a class="link-light" href="{% url 'core_edit_profile' %}?next={% url 'wjs_submission_4' form.instance.pk %}">complete your profile</a> before continuing.
-          {% elif form.correspondence_author_error == form.statuses.INELIGIBLE_ACCOUNT %}
+          {% elif form.correspondence_author_error == "ineligible_account" %}
             {# fake field to block submission in case of error condition #}
             <input type="hidden" id="authors-blocker" name="authors-blocker" required="required">
             Correspondence author account is not complete.
-          {% elif form.correspondence_author_error == form.statuses.ORCID_MISSING_ACCOUNT %}
+          {% elif form.correspondence_author_error == "orcid_missing_account" %}
             Authors need to associate their Orcid id to their <a class="link-light" href="{% url 'core_edit_profile' %}?next={% url 'wjs_submission_4' form.instance.pk %}">profile</a> as soon as possible and in any case before publication of manuscripts.
           {% endif %}
         </div>

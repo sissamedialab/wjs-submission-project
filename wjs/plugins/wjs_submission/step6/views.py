@@ -1,18 +1,28 @@
 import logging
+from pathlib import Path
 
 from core import models as core_models
 from django.db.models import QuerySet
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
+from django.utils.functional import cached_property
 from django.views.generic import DeleteView, DetailView, FormView, UpdateView
 from submission.models import Article
 from utils.setting_handler import get_setting
 
+from .. import settings as submission_settings
+from ..conversion import get_feedback_logfile, get_feedback_ws_url, report_yakunin_errors
 from ..mixins import AuthorFilteringView, HtmxMixin, StepCheckView
 from ..models import RevisionStorage
-from ..workflow import get_feedback_ws_url, is_revision, is_revision_confirm, is_revision_full, is_revision_metadata
+from ..workflow import (
+    is_revision,
+    is_revision_confirm,
+    is_revision_full,
+    is_revision_metadata,
+)
 from .forms import RevisionStep6Form, RevisionUploadArticleForm, SubmissionStep6Form, UploadArticleForm
 
 logger = logging.getLogger(__name__)
+TASK_LOG_PREFIX = "conversion-task-log"
 
 
 def get_files(article: Article) -> dict:
@@ -21,9 +31,11 @@ def get_files(article: Article) -> dict:
 
     This is intended to be used to update the context data of step6 and step8 views
     and those of Upload/Delete files views.
+
+    Files are taken from revisionstorage only for full revision, in the other cases we will get them from article.
     """
     files_by_type = {}
-    if is_revision(article):
+    if is_revision_full(article):
         data = RevisionStorage.objects.get(article=article).data
 
         if file_id := data["manuscript_files"]:
@@ -53,6 +65,80 @@ def get_files(article: Article) -> dict:
         files_by_type["administrative_files"] = article.submission_data.administrative_files
 
     return files_by_type
+
+
+def get_conversion_status(article: Article, view) -> dict:
+    """
+    Return a dictionary with info about the PDF conversion of the given article.
+
+    This is intended to be used to update the context data of views that show the manuscript
+    (step6 article_form and files_table and step 8).
+
+    ⚠ here there be 🐉s
+    We follow the conventions described in workflow.create_log_file().
+    We assume that the log file can contain lines starting with WARNING, ERROR, or FAIL;
+    these also we include in the context.
+
+    """
+    context = {
+        "feedback_ws_url": "",
+        "conversion_log_file": None,
+        "conversion_log_url": None,
+        "conversion_log": None,
+        "conversion_status": None,
+        "conversion_result": None,
+    }
+    context["show_detailed_log"] = submission_settings.YAKUNIN_SHOW_DETAILED_LOG
+
+    if article.submission_data.feedback_uuid:
+        feedback_ws_url = get_feedback_ws_url(
+            view.request,
+            article.pk,
+            view.request.user.pk,
+            article.submission_data.feedback_uuid,
+        )
+        log_filename = get_feedback_logfile(article.submission_data.feedback_uuid)
+        log_file = core_models.File.objects.filter(
+            article_id=article.pk,
+            original_filename=log_filename,
+        ).first()
+        context["feedback_ws_url"] = feedback_ws_url
+
+        if log_file:
+            context["conversion_log_file"] = log_file
+            # Filter log to only include lines starting with WARNING, ERROR, or FAIL
+            # (these are intended to be shown direcly on the page)
+            full_log = Path(log_file.self_article_path()).read_text(encoding="utf-8")
+            filtered_lines = report_yakunin_errors(full_log, include_warnings=True)
+            context["conversion_log_url"] = reverse(
+                "download_single_file",
+                kwargs={
+                    "article_id": log_file.article_id,
+                    "file_id": log_file.pk,
+                },
+            )
+            context["conversion_log"] = "\n".join(filtered_lines)
+            context["conversion_status"] = log_file.label
+            # It is possible that the WS consumer did not update the log file status;
+            # in this case we can assume that if a manuscript file exists, then the process is completed.
+            if log_file.label == "unknown" and article.manuscript_files.exists():
+                context["conversion_status"] = "completed"
+                logger.warning(f"Forced completed state on logfile for {article.submission_data.feedback_uuid}")
+            context["conversion_result"] = log_file.description
+        else:
+            context["conversion_log_file"] = None
+            context["conversion_log_url"] = None
+            context["conversion_log"] = ""
+            context["conversion_status"] = "unknown"
+            context["conversion_result"] = "unknown"
+
+        context["conversion_result_color"] = {
+            "failed": "danger",
+            "error": "danger",
+            "warning": "warning",
+            "success": "success",
+        }.get(context["conversion_result"], "warning")
+    return context
 
 
 class SubmissionStep6View(AuthorFilteringView, StepCheckView, UpdateView):
@@ -121,24 +207,22 @@ class SubmissionStep6View(AuthorFilteringView, StepCheckView, UpdateView):
         WebSocket URL that the template can use to connect to the
         feedback channel for this specific article and user.
 
-        Args:
-            **kwargs: Arbitrary keyword arguments passed to the base context.
-
-        Returns:
-            dict: Context dictionary extended with "feedback_ws_url".
-
+        :param kwargs: Additional keyword arguments passed to the method.
+        :return: The modified context dictionary with additional article files and related attributes.
         """
         context = super().get_context_data(**kwargs)
-        context["feedback_ws_url"] = get_feedback_ws_url(self.request, self.object.pk, self.request.user.pk)
 
         # Include files (manuscript_files, data_figure_files, etc.)
         context.update(get_files(article=self.object))
+
+        # Include info about the conversion status
+        context.update(get_conversion_status(article=self.object, view=self))
 
         return context
 
 
 class TableRenderingContext:
-    @property
+    @cached_property
     def _article(self) -> Article:
         """Retrieve article object."""
         return Article.objects.get(pk=self.kwargs["article_id"])
@@ -162,9 +246,8 @@ class TableRenderingContext:
         if file_type == "manuscript":
             context["files_list"] = files_by_type["manuscript_files"]
             context["show_conversion"] = True
-            context["failed_conversion_log"] = core_models.File.objects.filter(
-                article_id=self._article.pk, label="Failed conversion log ConvertManuscriptToPdf"
-            ).first()
+            context.update(get_conversion_status(self._article, view=self))
+
         elif file_type == "data":
             context["files_list"] = files_by_type["data_figure_files"]
         elif file_type == "administrative":
@@ -178,6 +261,21 @@ class RenderSubmissionFile(HtmxMixin, AuthorFilteringView, TableRenderingContext
     pk_url_kwarg = "article_id"
     template_name = "wjs_submission/step6/includes/files_table.html"
     context_object_name = "article"
+
+    def get_context_data(self, **kwargs) -> dict:
+        """
+        Add read-only flag if we are in step-8.
+
+        That following flag is used by files_tables.html
+        to show/hide the delete button and to run the required-fields checklist update.
+
+        In step-8 it should be set to True, elsehwere to False (or just be absent).
+        """
+        context = super().get_context_data(**kwargs)
+        if self.object.current_step > 7 and not is_revision(self.object):
+            context["read_only"] = True
+        context["skip_connect_websocket"] = True
+        return context
 
 
 class DeleteSubmissionFile(HtmxMixin, AuthorFilteringView, TableRenderingContext, DeleteView):
@@ -196,6 +294,25 @@ class DeleteSubmissionFile(HtmxMixin, AuthorFilteringView, TableRenderingContext
         """
         return self.model.objects.filter(article_id=self.kwargs["article_id"])
 
+    def _delete_conversion_log(self):
+        """Delete the conversion log file."""
+        # TODO: stop any running conversion!
+        try:
+            [
+                f.delete()
+                for f in core_models.File.objects.filter(
+                    article_id=self.kwargs["article_id"],
+                    original_filename__startswith=TASK_LOG_PREFIX,
+                )
+            ]
+        except Exception:
+            # Any failure here is not critical, but we should log it.
+            logger.exception("Error deleting conversion log file")
+        # Memento: if self._article was a @property (i.e. not a @cached_property as it's now)
+        # it cannot be used to set/store/save values onto submission_data as done below:
+        self._article.submission_data.feedback_uuid = None
+        self._article.submission_data.save()
+
     def _delete_files(self):
         """
         Delete the selected file.
@@ -213,9 +330,11 @@ class DeleteSubmissionFile(HtmxMixin, AuthorFilteringView, TableRenderingContext
             if self.object in self._article.source_files.all():
                 for f in self._article.manuscript_files.all():
                     f.delete()
+                self._delete_conversion_log()
             if self.object in self._article.manuscript_files.all():
                 for f in self._article.source_files.all():
                     f.delete()
+                self._delete_conversion_log()
             self.object.delete()
             self._article.refresh_from_db()
         else:
@@ -243,6 +362,9 @@ class DeleteSubmissionFile(HtmxMixin, AuthorFilteringView, TableRenderingContext
                         f"Unexpected file to delete {self.object.id} not manuscript nor source"
                         f" for article {self._article.id}",
                     )
+                # Always delete the conversion logs: when the source or the manuscript change,
+                # they have no reason to be kept.
+                self._delete_conversion_log()
 
             elif file_type == "data":
                 revision_storage.data["data_figure_files"].remove(self.object.id)
@@ -290,6 +412,8 @@ class UploadSubmissionFile(HtmxMixin, AuthorFilteringView, TableRenderingContext
     """
 
     # HELP: IIC, we are mimicing a DetailView, but I don't see the gain (and this confuses me...)
+    # A: We need to get the article object anyway, instead of doing Article.objects.get in
+    # multiple places (get_form_kwargs, get_form_class
     model = Article
     pk_url_kwarg = "article_id"
     render_table = False

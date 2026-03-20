@@ -35,9 +35,13 @@ class RedirectToComplete(AuthorFilteringView, RedirectView):
         :return: Queryset of articles.
         :rtype: QuerySet[Article]
         """
-        return self.model.objects.filter(
-            Q(owner=self.request.user) | Q(correspondence_author=self.request.user)
-        ).filter(journal=self.request.journal)
+        return (
+            self.model.objects.filter(
+                Q(owner=self.request.user) | Q(correspondence_author=self.request.user) | Q(authors=self.request.user)
+            )
+            .filter(journal=self.request.journal)
+            .distinct()
+        )
 
     def get_object(self, queryset=None) -> Article:
         """Get current article from URL parameter."""

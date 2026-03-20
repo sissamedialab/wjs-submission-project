@@ -1,10 +1,11 @@
 {% extends "wjs_submission/base.html" %}
-{% load django_bootstrap5 field static submission_tags %}
+{% load django_bootstrap5 field static submission_tags wjs_tags %}
 
 {% block bootstrap5_extra_head %}
   {{ block.super }}
   {{ form.media.css }}
-{% endblock %}
+  <script src="{% static "js/conversion_websocket.js" %}"></script>
+{% endblock bootstrap5_extra_head %}
 
 {% block submission_flow %}
 
@@ -12,7 +13,7 @@
 
     <div class="wjs-submission-form__form-label-title-container">
       <h2 class="wjs-submission-form__form-label-title">
-        Submission checklist and declarations
+        {% if is_revision %}Checklist and declarations{% else %}Submission checklist and declarations{% endif %}
       </h2>
       {% if steps.1.available %}
         <a
@@ -32,12 +33,15 @@
           {% include "wjs_submission/step8/includes/submission_field.html" with label="Author(s) confirms that this article adheres to the requirements below" kind="check" answer=article.submission_requirements %}
           {{ journal_settings.general.submission_checklist|safe }}
         {% endif %}
-        <hr>
         {% if journal.submissionconfiguration.copyright_notice %}
           {% include "wjs_submission/step8/includes/submission_field.html" with label=journal_settings.general.copyright_submission_label kind="check" answer=article.copyright_notice %}
         {% endif %}
         {% for answer in article.fieldanswer_set.all %}
-          {% include "wjs_submission/step8/includes/submission_field.html" with label=answer.field.name kind=answer.field.kind answer=answer.answer %}
+          {% if is_revision %}
+            {% include "wjs_submission/step8/includes/submission_field.html" with label=answer.field.name kind=answer.field.kind answer=article_data|get_value:answer.field.name %}
+          {% else %}
+            {% include "wjs_submission/step8/includes/submission_field.html" with label=answer.field.name kind=answer.field.kind answer=answer.answer %}
+          {% endif %}
         {% endfor %}
       </ul>
     </div>
@@ -111,6 +115,11 @@
             </p>
           </div>
         {% endif %}
+        {% if not article_data.comments_editor and not article_data.cover_letter_file %}
+          <div class="wjs-submission-form__section-content">
+            <label class="fw-bold" for="id_title">Not set</label>
+          </div>
+        {% endif %}
       </div>
     </div>
   {% endif %}
@@ -129,7 +138,11 @@
         {% endif %}
       </div>
       <div class="wjs-submission-form__section-content">
-        <p>{{ article.projected_issue|display_title }}</p>
+        {% if article.projected_issue %}
+          <p>{{ article.projected_issue|display_title }}</p>
+        {% else %}
+          <p>Standard issue</p>
+        {% endif %}
       </div>
     </div>
   {% endif %}
@@ -271,9 +284,21 @@
       <div class="wjs-submission-form__text-area">{{ article_data.title|safe }}</div>
     </div>
     {% if journal_settings.general.abstract_required %}
-      <div class="wjs-submission-form__section-content">
+      <div class="wjs-submission-form__section-content mb-3">
         <label class="fw-bold">Abstract</label>
         <div class="wjs-submission-form__text-area">{{ article_data.abstract|safe }}</div>
+      </div>
+    {% endif %}
+    {% if journal.submissionconfiguration.language %}
+      <div class="wjs-submission-form__section-content mb-3">
+        <label class="fw-bold">Language</label>:
+        {{ article_data.language }}
+      </div>
+    {% endif %}
+    {% if journal.submissionconfiguration.section %}
+      <div class="wjs-submission-form__section-content mb-3">
+        <label class="fw-bold">Section</label>:
+        {{ article_data.section }}
       </div>
     {% endif %}
   </div>
@@ -314,7 +339,7 @@
       {% endif %}
     </div>
     <div class="wjs-submission-form__section-content">
-      <p>{{ article_data.get_das_display }}{% if article_data.das == article_data.DasDeclaration.URL %}:&nbsp;{{ article_data.das_url }}{% endif %}</p>
+      <p>{{ files_data.das_display }}{% if files_data.das == article_data.submission_data.DasDeclaration.URL %}:&nbsp;{{ files_data.das_url }}{% endif %}</p>
     </div>
   </div>
 
@@ -328,7 +353,7 @@
       {% endif %}
     </div>
     <div class="wjs-submission-form__section-content">
-      <p>{{ article_data.get_cas_display }}{% if article_data.cas == article_data.CasDeclaration.URL %}: &nbsp;{{ article_data.cas_url }}{% endif %}</p>
+      <p>{{ files_data.cas_display }}{% if files_data.cas == article_data.submission_data.CasDeclaration.URL %}: &nbsp;{{ files_data.cas_url }}{% endif %}</p>
     </div>
   </div>
 
@@ -344,7 +369,11 @@
       {% endif %}
     </div>
     <div class="wjs-submission-form__section-content">
-      <p>{{ access_mode }}</p>
+      <p>
+        <label class="fw-bold">Access Mode</label>: {{ access_mode.access_mode }}<br>
+        <label class="fw-bold">Copyright</label>: {{ access_mode.copyright }}<br>
+        <label class="fw-bold">License</label>: {{ access_mode.licence }}
+      </p>
     </div>
     {% if article_data.special_request %}
       <div class="wjs-submission-form__section-content">
@@ -393,6 +422,10 @@
       {% endif %}
       {% if not forloop.last %}
         <hr class="mt-4 mb-4">{% endif %}
+    {% empty %}
+      <div class="wjs-submission-form__section-content">
+        <label class="fw-bold" for="id_title">Not set</label>
+      </div>
     {% endfor %}
   {% endif %}
 </div>
@@ -401,7 +434,7 @@
 
 {% block submission_footer %}
   {% if is_revision %}
-    {% if article.revisionstorage.data.submission_requirements %}
+    {% if validate_revision_data.valid %}
       <div class="wjs-submission-form__footer">
         <div class="wjs-submission-form__footer-button d-flex justify-content-between align-items-center">
           <a href="{% url 'wjs_submission_7' article_id=article.pk %}" class="btn btn-secondary" id="back-btn">Back</a>
@@ -414,7 +447,15 @@
         Fill in the following fields in the corresponding step and go back to "Review & submit" to confirm the revision:
       </div>
       <ul>
-        <li>Submission checklist and declarations</li>
+        {% if not validate_revision_data %}
+          <li>Revision checklist and declarations</li>
+        {% endif %}
+        {% if not validate_revision_data.cover_letter %}
+          <li>Cover letter</li>
+        {% endif %}
+        {% if not validate_revision_data.revision_files %}
+          <li>Manuscript file</li>
+        {% endif %}
       </ul>
     {% endif %}
   {% else %}

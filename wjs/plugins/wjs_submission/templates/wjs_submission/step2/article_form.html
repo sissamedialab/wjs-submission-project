@@ -3,13 +3,11 @@
 
 {% block submission_flow %}
   <div class="wjs-submission-form__section mb-5" id="issue-section">
-    <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Select Issue of publication</h2>
+    <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Select issue of publication</h2>
     <div class="wjs-submission-form__section-content">
       {% if settings.DEBUG %}{{ form.errors }}{% endif %}
       <div class="mb-3">
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore
-        magna aliqua.
-        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+        Please select whether you are submitting your manuscript for publication in a Special Issue (only invited submissions) or in a standard issue.
       </div>
       {% bootstrap_form form %}
     </div>
