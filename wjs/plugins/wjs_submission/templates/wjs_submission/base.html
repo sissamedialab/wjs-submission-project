@@ -5,7 +5,7 @@
 {% block content %}
 <div class="col-sm-12">
   <div class="wjs-submission-container">
-    <form method="post" action="" class="wjs-submission-form" enctype="multipart/form-data">
+    <form method="post" action="" class="wjs-submission-form" enctype="multipart/form-data" onkeydown="return event.key !== 'Enter'">
       {% csrf_token %}
       {% include "wjs_submission/elements/nav.html" %}
       {% block submission_flow %}

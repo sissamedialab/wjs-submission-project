@@ -2,7 +2,7 @@ from django import template
 from django.template import Context, Engine, Template
 from django.utils.safestring import mark_safe
 from journal.models import Issue
-from submission.models import Article
+from submission.models import Article, KeywordArticle
 
 from ..workflow import Step
 
@@ -62,3 +62,21 @@ def render_template_string(context: Context, template_string: str) -> str:
     engine = Engine.get_default()
     template = engine.from_string(template_string)
     return template.render(context=context)
+
+
+@register.filter()
+def article_keywords_by_group(article: Article) -> list[KeywordArticle]:
+    """
+    Return the keywords group of the article.
+
+    Reordering ensure that free keywords are grouped last.
+
+    :param article: The article to get the keywords group for.
+    :type article: Article
+    :return: Sorted list of keywords by group name, with free keywords grouped last.
+    :rtype: list[KeywordArticle]
+    """
+    return sorted(
+        article.keywordarticle_set.all(),
+        key=lambda x: (x.keyword.group_id is None, x.keyword.group.name if x.keyword.group_id else ""),
+    )

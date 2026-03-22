@@ -106,9 +106,8 @@ class SubmissionStep7Form(forms.ModelForm):
         :param commit: commit changes to database
         :return:
         """
+        self.instance.current_step = max(self.instance.current_step, self.step)
         instance = super().save(commit=commit)
-        instance.current_step = max(instance.current_step, self.step)
-        instance.save()
         instance.submission_data.access_mode = self.cleaned_data["access_mode"]
         instance.submission_data.special_request = self.cleaned_data["special_request"]
         instance.submission_data.save()

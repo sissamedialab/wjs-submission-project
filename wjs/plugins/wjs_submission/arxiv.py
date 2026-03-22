@@ -1,4 +1,5 @@
 import dataclasses
+import xml
 
 import defusedxml
 import requests
@@ -183,8 +184,12 @@ def fetch_arxiv_metadata(arxiv_id: str) -> tuple[dict, dict]:
         result["abstract"] = abstract_elem.text
         result["category_term"] = category_elem.attrib.get("term")
         result["arxiv_id"] = full_id.rsplit("/", 1)[-1]
-        if doi_elem is not None:
-            result["doi_link"] = defusedxml.ElementTree.tostring(doi_elem, encoding="unicode")
+        if (
+            doi_elem is not None
+            and isinstance(doi_elem, xml.etree.ElementTree.Element)
+            and doi_elem.attrib.get("href")
+        ):
+            result["doi_link"] = doi_elem.attrib.get("href")
     except (AttributeError, defusedxml.ElementTree.ParseError) as e:
         raise ArXivCorruptedDataError from e
     except requests.exceptions.RequestException as e:
