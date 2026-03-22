@@ -1,9 +1,10 @@
 from django.contrib import admin, messages
+from django.http import HttpRequest
 from django.shortcuts import redirect, render, reverse
 from django.urls import path
 from wjs.advanced_admin.admin import advanced_admin_site
 
-from ..models import ArticleCollaboration, Collaboration
+from ..models import ArticleCollaboration, ArticleSubmission, Collaboration
 from .forms import CollaborationMergeForm
 
 
@@ -94,3 +95,79 @@ class CollaborationAdmin(admin.ModelAdmin):
             "title": "Merge two collaborations",
         }
         return render(request, "admin/wjs_submission/collaboration/merge_collaborations.html", context)
+
+
+@admin.register(ArticleSubmission, site=advanced_admin_site)
+class ArticleSubmissionAdmin(admin.ModelAdmin):
+    fields = ("cover_letter_file",)
+    autocomplete_fields = ("cover_letter_file",)
+
+    list_display = ["article_title", "pubid", "article_journal", "state"]
+    list_filter = ["article__journal"]
+    ordering = ("-pk",)
+    search_fields = ("article__identifier__identifier",)
+
+    def get_list_filter(self, request):
+        """
+        Add article__articleworkflow__state to bipass CI error, because CI does not see wjs_review.
+        """
+        list_filter = list(self.list_filter)
+        list_filter.append("article__articleworkflow__state")
+        return list_filter
+
+    def has_add_permission(self, request: HttpRequest) -> bool:  # noqa: PLR6301
+        """
+        Determine if the user has permission to add an object.
+
+        Current implementation blocks all users from adding new ArticleSubmission.
+
+        :param request: The HTTP request object containing user information and metadata
+        :type request: HttpRequest
+        :return: False indicating that the user does not have permission to add
+        :rtype: bool
+        """
+        return False
+
+    def state(self, obj: ArticleSubmission) -> str:  # noqa: PLR6301
+        """
+        Retrieve the display name of the current state of the object's article workflow.
+
+        :param obj: The object whose article workflow state display name is retrieved
+        :type obj: ArticleSubmission
+        :return: The display name of the current state of the object's article workflow
+        :rtype: str
+        """
+        return obj.article.articleworkflow.get_state_display()
+
+    def article_title(self, obj: ArticleSubmission) -> str:  # noqa: PLR6301
+        """
+        Retrieve the title of the object's article.
+
+        :param obj: The object whose article title is retrieved
+        :type obj: ArticleSubmission
+        :return: The article title of the object's article
+        :rtype: str
+        """
+        return obj.article.title
+
+    def article_journal(self, obj: ArticleSubmission) -> str:  # noqa: PLR6301
+        """
+        Retrieve the journal of the object's article.
+
+        :param obj: The object whose workflow state display name is retrieved
+        :type obj: ArticleSubmission
+        :return: The journal of the object's article
+        :rtype: str
+        """
+        return obj.article.journal
+
+    def pubid(self, obj: ArticleSubmission) -> str:  # noqa: PLR6301
+        """
+        Retrieve the pubid of the ArticleSubmission.article.
+
+        :param obj: The object whose article pubid is retrieved
+        :type obj: ArticleSubmission
+        :return: The pubid of the article
+        :rtype: str
+        """
+        return obj.article.get_pubid()
