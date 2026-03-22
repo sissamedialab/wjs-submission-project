@@ -161,14 +161,22 @@
     </div>
 
     <div class="wjs-submission-form__section-content">
-      <ul class="list-unstyled mt-2">
-        {% for kw in article.keywordarticle_set.all %}
-          <li class="wjs-submission-form__form-review-list-item-no-border">
-            <span>{{ kw.keyword.word }}</span>
-            <span class="text-muted">Weight: {{ kw.weight }}</span>
-          </li>
-        {% endfor %}
-      </ul>
+      <dl class="ps-0">
+        {% if journal.submissionconfiguration.hierarchical_keywords %}
+          {% regroup article|article_keywords_by_group by keyword.group.name as keyword_tree %}
+          {% for by_category in keyword_tree %}
+            <dt>{% if by_category.grouper %}{{ by_category.grouper }} {{ by_category.grouper.parent_group }}{% else %}{% translate "Free keywords" %}{% endif %}</dt>
+            {% for keyword in by_category.list %}
+              <dd class="d-flex justify-content-between ms-2"><span>{{ keyword.keyword.word }}</span>{% if keyword.weight %} <span>{% translate "Weight" %}: {{ keyword.weight }}</span>{% endif %}</dd>
+            {% endfor %}
+          {% endfor %}
+        {% else %}
+          {% for keyword in article.keywordarticle_set.all %}
+            <dd class="d-flex justify-content-between ms-2"><span>{{ keyword.keyword.word }}</span>{% if keyword.weight %} <span>{% translate "Weight" %}: {{ keyword.weight }}</span>{% endif %}</dd>
+          {% endfor %}
+        {% endif %}
+      </dl>
+
     </div>
   </div>
 
@@ -237,6 +245,14 @@
         </tr>
         </tbody>
       </table>
+    </div>
+    <div class="wjs-submission-form__form-label-title-container">
+      <h2 class="wjs-submission-form__form-label-title">
+        Affiliation
+      </h2>
+    </div>
+    <div class="wjs-submission-form__section-content">
+      {{ affiliation_country }}
     </div>
   </div>
 

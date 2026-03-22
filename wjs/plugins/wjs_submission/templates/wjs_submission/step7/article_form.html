@@ -89,6 +89,16 @@
     </div>
   {% endif %}
 {% endblock submission_flow %}
+{% block submission_required_fields %}
+  {# Hide required fields section if access mode is not selectable: funding and special requests are optional and we can hide the empty required fields section  #}
+  {% if view.access_mode_configuration.user_can_select_access_mode %}
+    {{ block.super }}
+  {% else %}
+    <div class="d-none">
+    {{ block.super }}
+    </div>
+  {% endif %}
+{% endblock submission_required_fields %}
 
 {% block js %}
   {{ block.super }}

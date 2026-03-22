@@ -1,4 +1,4 @@
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.views.generic import TemplateView, UpdateView
 from submission.models import Article
 
@@ -146,7 +146,7 @@ class AddFundingView(ModalRenderingMixin):
             funding_pk = self.request.POST.get("funding_pk")
         elif self.request.method == "GET":
             funding_pk = self.request.GET.get("funding_pk")
-            if not funding_pk:
+            if not funding_pk and self.request.GET.get("fundref_id"):
                 kwargs["data"] = self.request.GET
         if funding_pk:
             self.object = self.model.objects.get(pk=funding_pk)
@@ -187,6 +187,12 @@ class DeleteFundingView(HtmxMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         context["articles_funding"] = self.model.objects.filter(article=self.article)
         context["funding_pk"] = self.request.GET.get("funding_pk")
+        if self.is_revision:
+            context["add_funding_url"] = reverse("add-funding-revision")
+            context["delete_funding_url"] = reverse("delete-funding-revision")
+        else:
+            context["add_funding_url"] = reverse("add-funding")
+            context["delete_funding_url"] = reverse("delete-funding")
         return context
 
     def get_object(self, queryset=None):

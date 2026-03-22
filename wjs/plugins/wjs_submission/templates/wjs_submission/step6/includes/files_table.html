@@ -9,19 +9,22 @@
     {% endif %}
   {% endif %}
   <table id="id_{{ file_type }}" class="table mt-2">
-    <thead>
-    <tr>
-      <th scope="col" width="20%">Title</th>
-      <th scope="col" {% if show_conversion %}width="40%"{% else %}width="65%"{% endif %}>Filename</th>
-      {% if show_conversion %}
-        <th scope="col" width="25%">Conversion status</th>
-      {% endif %}
-      <th scope="col" width="15%">Actions</th>
-    </tr>
-    </thead>
+    {% if files_list.exists %}
+      <thead>
+      <tr>
+        <th scope="col" width="20%">Title</th>
+        <th scope="col" {% if show_conversion %}width="40%"{% else %}width="65%"{% endif %}>Filename</th>
+        {% if show_conversion %}
+          <th scope="col" width="25%">Conversion status</th>
+        {% endif %}
+        <th scope="col" width="15%">Actions</th>
+      </tr>
+      </thead>
+    {% endif %}
     <tbody>
     {% for file in files_list.all %}
-      {% if show_conversion %}<input class="js-converted-file" type="hidden" id="{{ file_type }}_id" name="{{ file_type }}" value="{% if conversion_result != 'error' and conversion_result != 'failed' %}{{ file.pk }}{% endif %}" required="">{% endif %}
+      {% if show_conversion %}<input class="js-converted-file" type="hidden" id="{{ file_type }}_id" name="{{ file_type }}" value="{% if conversion_result != 'error' and conversion_result != 'failed' %}{{ file.pk }}{% endif %}" required="">
+      {% endif %}
       <tr>
         <td>{{ file.label }}</td>
         <td>{{ file.original_filename }}</td>
@@ -42,7 +45,7 @@
               {% bootstrap_button button_class="btn btn-sm btn-outline ps-0" type="button" hx_post=delete_url hx_target=container_id hx_confirm="Are you sure you wish to delete the file?" content="<i class='bi bi-trash3'></i>" title="Delete" %}
               {# the refresh button is used either explicitly during the debug or programmatically by show_feedback js function to re-render the file listing after a succesful conversion to provide the actual backend data of the converted file #}
             {% endif %}
-            {% if settings.DEBUG %}
+            {% if settings.DEBUG and not read_only %}
               {% bootstrap_button button_class="btn btn-sm btn-outline js-refresh ps-0" type="button" hx_get=render_url hx_target=container_id content="<i class='bi bi-arrow-clockwise'></i>" title="DEBUG: Reload table" %}
             {% else %}
               {% bootstrap_button button_class="js-refresh d-none ps-0" type="button" hx_get=render_url hx_target=container_id content="" %}
@@ -52,27 +55,29 @@
         </td>
       </tr>
     {% empty %}
+      <tr><th colspan="{% if show_conversion %}4{% else %}3{% endif %}">{% translate "No file provided" %}</th></tr>
       {% if show_conversion %}<input class="js-converted-file" type="hidden" id="{{ file_type }}_id" name="{{ file_type }}" value="" required="">{% endif %}
     {% endfor %}
     </tbody>
   </table>
   <div>
     {% if show_conversion %}
-    <div id="js-conversion-message" class="wjs-submission-form__alert-message-box wjs-submission-form__alert-message-box--warning {% if not conversion_log %}d-none{% endif %} d-flex flex-column">
-      <i class="bi bi-exclamation-triangle"></i>
-      {% if show_detailed_log %}
-        <div id="conversion-message" class="tex2jax_ignore">{{ conversion_log|linebreaksbr }}</div>
-      {% endif %}
-      <div id="js-conversion-log"{% if conversion_status != "completed" %} class="d-none"{% endif %}>
-        Download the file to see details: <a target="_blank" id="js-conversion-log-url" href="{{ conversion_log_url }}">download</a>
+      <div id="js-conversion-message" class="wjs-submission-form__alert-message-box wjs-submission-form__alert-message-box--warning {% if not conversion_log %}d-none{% endif %} d-flex flex-column">
+        <i class="bi bi-exclamation-triangle"></i>
+        {% if show_detailed_log %}
+          <div id="conversion-message" class="tex2jax_ignore">{{ conversion_log|linebreaksbr }}</div>
+        {% endif %}
+        <div id="js-conversion-log"{% if conversion_status != "completed" %} class="d-none"{% endif %}>
+          Download the file to see details: <a target="_blank" id="js-conversion-log-url" href="{{ conversion_log_url }}">download</a>
+        </div>
       </div>
-    </div>
-    <script>
-      {% if not skip_connect_websocket %}
-        conversion_websocket_connect("{{ feedback_ws_url }}");
-      {% endif %}
-    </script>
-  {% endif %}
+      <script>
+        {% if not skip_connect_websocket %}
+          conversion_websocket_connect("{{ feedback_ws_url }}");
+        {% endif %}
+      </script>
+    {% endif %}
+  </div>
 </div>
 {# This template is also included in step-8, where there is not a checklist of required fields to check. #}
 {# Fortunately, there we have "read_only" set to true. #}

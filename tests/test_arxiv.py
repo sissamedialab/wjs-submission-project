@@ -215,7 +215,7 @@ def test_fetch_arxiv_metadata_doi_extraction(monkeypatch):
     mock_requests_get(monkeypatch, {"api/query": meta_resp, "/src/": src_resp})
 
     result, errors = fetch_arxiv_metadata("0000.0000v1")
-    assert 'href="https://doi.org/10.1000/test"' in result["doi_link"]
+    assert result["doi_link"] == "https://doi.org/10.1000/test"
     assert errors["source_file"] == "HTTP 403"
 
 

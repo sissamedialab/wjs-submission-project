@@ -110,16 +110,19 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
         """
         if is_revision(article):
             submission_requirements = bool(article.revisionstorage.data["submission_requirements"])
-            cover_letter = bool(article.revisionstorage.data["comments_editor"]) or bool(
-                article.revisionstorage.data["cover_letter_file"]
-            )
+            if article.journal.submissionconfiguration.comments_to_the_editor:
+                cover_letter = bool(article.revisionstorage.data["comments_editor"]) or bool(
+                    article.revisionstorage.data["cover_letter_file"]
+                )
+            else:
+                cover_letter = True
             if is_revision_full(self.object):
                 revision_files = bool(article.revisionstorage.data["source_files"])
             else:
                 revision_files = True
         else:
             submission_requirements = bool(article.submission_requirements)
-            cover_letter = bool(article.comments_editor) or bool(article.submissiondata.cover_letter_file)
+            cover_letter = bool(article.comments_editor) or bool(article.submission_data.cover_letter_file)
             revision_files = False
         return {
             "valid": submission_requirements and cover_letter and revision_files,
@@ -164,6 +167,7 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                 journal=self.object.journal, access_mode_id=context["article_data"]["access_mode"]
             )
             context["correspondence_author"] = Account.objects.get(pk=context["article_data"]["correspondence_author"])
+            context["affiliation_country"] = Account.objects.get(pk=context["article_data"]["affiliation_country"])
             context["validate_revision_data"] = self._validate_revision_data(self.object)
         else:
             context["article_data"] = self.object
@@ -180,6 +184,7 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
             )
             context["article_data"].special_request = self.object.submission_data.special_request
             context["correspondence_author"] = self.object.correspondence_author
+            context["affiliation_country"] = self.object.submission_data.affiliation_country
             if is_revision(self.object):
                 if title := self.object.revisionstorage.data.get("title"):
                     context["article_data"].title = title

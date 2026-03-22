@@ -109,6 +109,7 @@ class SubmissionStep4Form(forms.ModelForm):
 
         The view manages most data due to heavy HTMX usage.
         """
+        self.instance.current_step = max(self.instance.current_step, self.step)
         instance = super().save()
 
         instance.submission_data.affiliation_country = self.cleaned_data.get("country")
