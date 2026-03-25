@@ -84,16 +84,17 @@
       </p>
       <div class="row g-2">
         <div class="col-6">
-          <label class="mb-2" for="{{ form.correspondence_author.id_for_label }}">Select corresponding author</label>
-          <select name="{{ form.correspondence_author.name }}"
-                  id="{{ form.correspondence_author.id_for_label }}"
+          <label class="mb-2" for="{{ step_form.correspondence_author.id_for_label }}">Select corresponding author</label>
+        {% url 'wjs-save-author' article.pk as save_author %}
+          <select name="{{ step_form.correspondence_author.name }}"
+                  id="{{ step_form.correspondence_author.id_for_label }}"
                   class="form-select w-100"
-                  hx-post="{% url 'wjs-save-author' article.pk %}"
+                  hx-post="{{ save_author }}"
                   hx-trigger="change"
                   hx-target="#selected-authors-wrapper"
                   hx-swap="innerHTML"
                   required="">
-            {% for author in form.correspondence_author.field.queryset %}
+            {% for author in step_form.correspondence_author.field.queryset %}
               <option value="{{ author.pk }}"
                       {% if author.pk == correspondence_author.pk %}selected{% endif %}
                 {% if author.pk in disabled_accounts and author.pk != correspondence_author.pk %}
@@ -106,12 +107,12 @@
         </div>
 
         <div class="col-6">
-          <label class="mb-2" for="{{ form.country.id_for_label }}">Country</label>
-          <select name="{{ form.country.html_name }}"
-                  id="{{ form.country.id_for_label }}"
+          <label class="mb-2" for="{{ step_form.country.id_for_label }}">Country</label>
+          <select name="{{ step_form.country.html_name }}"
+                  id="{{ step_form.country.id_for_label }}"
                   class="form-select w-100">
           <option value="" {% if not correspondence_author.country.pk %}selected{% endif %}></option>
-            {% for country in form.country.field.queryset %}
+            {% for country in step_form.country.field.queryset %}
               <option value="{{ country.pk }}"
                 {% if country.pk == correspondence_author.country.pk %}
                   selected
@@ -124,6 +125,7 @@
         </div>
       </div>
       {% if correspondence_author_error %}
+        {% url 'wjs_submission_4' article.pk as step_url %}
         <div
           class="wjs-submission-form__alert-message-box{% if correspondence_author in disabled_accounts %} wjs-submission-form__alert-message-box--error{% else %} wjs-submission-form__alert-message-box--warning{% endif %}">
           <i class="bi bi-exclamation-triangle"></i>
@@ -131,7 +133,7 @@
             {# fake field to block submission in case of error condition #}
             <input type="hidden" id="authors-blocker" name="authors-blocker" required="required">
             {% if correspondence_author == request.user %}
-              Please <a class="link-light" href="{% url 'core_edit_profile' %}?next={% url 'wjs_submission_4' form.instance.pk %}">complete your profile</a> before continuing.
+              Please <a class="link-light" href="{% url 'core_edit_profile' %}?next={{ step_url }}">complete your profile</a> before continuing.
             {% else %}
               {# With current backend user filetering, this cannot appear, but tracking the option anyway in case some journal have different UX requirements. hidden field above ensure form cannot proceed #}
               Correspondence author must complete the profile before continuing.
@@ -142,7 +144,7 @@
             Correspondence author account is not complete.
           {% elif correspondence_author_error == "orcid_missing_account" %}
             {% if correspondence_author == request.user %}
-              Authors need to associate their Orcid id to their <a class="link-light" href="{% url 'core_edit_profile' %}?next={% url 'wjs_submission_4' form.instance.pk %}">profile</a> as soon as possible and in any case before publication of manuscripts.
+              Authors need to associate their Orcid id to their <a class="link-light" href="{% url 'core_edit_profile' %}?next={{ step_url }}">profile</a> as soon as possible and in any case before publication of manuscripts.
             {% else %}
               Authors need to associate their Orcid id to their profile as soon as possible and in any case before publication of manuscripts.
             {% endif %}

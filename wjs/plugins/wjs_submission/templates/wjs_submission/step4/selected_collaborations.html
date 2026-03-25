@@ -24,8 +24,8 @@
             <td class="text-center">
               {% if not forloop.first %}
                 <button class="btn btn-sm btn-primary"
-                        hx-post="{% url 'wjs_submission_4' article.pk %}"
-                        hx-vals='{"entity": "collaboration", "collaboration_id": "{{ collaboration.pk }}", "action": "move_up"}'
+                        hx-post="{% url 'wjs-reorder-collaboration' article.pk %}"
+                        hx-vals='{"collaboration_id": "{{ collaboration.pk }}", "action": "move_up"}'
                         hx-target="#selected-collaborations-wrapper"
                         hx-swap="innerHTML">
                   <i class="bi bi-arrow-up"></i>
@@ -35,8 +35,8 @@
             <td class="text-center">
               {% if not forloop.last %}
                 <button class="btn btn-sm btn-primary"
-                        hx-post="{% url 'wjs_submission_4' article.pk %}"
-                        hx-vals='{"entity": "collaboration", "collaboration_id": "{{ collaboration.pk }}", "action": "move_down"}'
+                        hx-post="{% url 'wjs-reorder-collaboration' article.pk %}"
+                        hx-vals='{"collaboration_id": "{{ collaboration.pk }}", "action": "move_down"}'
                         hx-target="#selected-collaborations-wrapper"
                         hx-swap="innerHTML">
                   <i class="bi bi-arrow-down"></i>
@@ -46,8 +46,8 @@
             <td class="text-end">
               {% if collaboration.collaboration != article.owner and collaboration.collaboration != article.correspondence_collaboration %}
                 <button class="btn btn-sm"
-                        hx-post="{% url 'wjs_submission_4' article.pk %}"
-                        hx-vals='{"entity": "collaboration", "collaboration_id": "{{ collaboration.pk }}", "action": "delete"}'
+                        hx-post="{% url 'wjs-reorder-collaboration' article.pk %}"
+                        hx-vals='{"collaboration_id": "{{ collaboration.pk }}", "action": "delete"}'
                         hx-target="#selected-collaborations-wrapper"
                         hx-swap="innerHTML">
                   <i class="bi bi-trash3"></i>
