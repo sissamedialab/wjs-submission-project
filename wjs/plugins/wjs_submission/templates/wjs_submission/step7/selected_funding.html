@@ -32,15 +32,15 @@
               <button class="btn btn-sm btn-primary"
                       hx-get="{{ add_funding_url }}"
                       hx-target="#htmxModalContent"
-                      hx-vals='{"article_id": "{{ article.pk }}", "funding_pk": "{{ funding.pk }}"}'>
+                      hx-vals='{"funding_pk": "{{ funding.pk }}"}'>
                 <i class="bi bi-pencil"></i>
               </button>
             </td>
             <td class="text-end">
               <button class="btn btn-sm"
                       hx-post="{{ delete_funding_url }}"
-                      hx-vals='{"article_id": "{{ article.pk }}", "funding_pk": "{{ funding.pk }}"}'
                       hx-target="#selected-funding-wrapper"
+                      hx-vals='{"funding_pk": "{{ funding.pk }}"}'
                       hx-swap="innerHTML">
                 <i class="bi bi-trash3"></i>
               </button>

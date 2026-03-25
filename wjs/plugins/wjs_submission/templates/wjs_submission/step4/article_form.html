@@ -11,7 +11,7 @@
   <div class="wjs-submission-form__section mb-5" id="authors-section">
     <h2 class="wjs-submission-form__form-label-title">{% translate "Select co-authors" %}</h2>
     <div class="wjs-submission-form__section-content">
-      {% url 'add-author' as add_author_url %}
+      {% url 'add-author' article.pk as add_author_url %}
       {% if settings.DEBUG %}{{ form.errors }}{% endif %}
       <div class="wjs-submission-form__authors-intro-text">
         {% if is_revision %}
@@ -33,7 +33,6 @@
         hx-trigger="change"
         hx-swap="innerHTML"
         hx-target="#selected-authors-wrapper"
-                hx-vals='{"article_id": "{{ article.pk }}"}'
       >
     </div>
     <div class="wjs-submission-form__section-content">
@@ -45,7 +44,6 @@
                 hx-get="{{ add_author_url }}"
                 hx-trigger="click"
                 hx-target="#htmxModalContent"
-                hx-vals='{"article_id": "{{ article.pk }}"}'
                 id="add-author-btn"
                 disabled=""
                 aria-label="Add">
@@ -55,7 +53,7 @@
     </div>
   </div>
 
-  {% include "wjs_submission/step4/selected_authors.html" %}
+  {% include "wjs_submission/step4/selected_authors.html" with step_form=form %}
 
   <div class="wjs-submission-form__section mb-5" id="collaborations-section">
     <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Collaboration</h2>
@@ -82,7 +80,7 @@
           </div>
         </div>
       </div>
-
+      {% url 'add-collaboration' article.pk as add_collaboration_url %}
       <div id="js-collaborations-search-wrapper" class="d-none">
         <div class="wjs-submission-form__search-input-text" id="collaboration-search-wrapper"
              hx-get="{% url 'search-typeahead-collaboration' %}"
@@ -91,13 +89,12 @@
         >
         </div>
         <input type="hidden" name="collaboration_id" id="id_collaboration_id"
-               hx-post="{% url 'wjs_submission_4' article.pk %}"
-               hx-trigger="change"
-               hx-swap="innerHTML"
-               hx-target="#selected-collaborations-wrapper"
+          hx-post="{{ add_collaboration_url }}"
+          hx-trigger="change"
+          hx-swap="innerHTML"
+          hx-target="#selected-collaborations-wrapper"
         >
         <div class="d-flex justify-content-end">
-          {% url 'add-collaboration' as add_collaboration_url %}
           <button id="add-collab-btn" type="button"
                   class="btn btn-primary"
                   data-bs-toggle="modal"
@@ -106,7 +103,6 @@
                   hx-trigger="click"
                   hx-target="#htmxModalContent"
                   hx-include="[name='collaboration_relation']"
-                  hx-vals='{"article_id": "{{ article.pk }}"}'
                   disabled="">
             Add new collaboration
           </button>

@@ -212,7 +212,9 @@ def get_cern_journals_access_mode(user: Account, article: Article) -> AccessMode
     oat = get_oa_cern(user, article)
     if oat.access_mode:
         return oat
-    access_mode = AccessMode.objects.get(code=OA_CODE, parameters__journal=article.journal)
+    access_mode = AccessMode.objects.filter(code=OA_CODE, parameters__journal=article.journal).first()
+    if not access_mode:
+        raise RuntimeError("Missing OA agreement for CERN collaborations")
     return get_configuration(access_mode, article.journal, user_selectable=False)
 
 
