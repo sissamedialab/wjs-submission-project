@@ -10,7 +10,12 @@ from .step1 import SubmissionStep1RedirectView, SubmissionStep1View
 from .step2 import SubmissionStep2View
 from .step3 import SubmissionStep3View
 from .step4 import AddAuthorView, SubmissionStep4View
-from .step4.views import AddCollaborationView, ReorderAuthorsView, SaveCorrespondingAuthorView
+from .step4.views import (
+    AddCollaborationView,
+    ReorderAuthorsView,
+    ReorderCollaborationsView,
+    SaveCorrespondingAuthorView,
+)
 from .step5 import SubmissionStep5View
 from .step6 import (
     DeleteSubmissionFile,
@@ -116,16 +121,29 @@ urlpatterns = [
     ),
     path("submission/<int:article_id>/reorder-author/", ReorderAuthorsView.as_view(), name="wjs-reorder-author"),
     path(
+        "submission/<int:article_id>/reorder-collaboration/",
+        ReorderCollaborationsView.as_view(),
+        name="wjs-reorder-collaboration",
+    ),
+    path(
         "submission/<int:article_id>/corresponding-author/",
         SaveCorrespondingAuthorView.as_view(),
         name="wjs-save-author",
     ),
-    path("add-author/", AddAuthorView.as_view(), name="add-author"),
-    path("add-collaboration/", AddCollaborationView.as_view(), name="add-collaboration"),
-    path("add-funding/", AddFundingView.as_view(), name="add-funding"),
-    path("delete-funding/", DeleteFundingView.as_view(), name="delete-funding"),
-    path("add-funding/revision/", AddFundingView.as_view(is_revision=True), name="add-funding-revision"),
-    path("delete-funding/revision/", DeleteFundingView.as_view(is_revision=True), name="delete-funding-revision"),
+    path("submission/<int:article_id>/add-author/", AddAuthorView.as_view(), name="add-author"),
+    path("submission/<int:article_id>/add-collaboration/", AddCollaborationView.as_view(), name="add-collaboration"),
+    path("submission/<int:article_id>/add-funding/", AddFundingView.as_view(), name="add-funding"),
+    path("submission/<int:article_id>/delete-funding/", DeleteFundingView.as_view(), name="delete-funding"),
+    path(
+        "submission/<int:article_id>/add-funding/revision/",
+        AddFundingView.as_view(is_revision=True),
+        name="add-funding-revision",
+    ),
+    path(
+        "submission/<int:article_id>/delete-funding/revision/",
+        DeleteFundingView.as_view(is_revision=True),
+        name="delete-funding-revision",
+    ),
     path(
         "submission/<int:article_id>/confirm/",
         RevisionStartConfirmView.as_view(),

@@ -4,12 +4,12 @@
   {% bootstrap_button button_class="btn-close" data_bs_dismiss="modal" button_type="button" aria_label="Close" content="" %}
 </div>
 {% if view.is_revision %}
-  {% url 'add-funding-revision' as add_funding_url %}
+  {% url 'add-funding-revision' article.pk as add_funding_url %}
 {% else %}
-  {% url 'add-funding' as add_funding_url %}
+  {% url 'add-funding' article.pk as add_funding_url %}
 {% endif %}
 <div class="modal-body">
-  <form method="post" action="" class="wjs-submission-form" enctype="multipart/form-data" hx-post="{{ add_funding_url }}" hx-vals='{"article_id": "{{ article_id }}", "funding_pk": "{{ funding_pk|default_if_none:"" }}"}'
+  <form method="post" action="" class="wjs-submission-form" enctype="multipart/form-data" hx-post="{{ add_funding_url }}" hx-vals='{"funding_pk": "{{ funding_pk|default_if_none:"" }}"}'
         hx-target="#selected-funding-wrapper">
     {% csrf_token %}
     <div>
