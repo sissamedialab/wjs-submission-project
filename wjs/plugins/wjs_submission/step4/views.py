@@ -1,9 +1,14 @@
 from core.models import Account
 from django.core.exceptions import ValidationError
+from django.db.models import QuerySet
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, UpdateView
-from submission.models import Article, ArticleAuthorOrder
+from submission.models import Article, FrozenAuthor
 
+from ..account_validation import (
+    is_user_eligible_for_correspondence_author,
+    verify_profile_completion,
+)
 from ..mixins import AuthorFilteringView, HtmxMixin, StepCheckView
 from ..models import (
     ArticleCollaboration,
@@ -13,11 +18,78 @@ from ..models import (
     RevisionStorage,
 )
 from ..workflow import is_revision
-from .forms import AddAuthorForm, AddCollaborationForm, RevisionStep4Form, SubmissionStep4Form
+from .forms import AddAuthorForm, AddCollaborationForm, AddFrozenAutorForm, RevisionStep4Form, SubmissionStep4Form
 from .logic import TableMoveDeleteHandler, has_author_list_changed
 
 
-class SubmissionStep4View(HtmxMixin, AuthorFilteringView, StepCheckView, UpdateView):
+class AuthorsTableRenderingMixin(HtmxMixin):
+    article: Article = None
+    revision_storage: RevisionStorage = None
+
+    @staticmethod
+    def _get_correspondence_author_list(article: Article) -> QuerySet:
+        """
+        Retrieve the list of correspondence authors associated with the given article.
+
+        :param article: The article instance.
+        :type article: Article
+        :return: Queryset of Account objects representing the correspondence authors.
+        :rtype: QuerySet
+        :raises: None
+        """
+        return article.author_accounts.all()
+
+    @staticmethod
+    def _get_disabled_accounts(article: Article, authors: QuerySet) -> set:
+        """
+        Identify and return the IDs of disabled accounts based on the given criteria.
+
+        :param article: The article instance.
+        :type article: Article
+        :param authors: A QuerySet of author objects to evaluate
+        :type authors: QuerySet
+        :return: A set containing the IDs of authors whose accounts are considered disabled
+        :rtype: set
+        """
+        return {
+            author.pk for author in authors if not is_user_eligible_for_correspondence_author(article.journal, author)
+        }
+
+    def get_context_data(self, **kwargs):
+        """
+        Populate view contex with keyword groups.
+
+        :return: Context.
+        """
+        context = super().get_context_data(**kwargs)
+        authors_list = self._get_correspondence_author_list(self.article)
+        disabled_accounts = self._get_disabled_accounts(self.article, authors_list)
+        # The following error can be used by the view's template in order to
+        # indicate required/desirable actions to the operator:
+        context["correspondence_author_error"] = verify_profile_completion(
+            journal=self.article.journal,
+            disabled_users=disabled_accounts,
+            user=self.article.correspondence_author,
+            is_owner=self.article.correspondence_author == self.article.owner,
+        )
+        context["disabled_accounts"] = disabled_accounts
+        context["is_htmx"] = self.htmx
+        fk_field = (
+            {"revision_storage": self.revision_storage} if is_revision(self.article) else {"article": self.article}
+        )
+        context["authors_order"] = (
+            RevisionArticleAuthorOrder if is_revision(self.article) else FrozenAuthor
+        ).objects.filter(**fk_field)
+        context["correspondence_author"] = (
+            Account.objects.get(pk=self.revision_storage.data["correspondence_author"])
+            if is_revision(self.article) and self.revision_storage
+            else self.article.correspondence_author
+        )
+        context["has_author_list_changed"] = is_revision(self.article) and has_author_list_changed(self.article)
+        return context
+
+
+class SubmissionStep4View(AuthorsTableRenderingMixin, AuthorFilteringView, StepCheckView, UpdateView):
     """Submission step 4."""
 
     model = Article
@@ -62,18 +134,9 @@ class SubmissionStep4View(HtmxMixin, AuthorFilteringView, StepCheckView, UpdateV
         fk_field = (
             {"revision_storage": self.revision_storage} if is_revision(self.article) else {"article": self.article}
         )
-        context["authors_order"] = (
-            RevisionArticleAuthorOrder if is_revision(self.article) else ArticleAuthorOrder
-        ).objects.filter(**fk_field)
         context["articles_collaborations"] = (
             RevisionArticleCollaboration if is_revision(self.article) else ArticleCollaboration
         ).objects.filter(**fk_field)
-        context["correspondence_author"] = (
-            Account.objects.get(pk=self.revision_storage.data["correspondence_author"])
-            if is_revision(self.article) and self.revision_storage
-            else self.article.correspondence_author
-        )
-        context["has_author_list_changed"] = is_revision(self.article) and has_author_list_changed(self.article)
         return context
 
     def get_form_kwargs(self):
@@ -161,21 +224,7 @@ class SubmissionStep4View(HtmxMixin, AuthorFilteringView, StepCheckView, UpdateV
         """
         hx_trigger = request.headers.get("Hx-Trigger")
         if self.htmx:
-            if hx_trigger == "id_author_id":
-                model, fk = (
-                    (
-                        RevisionArticleAuthorOrder,
-                        {"revision_storage": RevisionStorage.objects.get(article=self.article)},
-                    )
-                    if is_revision(self.article)
-                    else (ArticleAuthorOrder, {"article": self.article})
-                )
-                model.objects.get_or_create(
-                    **fk,
-                    author_id=request.POST.get("author_id"),
-                    defaults={"order": self.article.next_author_sort(revision=is_revision(self.article))},
-                )
-            elif hx_trigger == "id_correspondence_author":
+            if hx_trigger == "id_correspondence_author":
                 if is_revision(self.article):
                     self.revision_storage.data["correspondence_author"] = request.POST.get("correspondence_author")
                     self.revision_storage.save()
@@ -209,18 +258,7 @@ class SubmissionStep4View(HtmxMixin, AuthorFilteringView, StepCheckView, UpdateV
                 action = request.POST.get("action")
                 parent_field = "revision_storage" if is_revision(self.article) else "article"
                 parent_obj = self.article if not is_revision(self.article) else self.revision_storage
-                if entity_type == "author":
-                    model = RevisionArticleAuthorOrder if is_revision(self.article) else ArticleAuthorOrder
-                    handler = TableMoveDeleteHandler(
-                        model=model,
-                        entity_id=request.POST.get("author_id"),
-                        item_field="author",
-                        order_field="order",
-                        action=action,
-                        parent_obj=parent_obj,
-                        parent_field=parent_field,
-                    )
-                elif entity_type == "collaboration":
+                if entity_type == "collaboration":
                     model = RevisionArticleCollaboration if is_revision(self.article) else ArticleCollaboration
                     handler = TableMoveDeleteHandler(
                         model=model,
@@ -264,14 +302,16 @@ class ModalRenderingMixin(HtmxMixin, AuthorFilteringView, CreateView):
     """
 
     render_table = False
-    article = None
+    article: Article = None
+    revision_storage: RevisionStorage = None
 
     def setup(self, request, *args, **kwargs):
         """
         Set up the necessary attributes for handling a specific request.
 
         This method retrieves an Article instance based on the provided "article_id" in either the
-        GET or POST request and delegates further setup to the superclass implementation.
+        GET or POST request and delegates further setup to the superclass implementation and its RevisionStorage
+        (if any) instance.
 
         :param request: The HTTP request object that contains metadata about the request.
         :type request: HttpRequest
@@ -283,6 +323,7 @@ class ModalRenderingMixin(HtmxMixin, AuthorFilteringView, CreateView):
         :rtype: Any
         """
         self.article = Article.objects.get(pk=request.GET.get("article_id") or request.POST.get("article_id"))
+        self.revision_storage = RevisionStorage.objects.filter(article=self.article).first()
         return super().setup(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
@@ -315,7 +356,55 @@ class ModalRenderingMixin(HtmxMixin, AuthorFilteringView, CreateView):
         return response
 
 
-class AddAuthorView(ModalRenderingMixin):
+class ReorderAuthorsView(AuthorsTableRenderingMixin, AuthorFilteringView, UpdateView):
+    model = Article
+    template_name = "wjs_submission/step4/selected_authors.html"
+    pk_url_kwarg = "article_id"
+    context_object_name = "article"
+    fields = ("correspondence_author",)
+
+    def post(self, request, *args, **kwargs):
+        """Handle POST requests for reordering authors."""
+        self.article = self.get_object()
+        action = request.POST.get("action")
+        parent_field = "revision_storage" if is_revision(self.article) else "article"
+        parent_obj = self.article if not is_revision(self.article) else self.revision_storage
+        model = RevisionArticleAuthorOrder if is_revision(self.article) else FrozenAuthor
+        handler = TableMoveDeleteHandler(
+            model=model,
+            entity_id=request.POST.get("author_id"),
+            item_field="author",
+            order_field="order",
+            action=action,
+            parent_obj=parent_obj,
+            parent_field=parent_field,
+        )
+        handler.run()
+
+        return self.get(request, *args, **kwargs)
+
+
+class SaveCorrespondingAuthorView(AuthorsTableRenderingMixin, AuthorFilteringView, UpdateView):
+    model = Article
+    template_name = "wjs_submission/step4/selected_authors.html"
+    pk_url_kwarg = "article_id"
+    context_object_name = "article"
+    fields = ("correspondence_author",)
+
+    def post(self, request, *args, **kwargs):
+        """Handle POST requests for reordering authors."""
+        self.article = self.get_object()
+        if is_revision(self.article):
+            self.revision_storage.data["correspondence_author"] = request.POST.get("correspondence_author")
+            self.revision_storage.save()
+        else:
+            self.article.correspondence_author = Account.objects.get(id=request.POST.get("correspondence_author"))
+            self.article.save()
+
+        return self.get(request, *args, **kwargs)
+
+
+class AddAuthorView(AuthorsTableRenderingMixin, ModalRenderingMixin):
     model = Account
     form_class = AddAuthorForm
     template_name = "wjs_submission/step4/add_author_modal.html"
@@ -335,6 +424,11 @@ class AddAuthorView(ModalRenderingMixin):
             return "wjs_submission/step4/selected_authors.html"
         return "wjs_submission/step4/add_author_modal.html"
 
+    def get_form_class(self):
+        if self.request.POST.get("author_id"):
+            return AddFrozenAutorForm
+        return self.form_class
+
     def get_form_kwargs(self):
         """
         Inject form date from POST request into the form.
@@ -342,35 +436,13 @@ class AddAuthorView(ModalRenderingMixin):
         :return: Form kwargs.
         """
         kwargs = super().get_form_kwargs()
-        kwargs["article_id"] = self.article.pk
+        self.object = (
+            Account.objects.get(pk=self.request.POST.get("author_id")) if self.request.POST.get("author_id") else None
+        )
+        kwargs["article"] = self.article
+        kwargs["instance"] = self.object
         kwargs["is_revision"] = is_revision(self.article)
         return kwargs
-
-    def get_context_data(self, **kwargs):
-        """
-        Generate and return the context data for the view.
-
-        This method extends the default context data with additional information
-        specific to the view. It includes a filtered queryset containing the
-        authors' order related to the article instance.
-
-        :param kwargs: Additional keyword arguments provided by the caller.
-        :return: A dictionary representing the context data, including the
-            authors' order for the article instance.
-        :rtype: dict
-        """
-        context = super().get_context_data(**kwargs)
-        revision_storage = RevisionStorage.objects.filter(article=self.article).first()
-        context["correspondence_author"] = (
-            Account.objects.get(pk=revision_storage.data["correspondence_author"])
-            if is_revision(self.article) and revision_storage
-            else self.article.correspondence_author
-        )
-        fk_field = {"revision_storage": revision_storage} if is_revision(self.article) else {"article": self.article}
-        context["authors_order"] = (
-            RevisionArticleAuthorOrder if is_revision(self.article) else ArticleAuthorOrder
-        ).objects.filter(**fk_field)
-        return context
 
 
 class AddCollaborationView(ModalRenderingMixin):

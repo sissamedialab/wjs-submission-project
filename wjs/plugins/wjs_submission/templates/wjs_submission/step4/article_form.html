@@ -11,6 +11,7 @@
   <div class="wjs-submission-form__section mb-5" id="authors-section">
     <h2 class="wjs-submission-form__form-label-title">{% translate "Select co-authors" %}</h2>
     <div class="wjs-submission-form__section-content">
+      {% url 'add-author' as add_author_url %}
       {% if settings.DEBUG %}{{ form.errors }}{% endif %}
       <div class="wjs-submission-form__authors-intro-text">
         {% if is_revision %}
@@ -28,14 +29,14 @@
       >
       </div>
       <input class="d-none" name="author_id" id="id_author_id"
-             hx-post="{% url 'wjs_submission_4' article.pk %}"
-             hx-trigger="change"
-             hx-swap="innerHTML"
-             hx-target="#selected-authors-wrapper"
+        hx-post="{{ add_author_url }}"
+        hx-trigger="change"
+        hx-swap="innerHTML"
+        hx-target="#selected-authors-wrapper"
+                hx-vals='{"article_id": "{{ article.pk }}"}'
       >
     </div>
     <div class="wjs-submission-form__section-content">
-      {% url 'add-author' as add_author_url %}
       <div class="d-flex justify-content-end">
         <button type="button"
                 class="btn btn-primary"

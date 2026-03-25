@@ -10,7 +10,7 @@ from .step1 import SubmissionStep1RedirectView, SubmissionStep1View
 from .step2 import SubmissionStep2View
 from .step3 import SubmissionStep3View
 from .step4 import AddAuthorView, SubmissionStep4View
-from .step4.views import AddCollaborationView
+from .step4.views import AddCollaborationView, ReorderAuthorsView, SaveCorrespondingAuthorView
 from .step5 import SubmissionStep5View
 from .step6 import (
     DeleteSubmissionFile,
@@ -113,6 +113,12 @@ urlpatterns = [
         "keyword-autocomplete/",
         FreeKeywordAutocomplete.as_view(),
         name="keyword-autocomplete",
+    ),
+    path("submission/<int:article_id>/reorder-author/", ReorderAuthorsView.as_view(), name="wjs-reorder-author"),
+    path(
+        "submission/<int:article_id>/corresponding-author/",
+        SaveCorrespondingAuthorView.as_view(),
+        name="wjs-save-author",
     ),
     path("add-author/", AddAuthorView.as_view(), name="add-author"),
     path("add-collaboration/", AddCollaborationView.as_view(), name="add-collaboration"),
