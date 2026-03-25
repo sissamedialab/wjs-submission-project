@@ -31,8 +31,8 @@
             <td class="text-center">
               {% if not forloop.first %}
                 <button class="btn btn-sm btn-primary"
-                        hx-post="{% url 'wjs_submission_4' article.pk %}"
-                        hx-vals='{"entity": "author", "author_id": "{{ author.pk }}", "action": "move_up"}'
+                        hx-post="{% url 'wjs-reorder-author' article.pk %}"
+                        hx-vals='{"author_id": "{{ author.pk }}", "action": "move_up"}'
                         hx-target="#selected-authors-wrapper"
                         hx-swap="innerHTML"
                         aria-label="Move up">
@@ -43,8 +43,8 @@
             <td class="text-center">
               {% if not forloop.last %}
                 <button class="btn btn-sm btn-primary"
-                        hx-post="{% url 'wjs_submission_4' article.pk %}"
-                        hx-vals='{"entity": "author", "author_id": "{{ author.pk }}", "action": "move_down"}'
+                        hx-post="{% url 'wjs-reorder-author' article.pk %}"
+                        hx-vals='{"author_id": "{{ author.pk }}", "action": "move_down"}'
                         hx-target="#selected-authors-wrapper"
                         hx-swap="innerHTML"
                         aria-label="Move down">
@@ -55,8 +55,8 @@
             <td class="text-end">
               {% if author.author != article.owner and author.author != correspondence_author and author.author != request.user %}
                 <button class="btn btn-sm"
-                        hx-post="{% url 'wjs_submission_4' article.pk %}"
-                        hx-vals='{"entity": "author", "author_id": "{{ author.pk }}", "action": "delete"}'
+                        hx-post="{% url 'wjs-reorder-author' article.pk %}"
+                        hx-vals='{"author_id": "{{ author.pk }}", "action": "delete"}'
                         hx-target="#selected-authors-wrapper"
                         hx-swap="innerHTML">
                   <i class="bi bi-trash3"></i>
@@ -88,7 +88,7 @@
           <select name="{{ form.correspondence_author.name }}"
                   id="{{ form.correspondence_author.id_for_label }}"
                   class="form-select w-100"
-                  hx-post="{% url 'wjs_submission_4' article.pk %}"
+                  hx-post="{% url 'wjs-save-author' article.pk %}"
                   hx-trigger="change"
                   hx-target="#selected-authors-wrapper"
                   hx-swap="innerHTML"
@@ -96,7 +96,7 @@
             {% for author in form.correspondence_author.field.queryset %}
               <option value="{{ author.pk }}"
                       {% if author.pk == correspondence_author.pk %}selected{% endif %}
-                {% if author.pk in form.disabled_accounts and author.pk != correspondence_author.pk %}
+                {% if author.pk in disabled_accounts and author.pk != correspondence_author.pk %}
                       disabled
                 {% endif %}>
                 {{ author.get_full_name }}
@@ -123,11 +123,11 @@
           <div class="mb-4 form-text">Required</div>
         </div>
       </div>
-      {% if form.correspondence_author_error %}
+      {% if correspondence_author_error %}
         <div
-          class="wjs-submission-form__alert-message-box{% if correspondence_author in form.disabled_accounts %} wjs-submission-form__alert-message-box--error{% else %} wjs-submission-form__alert-message-box--warning{% endif %}">
+          class="wjs-submission-form__alert-message-box{% if correspondence_author in disabled_accounts %} wjs-submission-form__alert-message-box--error{% else %} wjs-submission-form__alert-message-box--warning{% endif %}">
           <i class="bi bi-exclamation-triangle"></i>
-          {% if form.correspondence_author_error == "incomplete_account" %}
+          {% if correspondence_author_error == "incomplete_account" %}
             {# fake field to block submission in case of error condition #}
             <input type="hidden" id="authors-blocker" name="authors-blocker" required="required">
             {% if correspondence_author == request.user %}
@@ -136,11 +136,11 @@
               {# With current backend user filetering, this cannot appear, but tracking the option anyway in case some journal have different UX requirements. hidden field above ensure form cannot proceed #}
               Correspondence author must complete the profile before continuing.
             {% endif %}
-          {% elif form.correspondence_author_error == "ineligible_account" %}
+          {% elif correspondence_author_error == "ineligible_account" %}
             {# fake field to block submission in case of error condition #}
             <input type="hidden" id="authors-blocker" name="authors-blocker" required="required">
             Correspondence author account is not complete.
-          {% elif form.correspondence_author_error == "orcid_missing_account" %}
+          {% elif correspondence_author_error == "orcid_missing_account" %}
             {% if correspondence_author == request.user %}
               Authors need to associate their Orcid id to their <a class="link-light" href="{% url 'core_edit_profile' %}?next={% url 'wjs_submission_4' form.instance.pk %}">profile</a> as soon as possible and in any case before publication of manuscripts.
             {% else %}
