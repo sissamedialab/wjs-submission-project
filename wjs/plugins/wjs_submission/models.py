@@ -1,4 +1,4 @@
-from core.models import Account, Country
+from core.models import Account, ControlledAffiliation
 from django.db import models
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
@@ -103,11 +103,11 @@ class ArticleSubmission(models.Model):
 
     cover_letter_file_allowed_extension = [".pdf", ".docx", ".doc", ".odt", ".rtf"]
 
-    affiliation_country = models.ForeignKey(
-        Country,
+    affiliation = models.ForeignKey(
+        ControlledAffiliation,
         null=True,
         blank=True,
-        verbose_name=_("Affiliation country"),
+        verbose_name=_("Affiliation"),
         on_delete=models.SET_NULL,
     )
 

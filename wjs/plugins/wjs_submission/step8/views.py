@@ -198,7 +198,7 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                 journal=self.object.journal, access_mode_id=self.object.submission_data.access_mode.pk
             )
             context["correspondence_author"] = self.object.correspondence_author
-            context["affiliation_country"] = self.object.submission_data.affiliation_country
+            context["affiliation"] = self.object.submission_data.affiliation
             if context["is_revision"]:
                 if title := self.object.revisionstorage.data.get("title"):
                     context["article_data"].title = title

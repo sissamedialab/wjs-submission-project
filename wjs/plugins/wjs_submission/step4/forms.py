@@ -1,5 +1,5 @@
 from core import files as core_files
-from core.models import Account, Country
+from core.models import Account, ControlledAffiliation
 from django import forms
 from django.db.models import QuerySet
 from django.utils.translation import gettext_lazy as _
@@ -21,7 +21,7 @@ from ..models import (
 
 
 class SubmissionStep4Form(forms.ModelForm):
-    country = forms.ModelChoiceField(queryset=Country.objects.all())
+    affiliation = forms.ModelChoiceField(queryset=ControlledAffiliation.objects.all())
     collaboration_relation = forms.ChoiceField(
         choices=CollaborationRelation.choices,
         widget=forms.RadioSelect(
@@ -48,18 +48,23 @@ class SubmissionStep4Form(forms.ModelForm):
         :param kwargs: Keyword arguments; none mandatory;
         """
         self.step = kwargs.pop("step", None)
+        if "initial" not in kwargs:
+            kwargs["initial"] = {}
+        kwargs["initial"]["correspondence_author"] = kwargs["instance"].correspondence_author
+        if kwargs["initial"]["correspondence_author"]:
+            kwargs["initial"]["affiliation"] = kwargs["instance"].correspondence_author.primary_affiliation()
+        kwargs["initial"]["collaboration_relation"] = (
+            ArticleCollaboration.objects.filter(article=kwargs["instance"]).values_list("relation", flat=True).first()
+        ) or CollaborationRelation.NONE
         super().__init__(*args, **kwargs)
 
         authors_list = self._get_correspondence_author_list(self.instance)
         self.fields["correspondence_author"].queryset = authors_list
-
         if self.instance.correspondence_author:
-            self.fields["correspondence_author"].initial = self.instance.correspondence_author
-            self.fields["country"].initial = self.instance.correspondence_author.country
-
-        self.fields["collaboration_relation"].initial = (
-            ArticleCollaboration.objects.filter(article=self.instance).values_list("relation", flat=True).first()
-        ) or CollaborationRelation.NONE
+            self.fields["affiliation"].queryset = self.instance.correspondence_author.affiliations
+        for field in self.fields:
+            if self.fields[field].required:
+                self.fields[field].help_text = _("Required")
 
     @staticmethod
     def _get_correspondence_author_list(article: Article) -> QuerySet:
@@ -76,14 +81,14 @@ class SubmissionStep4Form(forms.ModelForm):
 
     def save(self, commit: bool = True) -> Account:
         """
-        Handle only affiliation_country and article.authors.
+        Cleanup collaboration_relation on save.
 
         The view manages most data due to heavy HTMX usage.
         """
         self.instance.current_step = max(self.instance.current_step, self.step)
         instance = super().save()
 
-        instance.submission_data.affiliation_country = self.cleaned_data.get("country")
+        instance.submission_data.affiliation = self.cleaned_data.get("affiliation")
         instance.submission_data.save()
 
         if self.cleaned_data.get("collaboration_relation") == "none":
@@ -388,6 +393,8 @@ class RevisionStep4Form(SubmissionStep4Form):
         """
         self.revision_storage = RevisionStorage.objects.get(article=kwargs["instance"])
         self.has_author_list_changed = kwargs.pop("has_author_list_changed", False)
+        kwargs.setdefault("initial", {})
+        kwargs["initial"]["collaboration_relation"] = self.revision_storage.data.get("collaboration_relation")
         super().__init__(*args, **kwargs)
         self.fields["authors_contributions"].required = self.has_author_list_changed
         # Using a custom attribute to not trigger bootstrap validation as we use custom logic which checks tinymce
@@ -425,7 +432,7 @@ class RevisionStep4Form(SubmissionStep4Form):
         revision_storage = RevisionStorage.objects.get(article=self.instance)
         revision_storage.revision_step = max(revision_storage.revision_step, self.step)
 
-        revision_storage.data["affiliation_country"] = self.cleaned_data.get("country").pk
+        revision_storage.data["affiliation_pk"] = self.cleaned_data.get("affiliation").pk
         revision_storage.data["authors_contributions"] = self.cleaned_data.get("authors_contributions")
 
         author_ids = ArticleAuthorOrder.objects.filter(article=self.instance).values_list("author_id", flat=True)
