@@ -107,21 +107,7 @@
         </div>
 
         <div class="col-6">
-          <label class="mb-2" for="{{ step_form.country.id_for_label }}">Country</label>
-          <select name="{{ step_form.country.html_name }}"
-                  id="{{ step_form.country.id_for_label }}"
-                  class="form-select w-100">
-          <option value="" {% if not correspondence_author.country.pk %}selected{% endif %}></option>
-            {% for country in step_form.country.field.queryset %}
-              <option value="{{ country.pk }}"
-                {% if country.pk == correspondence_author.country.pk %}
-                  selected
-                {% endif %}>
-                {{ country.name }}
-              </option>
-            {% endfor %}
-          </select>
-          <div class="mb-4 form-text">Required</div>
+        {% bootstrap_field step_form.affiliation %}
         </div>
       </div>
       {% if correspondence_author_error %}
