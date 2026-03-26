@@ -161,11 +161,11 @@ class PopulateStep4:
         ) or CollaborationRelation.NONE
         self.revision_storage.data["correspondence_author"] = self.revision_storage.article.correspondence_author.pk
         self.revision_storage.data["owner"] = self.revision_storage.article.owner.pk
-        self.revision_storage.data["affiliation_country"] = getattr(
-            getattr(self.revision_storage.article, "submission_data", None), "affiliation_country_id", None
+        self.revision_storage.data["affiliation"] = getattr(
+            getattr(self.revision_storage.article, "submission_data", None), "affiliation_id", None
         )
         self.revision_storage.data["article_authors"] = list(
-            self.revision_storage.article.authors.values_list("id", flat=True)
+            self.revision_storage.article.author_accounts.all().values_list("id", flat=True)
         )
         if commit:
             self.revision_storage.save()
