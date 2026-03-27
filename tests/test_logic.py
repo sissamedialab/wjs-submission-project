@@ -1,11 +1,13 @@
 from collections.abc import Callable
 
 import pytest
+from core.middleware import GlobalRequestMiddleware
 from core.models import Account
 from identifiers.models import Identifier
 from journal.models import Journal
 from plugins.wjs_submission.arxiv import (
     ArXivIDAlreadyUsedError,
+    ArXivIDContinueSubmissionError,
     ArXivToArticle,
     HandleArticleCreation,
 )
@@ -92,7 +94,7 @@ def test_create_article_with_arxiv_id(
 
 @pytest.mark.django_db
 def test_form_save_article_with_arxiv_id(
-    journal: Journal, install_plugins: Callable, user: Account, arxiv_metadata: Callable
+    journal: Journal, install_plugins: Callable, user: Account, arxiv_metadata: Callable, fake_request
 ):
     """
     Article created by ArxivMicroservice ignore the arxiv_id passed by the form to avoid arxiv_id inconsistencies.
@@ -102,6 +104,7 @@ def test_form_save_article_with_arxiv_id(
     :param user: An Account instance representing the article's owner
         an unsaved state
     :param arxiv_metadata: A callable to retrieve arxiv metadata
+    :param fake_request: Test request object
     :raises AssertionError: If article creation or validation of attributes fails
     """
     result, __ = arxiv_metadata("2504.10562v1")
@@ -129,6 +132,7 @@ def test_form_save_article_with_arxiv_id(
         "arxiv_article_id": article.pk,
         "arxiv_id": "2504.10562",
     }
+    GlobalRequestMiddleware.process_request(fake_request)
     form = SubmissionStep1Form(data=data, journal=journal, user=user, instance=article, step=1)
     assert form.is_valid()
     form.save()
@@ -188,10 +192,17 @@ def test_double_arxiv_id_submission(
                 journal=journal,
                 user=user,
             ).run()
-    else:
+    elif submission_step == 0:
         arxiv_article = ArXivToArticle(
             arxiv_id="2504.10562v1",
             journal=journal,
             user=user,
         ).run()
-        assert article == arxiv_article
+        assert article != arxiv_article
+    else:
+        with pytest.raises(ArXivIDContinueSubmissionError):
+            arxiv_article = ArXivToArticle(
+                arxiv_id="2504.10562v1",
+                journal=journal,
+                user=user,
+            ).run()

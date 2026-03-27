@@ -56,6 +56,23 @@ class ArXivIDAlreadyUsedError(ArXivQueryError):
         super().__init__(message=message)
 
 
+class ArXivIDContinueSubmissionError(ArXivQueryError):
+    """Raised when and Article with the same arXiv ID or with the same metadata already exists."""
+
+    def __init__(
+        self,
+        message: str = "this preprint has already been submitted to the Journal. Please contact the "
+        "Editorial Office from the article web page for assistance.",
+    ):
+        """
+        Initialize the exception with a default or custom message.
+
+        :param message: A message describing the exception.
+        :type message: str
+        """
+        super().__init__(message=message)
+
+
 class ArXivIDNotFoundError(ArXivQueryError):
     """Raised when the given arXiv ID is syntactically valid but not found."""
 
@@ -239,9 +256,9 @@ class ArXivToArticle:
     """
 
     arxiv_id: str
-    arxiv_article_id: int
     journal: Journal
     user: Account
+    arxiv_article_id: int = 0
 
     @staticmethod
     def _get_article_candidates(response_content: dict, journal: Journal) -> QuerySet:
@@ -344,7 +361,7 @@ class ArXivToArticle:
                     'href="{url}">complete the existing submission</a>',
                     url=url,
                 )
-                raise GenericArxivError(msg)
+                raise ArXivIDContinueSubmissionError(msg)
             # is the submission has not gone past step 1, we delete the "phantom" article and create a new one
             new_article.delete()
             new_article = None
