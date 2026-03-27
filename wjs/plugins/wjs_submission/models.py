@@ -337,7 +337,7 @@ class RevisionStorage(models.Model):
         blank=True,
     )
     revision_flow_type = models.CharField(_("Revision flow type"), max_length=10, choices=RevisionFlowType.choices)
-    revision_step = models.PositiveSmallIntegerField(_("Current revision step"), default=1)
+    revision_step = models.PositiveSmallIntegerField(_("Current revision step"), default=0)
 
     class Meta:
         verbose_name = _("Draft article")

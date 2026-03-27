@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="revisionstorage",
             name="revision_step",
-            field=models.PositiveSmallIntegerField(default=1, verbose_name="Current revision step"),
+            field=models.PositiveSmallIntegerField(default=0, verbose_name="Current revision step"),
         ),
         migrations.AddField(
             model_name="revisionstorage",

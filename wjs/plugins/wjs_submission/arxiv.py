@@ -10,7 +10,8 @@ from django.core.files.base import ContentFile
 from django.db import transaction
 from django.db.models import Q, QuerySet
 from django.http import HttpRequest
-from django.utils.translation import gettext_lazy as _
+from django.urls import reverse
+from django.utils.text import format_lazy
 from identifiers.models import Identifier
 from journal.models import Journal
 from submission.models import STAGE_REJECTED, STAGE_UNSUBMITTED, Article, ArticleAuthorOrder
@@ -224,7 +225,21 @@ def fetch_arxiv_metadata(arxiv_id: str) -> tuple[dict, dict]:
 
 @dataclasses.dataclass
 class ArXivToArticle:
+    """
+    Fetch, validate, and create articles from arXiv metadata, optionally attach source files to the created articles.
+
+    :ivar arxiv_id: The arXiv ID for fetching metadata.
+    :type arxiv_id: str
+    :ivar arxiv_article_id: The ID of the article being submitted, 0 if it's a new article.
+    :type arxiv_article_id: int
+    :ivar journal: The journal context for article creation and validation.
+    :type journal: Journal
+    :ivar user: The account initiating the article creation process.
+    :type user: Account
+    """
+
     arxiv_id: str
+    arxiv_article_id: int
     journal: Journal
     user: Account
 
@@ -258,8 +273,7 @@ class ArXivToArticle:
             | Q(pk__in=articles_by_identifier),
         )
 
-    @classmethod
-    def _check_article_unique(cls, response_content: dict, journal: Journal) -> None:
+    def _check_article_unique(self, response_content: dict, journal: Journal) -> None:
         """
         Raise an exception if the metadata for the given arXiv ID or title/abstract already exists in the database.
 
@@ -282,11 +296,15 @@ class ArXivToArticle:
         #   }:
         #   See https://gitlab.sissamedialab.it/wjs/specs/-/issues/1809
 
-        filtered_articles = cls._get_article_candidates(response_content, journal).exclude(
+        filtered_articles = self._get_article_candidates(response_content, journal).exclude(
+            # Unsubmitted / rejected articles can be re-submitted under new ID
             Q(stage__in={STAGE_UNSUBMITTED, STAGE_REJECTED})
             |
-            # If current step is
-            Q(current_step=0),
+            # If current step is 0, it's an article which just have been created via ArxivMicroservice
+            Q(current_step=0)
+            |
+            # current article being submitted (this is an edit of an existing incomplete submission)
+            Q(pk=self.arxiv_article_id)
         )
         if filtered_articles.exists():
             raise ArXivIDAlreadyUsedError
@@ -295,8 +313,10 @@ class ArXivToArticle:
         """
         Retrieve or create an `Article` instance based on the given response content.
 
-        If an article with the specified criteria already exists (in submission stage), it is returned.
-        Otherwise, a new article is created and initialized using the provided response content and metadata.
+        If an article with the specified criteria does not exists yet a new article is created and initialized using
+        the provided response content and metadata.
+        If it already exists (in submission stage) and the article id does not match the current article id, the user
+        is redirected to the article submission continuation, else it article object is "recycled" and returned.
 
         Created article is forced to:
         - stage=STAGE_UNSUBMITTED
@@ -312,9 +332,22 @@ class ArXivToArticle:
         """
         candidates = self._get_article_candidates(response_content, self.journal)
         in_submission = candidates.filter(stage__in={STAGE_UNSUBMITTED}, owner=self.user)
-        new_article = None
-        if in_submission.exists():
-            new_article = in_submission.first()
+        new_article = in_submission.first()
+        # this check verify if the recovered article is the current one which we let continue, or the
+        # current article is a different one (or a brand new submission in case self.arxiv_article_id is 0)
+        if new_article and new_article.pk != self.arxiv_article_id:
+            # If the new article submission has moved past the first step, we provide a link to continue the submission
+            if new_article.current_step > 0:
+                url = reverse("wjs_submission_continue", kwargs={"article_id": new_article.pk})
+                msg = format_lazy(
+                    'A submission for the current ArXiv ID has already been started, please <a class="text-white" '
+                    'href="{url}">complete the existing submission</a>',
+                    url=url,
+                )
+                raise GenericArxivError(msg)
+            # is the submission has not gone past step 1, we delete the "phantom" article and create a new one
+            new_article.delete()
+            new_article = None
 
         service = HandleArticleCreation(
             user=self.user,
@@ -360,21 +393,22 @@ class ArXivToArticle:
                 result, file_errors = fetch_arxiv_metadata(self.arxiv_id)
             except ArXivConnectionError as e:
                 from_email = get_setting("general", "support_email", self.journal).processed_value
-                msg = (
-                    _(
-                        "connection to arXiv could not be established. Please try again later or "
-                        "contact %s for assistance"
-                    )
-                    % from_email
+                msg = format_lazy(
+                    "Connection to arXiv could not be established. Please try again later or contact {from_email}"
+                    " for assistance",
+                    from_email=from_email,
                 )
                 raise ArXivConnectionError(msg) from e
             except ArXivCorruptedDataError as e:
                 from_email = get_setting("general", "support_email", self.journal).processed_value
-                msg = _("corrupted data from arXiv. Contact the Journal for assistance (%s)") % from_email
+                msg = format_lazy(
+                    "Corrupted data from arXiv. Contact the Journal for assistance ({from_email}",
+                    from_email=from_email,
+                )
                 raise ArXivConnectionError(msg) from e
             except GenericArxivError as e:
                 from_email = get_setting("general", "support_email", self.journal).processed_value
-                msg = _("please contact the Journal for assistance (%s)") % from_email
+                msg = format_lazy("Please contact the Journal for assistance ({from_email}", from_email=from_email)
                 raise GenericArxivError(msg) from e
             self._check_article_unique(result, self.journal)
 
@@ -390,7 +424,22 @@ class ArXivToArticle:
 
 @dataclasses.dataclass
 class ArXivToWjsArticle:
+    """
+    Handle the conversion of an arXiv article to a format compatible with a specific journal and user.
+
+    This class facilitates the transformation of an arXiv article, using the provided article data,
+    the journal settings, and the user who initiated the conversion process.
+
+    :ivar arxiv_id: The arXiv identifier for the article.
+    :type arxiv_id: str
+    :ivar arxiv_article_id: The ID of the article being submitted, 0 if it's a new article.
+    :type arxiv_article_id: int
+    :ivar request: The HTTP request containing journal and user information.
+    :type request: HttpRequest
+    """
+
     arxiv_id: str
+    arxiv_article_id: int
     request: HttpRequest
 
     def _convert_source_archive(self, article: Article):
@@ -406,7 +455,12 @@ class ArXivToWjsArticle:
         :return: Returns the processed article object.
         :rtype: Article
         """
-        article = ArXivToArticle(arxiv_id=self.arxiv_id, journal=self.request.journal, user=self.request.user).run()
+        article = ArXivToArticle(
+            arxiv_id=self.arxiv_id,
+            arxiv_article_id=self.arxiv_article_id,
+            journal=self.request.journal,
+            user=self.request.user,
+        ).run()
         if article.source_files.first():
             self._convert_source_archive(article)
         return article
