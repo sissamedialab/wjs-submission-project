@@ -266,7 +266,8 @@ class ArticleCollaboration(models.Model):
         unique_together = ("article", "collaboration")
 
     def __str__(self):
-        return f"{self.relation} {self.collaboration}"
+        # relation code must-be "unslugified" to be displayed in the UI, the display label is meant for form options
+        return f"{self.relation.replace('_', ' ')} {self.collaboration}"
 
 
 class AccessMode(models.Model):
