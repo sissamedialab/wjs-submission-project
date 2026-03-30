@@ -321,7 +321,7 @@ class RevisionStep4Form(SubmissionStep4Form):
         revision_storage.revision_step = max(revision_storage.revision_step, self.step)
 
         revision_storage.data["affiliation_country"] = self.cleaned_data.get("country").pk
-        revision_storage.data["authors_contributions"] = self.cleaned_data.get("authors_contributions").pk
+        revision_storage.data["authors_contributions"] = self.cleaned_data.get("authors_contributions")
 
         author_ids = ArticleAuthorOrder.objects.filter(article=self.instance).values_list("author_id", flat=True)
         revision_storage.data["article_authors"] = list(author_ids)
