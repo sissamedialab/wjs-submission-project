@@ -282,7 +282,7 @@ class RevisionStep4Form(SubmissionStep4Form):
         :type kwargs: dict
         """
         self.revision_storage = RevisionStorage.objects.get(article=kwargs["instance"])
-        self.has_author_list_changed = kwargs.pop("has_author_list_changed")
+        self.has_author_list_changed = kwargs.pop("has_author_list_changed", False)
         super().__init__(*args, **kwargs)
         self.fields["authors_contributions"].required = self.has_author_list_changed
         # Using a custom attribute to not trigger bootstrap validation as we use custom logic which checks tinymce
