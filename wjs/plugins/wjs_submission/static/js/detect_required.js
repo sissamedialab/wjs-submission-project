@@ -13,7 +13,7 @@ function getForm() {
  * Retrieves the text content of the nearest preceding element with wjs-submission-form__form-label--required class relative to a given field within a form.
  *
  * @param {HTMLElement} field - The starting element to search upward from.
- * @return {string|undefined} The text content of the nearest H3 element if found, or undefined if no such element exists.
+ * @return {HTMLElement} The element the nearest H3 element if found, or undefined if no such element exists.
  */
 function getSectionHeading(field) {
   const form = getForm();
@@ -23,7 +23,7 @@ function getSectionHeading(field) {
     let sibling = el.previousElementSibling;
     while (sibling) {
       if (sibling.classList.contains("wjs-submission-form__form-label--required")) {
-        return sibling.textContent.trim();
+        return sibling;
       }
       sibling = sibling.previousElementSibling;
     }
@@ -78,9 +78,9 @@ function allFilled(form, fields) {
   return fields.every(field => {
     let alternateField;
     // Skip fields that might not be rendered yet
-    if(!field) return true;
+    if (!field) return true;
     // If field declare an alternate field, check that one instead; if alternate field is not empty we can exit early
-    if(field.getAttribute("alternate_field"))
+    if (field.getAttribute("alternate_field"))
       alternateField = form.querySelector(`[name="${field.getAttribute("alternate_field")}"]`);
     return _verifyFieldValue(form, field) || (alternateField && _verifyFieldValue(form, alternateField));
   });
@@ -94,18 +94,18 @@ function allFilled(form, fields) {
  * @return {boolean} True if the field has a valid or non-empty value, otherwise false.
  */
 function _verifyFieldValue(form, field) {
-    if (field.type === "radio") {
-      return !!form.querySelector(`input[type="radio"][name="${field.name}"]:checked`);
-    }
-    if (field.dataset.type === "radio-select") {
-      return !!form.querySelector(`input[type="radio"][name="${field.dataset.name}"]:checked`);
-    }
-    if (field.type === "checkbox") return field.checked;
-    if (field.tagName === "SELECT") return field.value !== "";
-    if (field.tagName === "TEXTAREA") {
-      return hasContent(field);
-    }
-    return field.value?.trim() !== "";
+  if (field.type === "radio") {
+    return !!form.querySelector(`input[type="radio"][name="${field.name}"]:checked`);
+  }
+  if (field.dataset.type === "radio-select") {
+    return !!form.querySelector(`input[type="radio"][name="${field.dataset.name}"]:checked`);
+  }
+  if (field.type === "checkbox") return field.checked;
+  if (field.tagName === "SELECT") return field.value !== "";
+  if (field.tagName === "TEXTAREA") {
+    return hasContent(field);
+  }
+  return field.value?.trim() !== "";
 }
 
 /**
@@ -131,7 +131,7 @@ function updateRequiredChecklist() {
       console.log("Filled", fieldStatusItem, fields, filled);
     if (filled) {
       fieldStatusItem.classList.add("wjs-submission-form__label--filled");
-      if (!fieldStatusItem.querySelector(".visually-hidden"))  {
+      if (!fieldStatusItem.querySelector(".visually-hidden")) {
         const srOnlyFilledElement = document.createElement("span");
         srOnlyFilledElement.classList.add("visually-hidden");
         srOnlyFilledElement.textContent = "Done";
@@ -192,7 +192,7 @@ function setupRequiredChecklist() {
   const fieldsStatusList = document.createElement("ul");
   fieldsStatusList.id = "wjs-submission-form__fields-list";
   fieldsStatusList.setAttribute("aria-live", "polite");
-  if(formFooter) {
+  if (formFooter) {
     formFooter.insertAdjacentElement("beforebegin", fieldsStatusList);
     populateRequiredChecklist(fieldsStatusList);
   }
@@ -243,10 +243,18 @@ function populateRequiredChecklist(fieldsStatusList) {
 
   getRequiredFields(form).forEach(field => {
     const section = getSectionHeading(field);
-    if (!sectionMap.has(section)) {
-      sectionMap.set(section, []);
+    const sectionTitle = section.textContent.trim();
+    if (!section.parentElement.checkVisibility()) {
+      if (sectionMap.has(sectionTitle)) {
+        sectionMap.delete(sectionTitle);
+      }
+      return;
+
     }
-    sectionMap.get(section).push(field);
+    if (!sectionMap.has(sectionTitle)) {
+      sectionMap.set(sectionTitle, []);
+    }
+    sectionMap.get(sectionTitle).push(field);
     addTinyMceListener(field);
   });
 

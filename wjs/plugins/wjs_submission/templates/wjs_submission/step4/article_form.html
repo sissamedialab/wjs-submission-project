@@ -28,10 +28,10 @@
       >
       </div>
       <input class="d-none" name="author_id" id="id_author_id"
-        hx-post="{% url 'wjs_submission_4' article.pk %}"
-        hx-trigger="change"
-        hx-swap="innerHTML"
-        hx-target="#selected-authors-wrapper"
+             hx-post="{% url 'wjs_submission_4' article.pk %}"
+             hx-trigger="change"
+             hx-swap="innerHTML"
+             hx-target="#selected-authors-wrapper"
       >
     </div>
     <div class="wjs-submission-form__section-content">
@@ -84,16 +84,16 @@
 
       <div id="js-collaborations-search-wrapper" class="d-none">
         <div class="wjs-submission-form__search-input-text" id="collaboration-search-wrapper"
-          hx-get="{% url 'search-typeahead-collaboration' %}"
-          hx-trigger="load"
-          hx-swap="innerHTML"
+             hx-get="{% url 'search-typeahead-collaboration' %}"
+             hx-trigger="load"
+             hx-swap="innerHTML"
         >
         </div>
         <input type="hidden" name="collaboration_id" id="id_collaboration_id"
-          hx-post="{% url 'wjs_submission_4' article.pk %}"
-          hx-trigger="change"
-          hx-swap="innerHTML"
-          hx-target="#selected-collaborations-wrapper"
+               hx-post="{% url 'wjs_submission_4' article.pk %}"
+               hx-trigger="change"
+               hx-swap="innerHTML"
+               hx-target="#selected-collaborations-wrapper"
         >
         <div class="d-flex justify-content-end">
           {% url 'add-collaboration' as add_collaboration_url %}
@@ -118,8 +118,8 @@
   </div>
 
   {% if form.authors_contributions %}
-  <div id="authors-contributions-wrapper" style="display: {% if has_author_list_changed %}block{% else %}none{% endif %};">
-    <div class="wjs-submission-form__section mb-5">
+    <div id="authors-contributions-wrapper" style="display: {% if has_author_list_changed %}block{% else %}none{% endif %};">
+      <div class="wjs-submission-form__section mb-5">
         <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Authors’ contribution</h2>
         <div class="wjs-submission-form__section-content">
           <p class="wjs-submission-form__authors-intro-text">
@@ -127,8 +127,8 @@
           </p>
           {% bootstrap_field form.authors_contributions show_help=False show_label=False placeholder="Sample text: John Smith: Conceptualization, Methodology.  Priya Singh.: Data curation, Writing- Original draft preparation. Wang Wu: Visualization, Investigation. Jan Jansen: Supervision.: Ajay Kumar: Validation.: Sun Qi: Writing." %}
         </div>
+      </div>
     </div>
-  </div>
   {% endif %}
 
   <div class="wjs-submission-form__section mb-5">
@@ -174,16 +174,17 @@
       });
     });
 
-    document.body.addEventListener('htmx:afterRequest', e => {
-        const triggers = e.detail?.xhr?.getResponseHeader('HX-Trigger');
-        if (!triggers) return;
-        triggers.split(',').forEach(trigger => {
-            if (trigger.startsWith('update-fragment:')) {
-                const show = trigger.split(':')[1] === '1';
-                const el = document.querySelector('#authors-contributions-wrapper');
-                if (el) el.style.display = show ? '' : 'none';
-            }
-        });
+    document.body.addEventListener("htmx:afterRequest", e => {
+      const triggers = e.detail?.xhr?.getResponseHeader("HX-Trigger");
+      if (!triggers) return;
+      triggers.split(",").forEach(trigger => {
+        if (trigger.startsWith("update-fragment:")) {
+          const show = trigger.split(":")[1] === "1";
+          const el = document.querySelector("#authors-contributions-wrapper");
+          if (el) el.style.display = show ? "" : "none";
+           populateRequiredChecklist(document.querySelector("#wjs-submission-form__fields-list"));
+        }
+      });
     });
   </script>
 {% endblock %}
