@@ -17,11 +17,13 @@ class SubmissionStep6Form(forms.ModelForm):
     das = forms.ChoiceField(
         choices=ArticleSubmission.DasDeclaration.choices,
         widget=forms.RadioSelect(attrs={"data-name": "das", "data-type": "radio-select"}),
+        required=True,
     )
     das_url = forms.URLField(required=False, label="Please insert complete URL", help_text=_("Required"))
     cas = forms.ChoiceField(
         choices=ArticleSubmission.CasDeclaration.choices,
-        widget=forms.RadioSelect(attrs={"data-name": "das", "data-type": "radio-select"}),
+        widget=forms.RadioSelect(attrs={"data-name": "cas", "data-type": "radio-select"}),
+        required=True,
     )
     cas_url = forms.URLField(required=False, label="Please insert complete URL", help_text=_("Required"))
 
