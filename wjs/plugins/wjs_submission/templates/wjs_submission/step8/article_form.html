@@ -355,7 +355,7 @@
       {% endif %}
     </div>
     <div class="wjs-submission-form__section-content">
-      <p>{{ files_data.das_display }}{% if files_data.das == article_data.submission_data.DasDeclaration.URL %}:&nbsp;{{ files_data.das_url }}{% endif %}</p>
+      <p>{{ files_data.das_display }}{% if files_data.das_show_url %}:&nbsp;{{ files_data.das_url }}{% endif %}</p>
     </div>
   </div>
 
@@ -369,7 +369,7 @@
       {% endif %}
     </div>
     <div class="wjs-submission-form__section-content">
-      <p>{{ files_data.cas_display }}{% if files_data.cas == article_data.submission_data.CasDeclaration.URL %}: &nbsp;{{ files_data.cas_url }}{% endif %}</p>
+      <p>{{ files_data.cas_display }}{% if files_data.cas_show_url %}: &nbsp;{{ files_data.cas_url }}{% endif %}</p>
     </div>
   </div>
 
