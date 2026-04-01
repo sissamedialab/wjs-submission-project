@@ -10,7 +10,7 @@ function getForm() {
 }
 
 /**
- * Retrieves the text content of the nearest preceding element with wjs-submission-form__form-label--required class relative to a given field within a form.
+ * Retrieves the nearest preceding element with wjs-submission-form__form-label--required class relative to a given field within a form.
  *
  * @param {HTMLElement} field - The starting element to search upward from.
  * @return {HTMLElement} The element the nearest H3 element if found, or undefined if no such element exists.
@@ -244,7 +244,10 @@ function populateRequiredChecklist(fieldsStatusList) {
   getRequiredFields(form).forEach(field => {
     const section = getSectionHeading(field);
     const sectionTitle = section.textContent.trim();
+    // if the section is invisible, we skip it as the field is not visible and user can't interact with it
+    // if it's required and hidden, it's either populated programmatically or it will get a default at render time
     if (!section.parentElement.checkVisibility()) {
+      // Remove item from the footer list of fields. Used when the field is hidden by HTMX actions
       if (sectionMap.has(sectionTitle)) {
         sectionMap.delete(sectionTitle);
       }
