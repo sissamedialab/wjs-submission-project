@@ -35,6 +35,7 @@
   <script src="{% static "js/detect_required.js" %}"></script>
 
   <script>
+    const articleId = "{{ article.pk }}";
     document.addEventListener("DOMContentLoaded", function() {
       setupRequiredChecklist();
     });
