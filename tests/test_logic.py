@@ -132,6 +132,7 @@ def test_form_save_article_with_arxiv_id(
         "arxiv_article_id": article.pk,
         "arxiv_id": "2504.10562",
     }
+    # enriching the current request that will be used by SubmissionStep1Form.trigger_submissionstart_event() via get_current_request()
     GlobalRequestMiddleware.process_request(fake_request)
     form = SubmissionStep1Form(data=data, journal=journal, user=user, instance=article, step=1)
     assert form.is_valid()
@@ -199,6 +200,9 @@ def test_double_arxiv_id_submission(
             user=user,
         ).run()
         assert article != arxiv_article
+        # and the "old" article has been deleted
+        assert not Article.objects.filter(pk=article.pk).exists()
+
     else:
         with pytest.raises(ArXivIDContinueSubmissionError):
             arxiv_article = ArXivToArticle(

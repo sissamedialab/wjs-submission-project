@@ -333,7 +333,7 @@ class ArXivToArticle:
         If an article with the specified criteria does not exists yet a new article is created and initialized using
         the provided response content and metadata.
         If it already exists (in submission stage) and the article id does not match the current article id, the user
-        is redirected to the article submission continuation, else it article object is "recycled" and returned.
+        is redirected to the article submission continuation, else the article object is "recycled" and returned.
 
         Created article is forced to:
         - stage=STAGE_UNSUBMITTED
@@ -350,7 +350,7 @@ class ArXivToArticle:
         candidates = self._get_article_candidates(response_content, self.journal)
         in_submission = candidates.filter(stage__in={STAGE_UNSUBMITTED}, owner=self.user)
         new_article = in_submission.first()
-        # this check verify if the recovered article is the current one which we let continue, or the
+        # this check verifies if the recovered article is the current one which we let continue, or the
         # current article is a different one (or a brand new submission in case self.arxiv_article_id is 0)
         if new_article and new_article.pk != self.arxiv_article_id:
             # If the new article submission has moved past the first step, we provide a link to continue the submission
@@ -362,7 +362,8 @@ class ArXivToArticle:
                     url=url,
                 )
                 raise ArXivIDContinueSubmissionError(msg)
-            # is the submission has not gone past step 1, we delete the "phantom" article and create a new one
+            # if the submission has not gone past step 0 (i.e. the author never pressed "submit" on step-1),
+            # we delete the "phantom" article and create a new one
             new_article.delete()
             new_article = None
 
