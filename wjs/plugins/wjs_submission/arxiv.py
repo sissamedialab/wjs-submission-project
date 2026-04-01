@@ -349,13 +349,13 @@ class ArXivToArticle:
         """
         candidates = self._get_article_candidates(response_content, self.journal)
         in_submission = candidates.filter(stage__in={STAGE_UNSUBMITTED}, owner=self.user)
-        new_article = in_submission.first()
+        existing_matching_article = in_submission.first()
         # this check verifies if the recovered article is the current one which we let continue, or the
         # current article is a different one (or a brand new submission in case self.arxiv_article_id is 0)
-        if new_article and new_article.pk != self.arxiv_article_id:
+        if existing_matching_article and existing_matching_article.pk != self.arxiv_article_id:
             # If the new article submission has moved past the first step, we provide a link to continue the submission
-            if new_article.current_step > 0:
-                url = reverse("wjs_submission_continue", kwargs={"article_id": new_article.pk})
+            if existing_matching_article.current_step > 0:
+                url = reverse("wjs_submission_continue", kwargs={"article_id": existing_matching_article.pk})
                 msg = format_lazy(
                     'A submission for the current ArXiv ID has already been started, please <a class="text-white" '
                     'href="{url}">complete the existing submission</a>',
@@ -364,14 +364,14 @@ class ArXivToArticle:
                 raise ArXivIDContinueSubmissionError(msg)
             # if the submission has not gone past step 0 (i.e. the author never pressed "submit" on step-1),
             # we delete the "phantom" article and create a new one
-            new_article.delete()
-            new_article = None
+            existing_matching_article.delete()
+            existing_matching_article = None
 
         service = HandleArticleCreation(
             user=self.user,
             form_data=response_content,
             journal=self.journal,
-            article=new_article,
+            article=existing_matching_article,
         )
         return service.run()
 
