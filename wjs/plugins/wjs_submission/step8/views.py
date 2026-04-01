@@ -155,11 +155,15 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                     self.object.revisionstorage.data["cas"]
                 ],
                 "cas_url": self.object.revisionstorage.data["cas_url"],
+                "cas_show_url": self.object.revisionstorage.data["cas"]
+                == self.object.submission_data.CasDeclaration.URL.value,
                 "das": self.object.revisionstorage.data["das"],
                 "das_display": self.object.submission_data.CasDeclaration.as_dict()[
                     self.object.revisionstorage.data["das"]
                 ],
                 "das_url": self.object.revisionstorage.data["das_url"],
+                "das_show_url": self.object.revisionstorage.data["das"]
+                == self.object.submission_data.DasDeclaration.URL.value,
             }
             if context["article_data"].get("language"):
                 context["article_data"]["language"] = dict(LANGUAGE_CHOICES)[context["article_data"]["language"]]
@@ -177,9 +181,13 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                 "cas": self.object.submission_data.cas,
                 "cas_display": self.object.submission_data.get_cas_display(),
                 "cas_url": self.object.submission_data.cas_url,
+                "cas_show_url": self.object.submission_data.cas
+                == self.object.submission_data.CasDeclaration.URL.value,
                 "das": self.object.submission_data.das,
                 "das_display": self.object.submission_data.get_das_display(),
                 "das_url": self.object.submission_data.das_url,
+                "das_show_url": self.object.submission_data.das
+                == self.object.submission_data.DasDeclaration.URL.value,
             }
             context["access_mode"] = AccessModeJournal.objects.get(
                 journal=self.object.journal, access_mode_id=self.object.submission_data.access_mode.pk
