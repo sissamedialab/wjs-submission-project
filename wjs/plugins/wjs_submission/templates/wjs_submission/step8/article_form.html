@@ -246,6 +246,8 @@
         </tbody>
       </table>
     </div>
+  </div>
+  <div class="wjs-submission-form__section mb-5">
     <div class="wjs-submission-form__form-label-title-container">
       <h2 class="wjs-submission-form__form-label-title">
         Affiliation
@@ -255,6 +257,18 @@
       {{ affiliation_country }}
     </div>
   </div>
+  {% if authors_contributions %}
+  <div class="wjs-submission-form__section mb-5">
+    <div class="wjs-submission-form__form-label-title-container">
+      <h2 class="wjs-submission-form__form-label-title">
+        Authors' Contributions
+      </h2>
+    </div>
+    <div class="wjs-submission-form__section-content">
+      {{ authors_contributions|safe }}
+    </div>
+  </div>
+  {% endif %}
 
   <div class="wjs-submission-form__section mb-5">
     <div class="wjs-submission-form__form-label-title-container">

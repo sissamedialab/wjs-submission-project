@@ -175,6 +175,7 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
             context["correspondence_author"] = Account.objects.get(pk=context["article_data"]["correspondence_author"])
             context["affiliation_country"] = Country.objects.get(pk=context["article_data"]["affiliation_country"])
             context["validate_revision_data"] = self._validate_revision_data(self.object)
+            context["authors_contributions"] = self.object.revisionstorage.data["authors_contributions"]
         else:
             context["article_data"] = self.object
             context["files_data"] = {
@@ -194,6 +195,7 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
             )
             context["article_data"].special_request = self.object.submission_data.special_request
             context["correspondence_author"] = self.object.correspondence_author
+            context["authors_contributions"] = self.object.authors_contributions
             context["affiliation_country"] = self.object.submission_data.affiliation_country
             if is_revision(self.object):
                 if title := self.object.revisionstorage.data.get("title"):
