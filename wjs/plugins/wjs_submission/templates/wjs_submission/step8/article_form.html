@@ -26,7 +26,7 @@
     </div>
     <div class="wjs-submission-form__section-content">
       <ul class="list-unstyled mt-2">
-        {% if is_revision and {{ journal_settings.general.revision_checklist %}
+        {% if is_revision and journal_settings.general.revision_checklist %}
           {% include "wjs_submission/step8/includes/submission_field.html" with label="Author(s) confirms that this article adheres to the requirements below" kind="check" answer=article.revisionstorage.data.submission_requirements %}
           {{ journal_settings.general.revision_checklist|safe }}
         {% else %}

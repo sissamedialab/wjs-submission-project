@@ -1,4 +1,4 @@
-from core.models import Account
+from core.models import Account, Country
 from django.urls import reverse_lazy
 from django.views.generic import UpdateView
 from repository.models import Author
@@ -169,7 +169,7 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                 journal=self.object.journal, access_mode_id=context["article_data"]["access_mode"]
             )
             context["correspondence_author"] = Account.objects.get(pk=context["article_data"]["correspondence_author"])
-            context["affiliation_country"] = Account.objects.get(pk=context["article_data"]["affiliation_country"])
+            context["affiliation_country"] = Country.objects.get(pk=context["article_data"]["affiliation_country"])
             context["validate_revision_data"] = self._validate_revision_data(self.object)
         else:
             context["article_data"] = self.object
