@@ -23,4 +23,4 @@
     {% endif %}
   {% endfor %}
 </div>
-{% if settings.DEBUG %}<div class="h6 text-secondary text-opacity-50">DEBUG - Last completed step: {{ article.current_step }}</div>{% endif %}
+{% if settings.DEBUG %}<div class="h6 text-secondary text-opacity-50">DEBUG - Last completed step: {{ article.current_step }}{% if is_revision %} - Last revision step: {{ article.revisionstorage.revision_step }}{% endif %}</div>{% endif %}
