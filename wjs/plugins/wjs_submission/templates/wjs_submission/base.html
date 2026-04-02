@@ -2,6 +2,8 @@
 
 {% load django_bootstrap5 static field %}
 
+{% block title %}{% if revision %}Revision submission{% else %}New submission{% endif %}{% endblock title %}
+
 {% block content %}
 <div class="col-sm-12">
   <div class="wjs-submission-container">
