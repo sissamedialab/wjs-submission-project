@@ -3,7 +3,6 @@ from core.models import Account, Country
 from django import forms
 from django.db.models import QuerySet
 from django.utils.translation import gettext_lazy as _
-from review.models import RevisionRequest
 from submission.models import Article, ArticleAuthorOrder
 
 from ..account_validation import (
@@ -283,9 +282,7 @@ class RevisionStep4Form(SubmissionStep4Form):
         :type kwargs: dict
         """
         self.revision_storage = RevisionStorage.objects.get(article=kwargs["instance"])
-        self.has_author_list_changed = kwargs.pop("has_author_list_changed")
-        kwargs.setdefault("initial", {})
-        kwargs["initial"]["collaboration_relation"] = self.revision_storage.data.get("collaboration_relation")
+        self.has_author_list_changed = kwargs.pop("has_author_list_changed", False)
         super().__init__(*args, **kwargs)
         self.fields["authors_contributions"].required = self.has_author_list_changed
         # Using a custom attribute to not trigger bootstrap validation as we use custom logic which checks tinymce
@@ -324,6 +321,7 @@ class RevisionStep4Form(SubmissionStep4Form):
         revision_storage.revision_step = max(revision_storage.revision_step, self.step)
 
         revision_storage.data["affiliation_country"] = self.cleaned_data.get("country").pk
+        revision_storage.data["authors_contributions"] = self.cleaned_data.get("authors_contributions")
 
         author_ids = ArticleAuthorOrder.objects.filter(article=self.instance).values_list("author_id", flat=True)
         revision_storage.data["article_authors"] = list(author_ids)
@@ -331,13 +329,4 @@ class RevisionStep4Form(SubmissionStep4Form):
         if self.cleaned_data.get("collaboration_relation") == "none":
             RevisionArticleCollaboration.objects.filter(revision_storage=revision_storage).delete()
 
-        if self.cleaned_data.get("authors_contributions"):
-            # we pick the latest non complete revision request to store
-            revision_request = RevisionRequest.objects.filter(
-                article=self.instance, date_completed__isnull=True
-            ).latest("date_requested")
-            revision_request.editorrevisionrequest.authors_contributions = self.cleaned_data.get(
-                "authors_contributions"
-            )
-            revision_request.editorrevisionrequest.save()
         return revision_storage.article

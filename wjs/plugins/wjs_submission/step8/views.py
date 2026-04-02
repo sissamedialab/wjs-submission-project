@@ -117,7 +117,9 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
             else:
                 cover_letter = True
             if is_revision_full(self.object):
-                revision_files = bool(article.revisionstorage.data["source_files"])
+                revision_files = bool(article.revisionstorage.data["source_files"]) and bool(
+                    article.revisionstorage.data["manuscript_files"]
+                )
             else:
                 revision_files = True
         else:
