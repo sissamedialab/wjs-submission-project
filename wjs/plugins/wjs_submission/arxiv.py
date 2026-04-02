@@ -5,6 +5,7 @@ import defusedxml
 import requests
 from core import files as core_files
 from core.models import Account
+from django.conf import settings
 from django.core.files import File
 from django.core.files.base import ContentFile
 from django.db import transaction
@@ -416,6 +417,8 @@ class ArXivToArticle:
                     " for assistance",
                     from_email=from_email,
                 )
+                if settings.DEBUG:
+                    msg += f" (DEBUG: {e!s})"
                 raise ArXivConnectionError(msg) from e
             except ArXivCorruptedDataError as e:
                 from_email = get_setting("general", "support_email", self.journal).processed_value
@@ -423,10 +426,14 @@ class ArXivToArticle:
                     "Corrupted data from arXiv. Contact the Journal for assistance ({from_email}",
                     from_email=from_email,
                 )
+                if settings.DEBUG:
+                    msg += f" (DEBUG: {e!s})"
                 raise ArXivConnectionError(msg) from e
             except GenericArxivError as e:
                 from_email = get_setting("general", "support_email", self.journal).processed_value
                 msg = format_lazy("Please contact the Journal for assistance ({from_email}", from_email=from_email)
+                if settings.DEBUG:
+                    msg += f" (DEBUG: {e!s})"
                 raise GenericArxivError(msg) from e
             self._check_article_unique(result, self.journal)
 

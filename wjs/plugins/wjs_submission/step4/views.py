@@ -39,6 +39,7 @@ class SubmissionStep4View(HtmxMixin, AuthorFilteringView, StepCheckView, UpdateV
         """Initialize view and retrieve the article object."""
         super().setup(request, *args, **kwargs)
         self.article = self.get_object()
+        self.revision_storage = None
         if is_revision(self.article):
             self.revision_storage = RevisionStorage.objects.get(article=self.article)
 
@@ -86,6 +87,22 @@ class SubmissionStep4View(HtmxMixin, AuthorFilteringView, StepCheckView, UpdateV
         if is_revision(self.article):
             kwargs["has_author_list_changed"] = is_revision(self.article) and has_author_list_changed(self.article)
         return kwargs
+
+    def get_initial(self):
+        """
+        Inject authors_contributions / collaboration_relation data into the form.
+
+        :return: The initial data dictionary with optional values for authors' contributions
+                 and collaboration relation.
+        :rtype: dict
+        :raises Exception: If any issue occurs while accessing the revision storage or fetching
+                           editor revision requests.
+        """
+        initial = super().get_initial()
+        if self.revision_storage:
+            initial["authors_contributions"] = self.revision_storage.data.get("authors_contributions")
+            initial["collaboration_relation"] = self.revision_storage.data.get("collaboration_relation")
+        return initial
 
     def get_template_names(self):
         """Return template based on HTMX trigger."""
