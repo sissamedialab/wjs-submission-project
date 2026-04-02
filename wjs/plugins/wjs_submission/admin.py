@@ -7,6 +7,7 @@ from .models import (
     ArticleCollaboration,
     ArticleSubmission,
     Collaboration,
+    RevisionStorage,
     WhitelistedCorrespondenceAuthors,
 )
 
@@ -54,3 +55,10 @@ class WhitelistedCorrespondenceAuthorsAdmin(admin.ModelAdmin):
     list_display = ("user", "validity_start_date", "validity_stop_date")
     search_fields = ("user__email",)
     list_filter = ["journal"]
+
+
+@admin.register(RevisionStorage)
+class RevisionStorageAdmin(admin.ModelAdmin):
+    list_display = ("article_id", "revision_flow_type", "revision_step")
+    search_fields = ("article_id",)
+    list_filter = ["article__journal"]
