@@ -8,7 +8,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ("submission", "0083_article_jats_article_type_override_and_more"),
+        ("submission", "0081_auto_20240927_1021"),
     ]
 
     operations = [

@@ -6,7 +6,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("journal", "0068_issue_allowed_sections_issue_cached_display_title_pt_and_more"),
+        ("journal", "0066_issue_type_bleach_20240507_1359"),
         ("wjs_submission", "0006_articlesubmission_administrative_files_and_more"),
     ]
 
