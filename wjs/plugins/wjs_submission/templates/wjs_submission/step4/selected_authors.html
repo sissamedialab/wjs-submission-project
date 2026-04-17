@@ -149,12 +149,6 @@
           {% endif %}
         </div>
       {% endif %}
-      {% if is_htmx %}
-        {# Update required checklist fields when rendering via htmx to add / remove authors-blocker field #}
-        <script>
-          populateRequiredChecklist(document.querySelector("#wjs-submission-form__fields-list"));
-        </script>
-      {% endif %}
     </div>
   </div>
 </div>

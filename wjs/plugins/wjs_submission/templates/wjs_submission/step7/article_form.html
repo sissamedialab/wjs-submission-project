@@ -14,7 +14,8 @@
     {% if is_revision and view.access_mode_configuration.access_mode and view.access_mode_configuration.access_mode == object.submission_data.access_mode %}
       <div class="wjs-submission-form__section mb-5">
         <div class="wjs-submission-form__section-content">
-          Access mode has not changed, it's not possible to change it.
+            {% setting_var article.journal "access_mode_confirmation_text" as access_mode_confirmation_text %}
+            {% render_template_string access_mode_confirmation_text %}
         </div>
       </div>
     {% else %}
@@ -58,6 +59,7 @@
       <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label--required" id="step7-funding-section">Funding</h2>
       <div class="wjs-submission-form__section-content">
         <div class="mb-3">
+          Search for registered funders by typing 3 or more letters and select the correct entry, if available. If not, use “Add new funding”. Multiple funders can be added.
         </div>
         <div class="wjs-submission-form__search-input-text" id="funding-search-wrapper"
              hx-get="{% url 'search-typeahead-funding' %}"
@@ -74,8 +76,6 @@
           {% endif %}
           <button id="add-funding-btn" type="button"
                   class="btn btn-primary"
-                  data-bs-toggle="modal"
-                  data-bs-target="#htmxModal"
                   hx-get="{{ add_funding_url }}"
                   hx-trigger="click"
                   hx-target="#htmxModalContent"
@@ -108,59 +108,7 @@
   <script src="{% static 'js/jquery-3.6.0.min.js' %}"></script>
   <script src="{% static 'js/typeahead.custom.js' %}"></script>
   <script src="{% static 'js/typeahead.bundle.js' %}"></script>
-
   <script>
-    document.addEventListener("DOMContentLoaded", function() {
-      setupFundingSelection();
-    });
-
-    function checkAccessMode(value) {
-      if (value === "1") {
-        document.getElementById("js-access-mode-message").classList.remove("d-none");
-      } else {
-        document.getElementById("js-access-mode-message").classList.add("d-none");
-      }
-    }
-
-    const selector = document.getElementById("id_access_mode");
-    document.addEventListener("DOMContentLoaded", function() {
-      if (selector) {
-        checkAccessMode(selector.value);
-        selector.addEventListener("change", function(event) {
-          checkAccessMode(event.target.value);
-        });
-      }
-    });
-
-    window.addEventListener("load", function() {
-      document.body.addEventListener("close-active-modal", function() {
-        document.querySelector("#htmxModal").querySelector("[aria-label=Close]").click();
-      });
-    });
-
-    document.addEventListener("DOMContentLoaded", function() {
-      const modal = document.getElementById("htmxModal");
-      modal.addEventListener("hidden.bs.modal", function() {
-        document.getElementById("htmxModalContent").innerHTML = "";
-      });
-    });
-
-    document.addEventListener("DOMContentLoaded", function() {
-      const hiddenFunding = document.getElementById("id_funding_id");
-      const addBtn = document.getElementById("add-funding-btn");
-
-      if (hiddenFunding && addBtn) {
-        hiddenFunding.addEventListener("change", function() {
-          console.log(addBtn.getAttribute("hx-vals"));
-          const btnVals = JSON.parse(addBtn.getAttribute("hx-vals") || "{}");
-          btnVals.fundref_id = hiddenFunding.value || "";
-          btnVals.name = hiddenFunding.dataset.name || "";
-          btnVals.country = hiddenFunding.dataset.country || "";
-          addBtn.setAttribute("hx-vals", JSON.stringify(btnVals));
-          addBtn.click();
-          addBtn.setAttribute("hx-vals", JSON.stringify({ "article_id": "{{ article.pk }}" }));
-        });
-      }
-    });
+    const accessModeSelector = document.getElementById("id_access_mode");
   </script>
 {% endblock js %}

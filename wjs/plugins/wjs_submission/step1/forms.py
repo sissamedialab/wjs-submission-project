@@ -341,11 +341,29 @@ class RevisionConfirmForm(SubmissionStep1Form):
 
         super().__init__(*args, **kwargs)
 
+        if not get_setting("general", "revision_checklist", self.journal).processed_value:
+            self.fields["submission_requirements"].widget = forms.HiddenInput()
+            self.fields["submission_requirements"].required = False
+
         # Make arxiv_id field non-editable
         # (the visible/non-visible configuration is managed by our parent class)
         if "arxiv_id" in self.fields:
             self.fields["arxiv_id"].disabled = True
             self.fields["arxiv_id"].widget.attrs["readonly"] = True
+
+    def clean_submission_requirements(self):
+        """
+        Force value of submission_requirements depending if the revision checklist is enabled.
+
+        :return: Processed submission requirements or a boolean indicating
+                 checklist validation bypass status
+        :rtype: Union[bool, Any]
+        :raises KeyError: If 'submission_requirements' is not present in
+                          cleaned_data
+        """
+        if not get_setting("general", "revision_checklist", self.journal).processed_value:
+            return True
+        return self.cleaned_data["submission_requirements"]
 
     def save(self, commit: bool = True):
         """

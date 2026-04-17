@@ -96,7 +96,7 @@ def jquant_keyword_selection_rule(
     Validate keyword selection for JQuant submissions.
 
     Rules:
-    - A submission must include between 2 and 4 keywords.
+    - A submission must include between 1 and 3 keywords.
     - All keyword IDs must exist in the database and belong to the given journal.
     - All keywords must belong to a group (free keywords are not allowed).
 
@@ -106,8 +106,8 @@ def jquant_keyword_selection_rule(
     :return: Tuple (is_valid, error_message). If valid, error_message is None.
     """
     count = len(keyword_weights)
-    if count < 2 or count > 4:
-        return False, "You must select between 2 and 4 keywords."
+    if count < 1 or count > 3:
+        return False, "You must select between 2 and 3 keywords."
 
     submitted_ids = set(keyword_weights.keys())
 

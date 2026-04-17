@@ -26,7 +26,7 @@
     </div>
     <div class="wjs-submission-form__section-content">
       <ul class="list-unstyled mt-2">
-        {% if is_revision %}
+        {% if is_revision and journal_settings.general.revision_checklist %}
           {% include "wjs_submission/step8/includes/submission_field.html" with label="Author(s) confirms that this article adheres to the requirements below" kind="check" answer=article.revisionstorage.data.submission_requirements %}
           {{ journal_settings.general.revision_checklist|safe }}
         {% else %}
@@ -246,6 +246,8 @@
         </tbody>
       </table>
     </div>
+  </div>
+  <div class="wjs-submission-form__section mb-5">
     <div class="wjs-submission-form__form-label-title-container">
       <h2 class="wjs-submission-form__form-label-title">
         Affiliation
@@ -255,6 +257,18 @@
       {{ affiliation_country }}
     </div>
   </div>
+  {% if authors_contributions %}
+  <div class="wjs-submission-form__section mb-5">
+    <div class="wjs-submission-form__form-label-title-container">
+      <h2 class="wjs-submission-form__form-label-title">
+        Authors' Contributions
+      </h2>
+    </div>
+    <div class="wjs-submission-form__section-content">
+      {{ authors_contributions|safe }}
+    </div>
+  </div>
+  {% endif %}
 
   <div class="wjs-submission-form__section mb-5">
     <div class="wjs-submission-form__form-label-title-container">
@@ -355,7 +369,7 @@
       {% endif %}
     </div>
     <div class="wjs-submission-form__section-content">
-      <p>{{ files_data.das_display }}{% if files_data.das == article_data.submission_data.DasDeclaration.URL %}:&nbsp;{{ files_data.das_url }}{% endif %}</p>
+      <p>{{ files_data.das_display }}{% if files_data.das_show_url %}:&nbsp;{{ files_data.das_url }}{% endif %}</p>
     </div>
   </div>
 
@@ -369,7 +383,7 @@
       {% endif %}
     </div>
     <div class="wjs-submission-form__section-content">
-      <p>{{ files_data.cas_display }}{% if files_data.cas == article_data.submission_data.CasDeclaration.URL %}: &nbsp;{{ files_data.cas_url }}{% endif %}</p>
+      <p>{{ files_data.cas_display }}{% if files_data.cas_show_url %}: &nbsp;{{ files_data.cas_url }}{% endif %}</p>
     </div>
   </div>
 
