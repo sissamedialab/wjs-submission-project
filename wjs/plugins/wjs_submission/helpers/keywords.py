@@ -49,18 +49,23 @@ def import_keywords_from_wjapp(journal_code: str, clear_existing: bool, dry_run:
 
                 # Process subgroups and their keywords
                 for subgroup_order, (subgroup_name, keywords) in enumerate(subgroups.items(), start=1):
-                    # Create subgroup
-                    subgroup, created = KeywordGroup.objects.get_or_create(
-                        name=subgroup_name,
-                        parent_group=main_group,
-                        defaults={
-                            "order": subgroup_order,
-                            "notes": f"Subgroup under {group_name}",
-                        },
-                    )
+                    if subgroup_name:
+                        # Create subgroup
+                        subgroup, created = KeywordGroup.objects.get_or_create(
+                            name=subgroup_name,
+                            parent_group=main_group,
+                            defaults={
+                                "order": subgroup_order,
+                                "notes": f"Subgroup under {group_name}",
+                            },
+                        )
 
-                    if created:
-                        subgroups_created += 1
+                        if created:
+                            subgroups_created += 1
+                        notes = (f"Keyword in {subgroup_name} under {group_name}",)
+                    else:
+                        subgroup = main_group
+                        notes = (f"Keyword in {group_name}",)
 
                     # Create keywords for this subgroup
                     for keyword_text in keywords:
@@ -73,7 +78,7 @@ def import_keywords_from_wjapp(journal_code: str, clear_existing: bool, dry_run:
                                 word=keyword_text,
                                 defaults={
                                     "group": subgroup,
-                                    "notes": f"Keyword in {subgroup_name} under {group_name}",
+                                    "notes": notes,
                                 },
                             )
                             journal.keywords.add(keyword)

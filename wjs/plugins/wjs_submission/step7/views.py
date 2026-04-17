@@ -1,4 +1,5 @@
 from django.urls import reverse, reverse_lazy
+from django.utils.functional import cached_property
 from django.views.generic import TemplateView, UpdateView
 from submission.models import Article
 
@@ -131,6 +132,12 @@ class AddFundingView(ModalRenderingMixin):
         context = super().get_context_data(**kwargs)
         context["articles_funding"] = get_article_fundings(self.article)
         context["funding_pk"] = self.request.GET.get("funding_pk")
+        if self.is_revision:
+            context["add_funding_url"] = reverse("add-funding-revision")
+            context["delete_funding_url"] = reverse("delete-funding-revision")
+        else:
+            context["add_funding_url"] = reverse("add-funding")
+            context["delete_funding_url"] = reverse("delete-funding")
         return context
 
     def get_form_kwargs(self):
@@ -154,8 +161,28 @@ class AddFundingView(ModalRenderingMixin):
         kwargs["instance"] = self.object
         return kwargs
 
+    def get(self, *args, **kwargs):
+        """
+        Handle GET request and add custom trigger to trigger opening of the modal.
+
+        :param args: Positional arguments passed to the parent `get` method
+        :type args: tuple
+        :param kwargs: Keyword arguments passed to the parent `get` method
+        :type kwargs: dict
+        :return: Response object with the added HX-Trigger header
+        :rtype: dict
+        """
+        response = super().get(*args, **kwargs)
+        response["HX-Trigger"] = "open-active-modal"
+        return response
+
     def form_valid(self, form):
-        """Save form and redirect via HTMX."""
+        """
+        Save form and add custom trigger to trigger opening of the modal.
+
+        :param form:
+        :return:
+        """
         form.save()
         self.render_table = True
         context = self.get_context_data()
@@ -178,19 +205,33 @@ class DeleteFundingView(HtmxMixin, TemplateView):
             a revision. Otherwise, returns `SubmissionArticleFunding`.
         :rtype: type
         """
-        if self.is_revision:
+        if is_revision(self.article):
             return RevisionSubmissionArticleFunding
         return SubmissionArticleFunding
+
+    @cached_property
+    def article(self):
+        """
+        Retrieve the Article object based on the article_id provided in the POST request.
+
+        :return: The Article object corresponding to the provided article_id
+        :rtype: Article
+        :raises Article.DoesNotExist: If no Article is found with the given article_id
+        """
+        return Article.objects.get(pk=self.request.POST.get("article_id"))
 
     def get_context_data(self, **kwargs):
         """Construct and returns the context data dictionary."""
         context = super().get_context_data(**kwargs)
-        context["articles_funding"] = self.model.objects.filter(article=self.article)
+        context["is_htmx"] = self.htmx
+        context["article"] = self.article
         context["funding_pk"] = self.request.GET.get("funding_pk")
-        if self.is_revision:
+        if is_revision(self.article):
+            context["articles_funding"] = self.model.objects.filter(revision_storage__article=self.article)
             context["add_funding_url"] = reverse("add-funding-revision")
             context["delete_funding_url"] = reverse("delete-funding-revision")
         else:
+            context["articles_funding"] = self.model.objects.filter(article=self.article)
             context["add_funding_url"] = reverse("add-funding")
             context["delete_funding_url"] = reverse("delete-funding")
         return context
@@ -221,6 +262,5 @@ class DeleteFundingView(HtmxMixin, TemplateView):
         :raises: AttributeError if the object to be deleted is not found.
         """
         self.object = self.get_object()
-        self.article = self.object.article
         self.object.delete()
         return self.render_to_response(self.get_context_data())

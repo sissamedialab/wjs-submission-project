@@ -47,3 +47,22 @@ class SubmissionStep5View(AuthorFilteringView, StepCheckView, UpdateView):
         """If the form is valid, save the associated model."""
         self.object = form.save(request=self.request)
         return super().form_valid(form)
+
+    def get_initial(self):
+        """
+        Return form initial data with additional keys populated using submission data from the underlying object.
+
+        :return: A dictionary containing initial form data with additional submission data
+                 keys and their corresponding values.
+        :rtype: dict
+        :raises AttributeError: If the `submission_data` attribute is missing from the `object`.
+        """
+        initial = super().get_initial()
+        initial["current_step"] = self.step
+        if is_revision(self.object):
+            revision_storage = self.object.revisionstorage
+            initial["title"] = revision_storage.data.get("title")
+            initial["abstract"] = revision_storage.data.get("abstract")
+            initial["section"] = revision_storage.data.get("section")
+            initial["language"] = revision_storage.data.get("language")
+        return initial

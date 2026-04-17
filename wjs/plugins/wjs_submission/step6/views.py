@@ -197,10 +197,20 @@ class SubmissionStep6View(AuthorFilteringView, StepCheckView, UpdateView):
         """
         initial = super().get_initial()
         initial["current_step"] = self.step
-        initial["das"] = self.object.submission_data.das
-        initial["das_url"] = self.object.submission_data.das_url
-        initial["cas"] = self.object.submission_data.cas
-        initial["cas_url"] = self.object.submission_data.cas_url
+        if is_revision(self.object):
+            revision_storage = self.object.revisionstorage
+            initial["manuscript"] = revision_storage.data.get("manuscript")
+            initial["data_figure_files"] = revision_storage.data.get("data_figure_files")
+            initial["supplementary_files"] = revision_storage.data.get("supplementary_files")
+            initial["das"] = revision_storage.data.get("das")
+            initial["das_url"] = revision_storage.data.get("das_url")
+            initial["cas"] = revision_storage.data.get("cas")
+            initial["cas_url"] = revision_storage.data.get("cas_url")
+        else:
+            initial["das"] = self.object.submission_data.das
+            initial["das_url"] = self.object.submission_data.das_url
+            initial["cas"] = self.object.submission_data.cas
+            initial["cas_url"] = self.object.submission_data.cas_url
         return initial
 
     def get_context_data(self, **kwargs):

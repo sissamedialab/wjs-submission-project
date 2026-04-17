@@ -1,0 +1,106 @@
+[
+    {
+        "group": "Quantum computation",
+        "subgroups": {
+            "": [
+                "Quantum computation",
+                "Quantum algorithms",
+                "Quantum complexity theory",
+                "Quantum advantage / speedups (theory)",
+                "Hamiltonian simulation",
+                "Quantum machine learning",
+                "Resource estimation and compilation",
+                "Quantum software and architecture theory"
+            ]
+        }
+    },
+    {
+        "group": "Fault tolerance, QEC and verification",
+        "subgroups": {
+            "": [
+                "Quantum error correction",
+                "Fault-tolerant quantum computation",
+                "Threshold theorems and overhead analysis",
+                "Topological codes",
+                "Bosonic codes",
+                "Decoding algorithms and information recovery",
+                "Verification, validation, and certification",
+                "Benchmarking and randomized protocols"
+            ]
+        }
+    },
+    {
+        "group": "Quantum communication and networking",
+        "subgroups": {
+            "": [
+                "Quantum communication",
+                "Quantum networks",
+                "Entanglement distribution and swapping",
+                "Quantum repeaters and memories",
+                "Entanglement distillation and purification",
+                "Quantum cryptography",
+                "QKD (device-dependent and device-independent)"
+            ]
+        }
+    },
+    {
+        "group": "Quantum sensing and metrology",
+        "subgroups": {
+            "": [
+                "Quantum sensing",
+                "Quantum metrology",
+                "Magnetometry / gravimetry / inertial sensing",
+                "Distributed quantum sensing",
+                "Quantum Fisher information and estimation theory"
+            ]
+        }
+    },
+    {
+        "group": "Condensed matter theory",
+        "subgroups": {
+            "": [
+                "Quantum phases of matter",
+                "Quantum circuits",
+                "Topological phases / anyons",
+                "Symmetry-protected topological phases",
+                "Tensor networks",
+                "Entanglement entropy and spectrum",
+                "Quantum criticality / CFT methods",
+                "Nonequilibrium quantum dynamics",
+                "Open quantum systems",
+                "Quantum chaos / scrambling",
+                "Many-body localization",
+                "Quantum information tools in condensed matter and statistical mechanics",
+                "Quantum thermodynamics",
+                "Quantum resource theory"
+            ]
+        }
+    },
+    {
+        "group": "High-energy theory",
+        "subgroups": {
+            "": [
+                "Quantum information in QFT",
+                "Entanglement and geometry",
+                "Holography as an information framework",
+                "Quantum error correction viewpoints in holography",
+                "Black hole information",
+                "Effective field theory constraints from information inequalities",
+                "Operator algebras / algebraic QFT"
+            ]
+        }
+    },
+    {
+        "group": "Platforms & technology-aware theory",
+        "subgroups": {
+            "": [
+                "Photonic quantum information and integrated photonics",
+                "Superconducting circuits (theory)",
+                "Trapped ions / neutral atoms (theory)",
+                "Spin qubits and semiconductor platforms (theory)",
+                "Noise, decoherence, and non-Markovian dynamics",
+                "Control, calibration, and robustness"
+            ]
+        }
+    }
+]

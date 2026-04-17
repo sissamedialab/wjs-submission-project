@@ -13,18 +13,20 @@ from submission.models import Keyword, KeywordGroup
 @pytest.mark.parametrize(
     ("keyword_setup", "weights", "assign_group", "expected_ok"),
     [
+        # valid 1 keyword with group -> should pass
+        (["kw1"], [25], True, True),
         # valid 2 keywords with group -> should pass
         (["kw1", "kw2"], [25, 50], True, True),
         # too few keywords -> fail
-        (["kw1"], [25], True, False),
+        ([], [], True, False),
         # free keywords (no group) -> fail
         (["kw1", "kw2"], [25, 50], False, False),
         # 3 keywords, all grouped -> pass
         (["kw1", "kw2", "kw3"], [25, 50, 75], True, True),
         # 4 keywords, one free -> fail
         (["kw1", "kw2", "kw3", "kw4"], [25, 50, 75, 100], False, False),
-        # 4 keywords, all grouped -> pass
-        (["kw1", "kw2", "kw3", "kw4"], [25, 50, 75, 100], True, True),
+        # 4 keywords, all grouped -> fail
+        (["kw1", "kw2", "kw3", "kw4"], [25, 50, 75, 100], True, False),
         # 5 keywords -> fail
         (["kw1", "kw2", "kw3", "kw4", "kw5"], [25, 50, 75, 100, 25], True, False),
     ],

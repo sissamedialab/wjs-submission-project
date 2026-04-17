@@ -12,7 +12,7 @@ class ArticleSubmission(models.Model):
     class CasDeclaration(models.TextChoices):
         NO = "no", _("My article has no associated code or the code will not be deposited")
         ESM = "esm", _("My article has code included as electronic supplementary material")
-        URL = "url", _("My article has associated code in a data repository")
+        URL = "url", _("My article has associated code in a repository")
 
         @classmethod
         def as_dict(cls) -> dict[str, str]:
@@ -27,7 +27,7 @@ class ArticleSubmission(models.Model):
     class DasDeclaration(models.TextChoices):
         NO = "no", _("My article has no associated data or the data will not be deposited")
         ESM = "esm", _("My article has data included as electronic supplementary material")
-        URL = "url", _("My article has associated data in a data repository")
+        URL = "url", _("My article has associated data in a repository")
 
         @classmethod
         def as_dict(cls) -> dict[str, str]:

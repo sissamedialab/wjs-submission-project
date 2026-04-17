@@ -14,7 +14,15 @@
         </thead>
         <tbody>
         {% for funding in articles_funding %}
-          {% if forloop.first %}<input type="hidden" name="funding_id" id="id_funding_id" value="{{ funding.pk }}">{% endif %}
+          {% if forloop.first %}
+            <input type="hidden" name="funding_id" id="id_funding_id" value="{{ funding.pk }}"
+                   hx-get="{{ add_funding_url }}"
+                   hx-trigger="change"
+                   hx-swap="innerHTML"
+                   hx-target="#htmxModalContent"
+                   hx-vals='{"article_id": "{{ article.pk }}"}'
+            >
+          {% endif %}
           <tr>
             <td>{{ funding.name }}</td>
             <td>{{ funding.fundref_id|default:"-" }}</td>
@@ -22,8 +30,6 @@
             <td>{{ funding.funding_id|default:"-" }}</td>
             <td class="text-center">
               <button class="btn btn-sm btn-primary"
-                      data-bs-toggle="modal"
-                      data-bs-target="#htmxModal"
                       hx-get="{{ add_funding_url }}"
                       hx-target="#htmxModalContent"
                       hx-vals='{"article_id": "{{ article.pk }}", "funding_pk": "{{ funding.pk }}"}'>
@@ -41,7 +47,13 @@
             </td>
           </tr>
         {% empty %}
-          <input type="hidden" name="funding_id" id="id_funding_id">
+          <input type="hidden" name="funding_id" id="id_funding_id"
+                 hx-get="{{ add_funding_url }}"
+                 hx-trigger="change"
+                 hx-swap="innerHTML"
+                 hx-target="#htmxModalContent"
+                 hx-vals='{"article_id": "{{ article.pk }}"}'
+          >
         {% endfor %}
         </tbody>
       </table>

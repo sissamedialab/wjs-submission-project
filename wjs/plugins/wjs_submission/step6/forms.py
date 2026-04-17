@@ -17,11 +17,13 @@ class SubmissionStep6Form(forms.ModelForm):
     das = forms.ChoiceField(
         choices=ArticleSubmission.DasDeclaration.choices,
         widget=forms.RadioSelect(attrs={"data-name": "das", "data-type": "radio-select"}),
+        required=True,
     )
     das_url = forms.URLField(required=False, label="Please insert complete URL", help_text=_("Required"))
     cas = forms.ChoiceField(
         choices=ArticleSubmission.CasDeclaration.choices,
-        widget=forms.RadioSelect(attrs={"data-name": "das", "data-type": "radio-select"}),
+        widget=forms.RadioSelect(attrs={"data-name": "cas", "data-type": "radio-select"}),
+        required=True,
     )
     cas_url = forms.URLField(required=False, label="Please insert complete URL", help_text=_("Required"))
 
@@ -276,31 +278,6 @@ class RevisionUploadArticleForm(UploadArticleForm):
 
 
 class RevisionStep6Form(SubmissionStep6Form):
-    def __init__(self, *args, **kwargs):
-        """
-        Initialize a custom form with pre-filled initial data based on revision storage.
-
-        The constructor fetches the associated `RevisionStorage` object for the given `Article` instance
-        and initializes specific form fields using data from the `RevisionStorage`.
-
-        The manuscript is _not_ initialized to the previous version, because it should be replaced by the author.
-
-        Instead, data/figure files and supplementary files are initialized to the previous ones, because they are
-        generally not changed. The author can modify (add/delete/replace) these files anyway.
-
-        :param args: Positional arguments passed to the superclass initializer.
-        :type args: tuple
-        :param kwargs: Keyword arguments passed to the superclass initializer. It must contain the key
-            `instance`, which refers to an `Article` instance.
-        :type kwargs: dict
-        """
-        revision_storage = RevisionStorage.objects.get(article=kwargs["instance"])
-        kwargs.setdefault("initial", {})
-        kwargs["initial"]["manuscript"] = revision_storage.data.get("manuscript")
-        kwargs["initial"]["data_figure_files"] = revision_storage.data.get("data_figure_files")
-        kwargs["initial"]["supplementary_files"] = revision_storage.data.get("supplementary_files")
-        super().__init__(*args, **kwargs)
-
     def save(self, commit: bool = True) -> Article:
         """
         Override save method to store field values in RevisionStorage JSON field.
