@@ -65,64 +65,60 @@
     </div>
   {% endif %}
 
-  {% if journal.submissionconfiguration.competing_interests %}
-    <div class="wjs-submission-form__section mb-5">
-      <div class="wjs-submission-form__form-label-title-container">
-        <h2 class="wjs-submission-form__form-label-title" id="conflict-of-interest">
-          Conflict of interest
-        </h2>
+  <div class="wjs-submission-form__section mb-5">
+    <div class="wjs-submission-form__form-label-title-container">
+      <h2 class="wjs-submission-form__form-label-title" id="conflict-of-interest">
+        Conflict of interest
+      </h2>
 
-        {% if steps.1.available %}
-          <a href="{% url 'wjs_submission_1' article_id=article.pk %}#competing_interests-section" class="wjs-submission-navigation-step__link">
-            <i class="bi bi-pencil ms-1" aria-hidden="true"></i>
-          </a>
-        {% endif %}
-      </div>
-
-      <div class="wjs-submission-form__section-content">
-        <div class="wjs-submission-form__text-area">{{ article_data.competing_interests|safe }}</div>
-      </div>
+      {% if steps.1.available %}
+        <a href="{% url 'wjs_submission_1' article_id=article.pk %}#competing_interests-section" class="wjs-submission-navigation-step__link">
+          <i class="bi bi-pencil ms-1" aria-hidden="true"></i>
+        </a>
+      {% endif %}
     </div>
-  {% endif %}
 
-  {% if journal.submissionconfiguration.comments_to_the_editor %}
-    <div class="wjs-submission-form__section mb-5">
-      <div class="wjs-submission-form__form-label-title-container">
-        <h2 class="wjs-submission-form__form-label-title">
-          Cover letter
-        </h2>
-
-        {% if steps.1.available %}
-          <a href="{% url 'wjs_submission_1' article_id=article.pk %}#cover_letter-section" class="wjs-submission-navigation-step__link">
-            <i class="bi bi-pencil ms-1" aria-hidden="true"></i>
-          </a>
-        {% endif %}
-      </div>
-      <div class="wjs-submission-form__section-content">
-        {% if article_data.comments_editor %}
-          <div class="wjs-submission-form__text-area mb-3">
-            {{ article_data.comments_editor|safe }}
-          </div>
-        {% endif %}
-        {% if article_data.cover_letter_file %}
-          <div class="d-flex justify-content-between">
-            {% url "article_file_download" identifier_type="id" identifier=article.pk file_id=article_data.cover_letter_file.pk as cover_letter_file_url %}
-            <p><strong>Attachment:</strong>&nbsp;<a href="{{ cover_letter_file_url }}">{{ article_data.cover_letter_file.original_filename }}</a></p>
-            <p>
-              <a href="{{ cover_letter_file_url }}">
-                <i class="bi bi-cloud-arrow-down ms-1" aria-hidden="true"></i>
-              </a>
-            </p>
-          </div>
-        {% endif %}
-        {% if not article_data.comments_editor and not article_data.cover_letter_file %}
-          <div class="wjs-submission-form__section-content">
-            <label class="fw-bold" for="id_title">Not set</label>
-          </div>
-        {% endif %}
-      </div>
+    <div class="wjs-submission-form__section-content">
+      <div class="wjs-submission-form__text-area">{{ article_data.competing_interests|safe }}</div>
     </div>
-  {% endif %}
+  </div>
+
+  <div class="wjs-submission-form__section mb-5">
+    <div class="wjs-submission-form__form-label-title-container">
+      <h2 class="wjs-submission-form__form-label-title">
+        Cover letter
+      </h2>
+
+      {% if steps.1.available %}
+        <a href="{% url 'wjs_submission_1' article_id=article.pk %}#cover_letter-section" class="wjs-submission-navigation-step__link">
+          <i class="bi bi-pencil ms-1" aria-hidden="true"></i>
+        </a>
+      {% endif %}
+    </div>
+    <div class="wjs-submission-form__section-content">
+      {% if article_data.comments_editor %}
+        <div class="wjs-submission-form__text-area mb-3">
+          {{ article_data.comments_editor|safe }}
+        </div>
+      {% endif %}
+      {% if article_data.cover_letter_file %}
+        <div class="d-flex justify-content-between">
+          {% url "article_file_download" identifier_type="id" identifier=article.pk file_id=article_data.cover_letter_file.pk as cover_letter_file_url %}
+          <p><strong>Attachment:</strong>&nbsp;<a href="{{ cover_letter_file_url }}">{{ article_data.cover_letter_file.original_filename }}</a></p>
+          <p>
+            <a href="{{ cover_letter_file_url }}">
+              <i class="bi bi-cloud-arrow-down ms-1" aria-hidden="true"></i>
+            </a>
+          </p>
+        </div>
+      {% endif %}
+      {% if not article_data.comments_editor and not article_data.cover_letter_file %}
+        <div class="wjs-submission-form__section-content">
+          <label class="fw-bold" for="id_title">Not set</label>
+        </div>
+      {% endif %}
+    </div>
+  </div>
 
   {% if show_issue %}
     <div class="wjs-submission-form__section mb-5">
