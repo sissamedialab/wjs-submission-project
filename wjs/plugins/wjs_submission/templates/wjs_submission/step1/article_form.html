@@ -29,10 +29,12 @@
     <div class="wjs-submission-form__section mb-5" id="arxiv_id-section">
       <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">ArXiv</h2>
       <div class="wjs-submission-form__section-content">
-        <div class="mb-4">
-          Enter your preprint’s arXiv ID and validate it. The title, abstract, and manuscript will be imported
-          automatically and can be reviewed in the next steps.
-        </div>
+        {% if not is_revision %}
+          <div class="mb-4">
+            Enter your preprint’s arXiv ID and validate it. The title, abstract, and manuscript will be imported
+            automatically and can be reviewed in the next steps.
+          </div>
+        {% endif %}
         <div class="wjs-submission-form__arxiv-validation-wrapper">
           {% bootstrap_field form.arxiv_id show_help=False show_label=False wrapper_class="" %}
           {{ form.arxiv_article_id }}
@@ -113,7 +115,7 @@
   <script src="{% static "js/ai_field.js" %}"></script>
   <script src="{% static "js/arxiv.js" %}"></script>
   <script>
-    document.addEventListener("DOMContentLoaded", function() {
+    document.addEventListener("DOMContentLoaded", function () {
       setupArxivValidation();
       handleUseAiToggle();
     });
