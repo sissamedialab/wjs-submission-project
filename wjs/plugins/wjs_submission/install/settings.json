@@ -139,7 +139,7 @@
             "type": "rich-text"
         },
         "value": {
-            "default": "<p>Please make sure you agree with information written in this page.</p>"
+            "default": "<p>Please make sure you agree with the information written on this page.</p><p>Note: some fields include information included in your previous submission. Please check them and update them if needed.</p>"
         }
     },
     {
