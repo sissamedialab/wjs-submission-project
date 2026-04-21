@@ -246,5 +246,20 @@
         "value": {
             "default": "<p>Please select co-authors <b>only if</b> they need to be added to the current author list (see section “Selected authors” below).</p>"
         }
+    },
+    {
+        "group": {
+            "name": "wjs_submission"
+        },
+        "setting": {
+            "description": "Introductory text for Step 7 page - Funders modal",
+            "is_translatable": true,
+            "name": "step7_funders_modal_intro",
+            "pretty_name": "Intro for Step 7 page - Funders modal",
+            "type": "rich-text"
+        },
+        "value": {
+            "default": "<p>Data will be visible on your manuscript page during review. During production stage they will be placed before the bibliography in the following form: 'Institution, grant number (doi, description)'.</p>"
+        }
     }
 ]
