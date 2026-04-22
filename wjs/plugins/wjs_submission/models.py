@@ -323,9 +323,9 @@ class RevisionStorage(models.Model):
     """
 
     class RevisionFlowType(models.TextChoices):
-        CONFIRM = "confirm", _("Confirm previous version")
+        CONFIRM = "confirm", _("Confirmation of previous version")
         METADATA = "metadata", _("Metadata change")
-        FULL = "full", _("New version")
+        FULL = "full", _("Revision submission")
 
     article = models.OneToOneField(
         Article,

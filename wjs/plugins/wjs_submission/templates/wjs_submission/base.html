@@ -2,7 +2,10 @@
 
 {% load django_bootstrap5 static field %}
 
-{% block title %}{% if revision %}Revision submission{% else %}New submission{% endif %}{% endblock title %}
+{% block title %}
+  {% if revision_storage %}{{ revision_storage.get_revision_flow_type_display }}
+  {% else %}New submission{% endif %}
+{% endblock title %}
 
 {% block content %}
 <div class="col-sm-12">

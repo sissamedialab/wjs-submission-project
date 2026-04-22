@@ -1,4 +1,4 @@
-{% load django_bootstrap5 static field %}
+{% load django_bootstrap5 field settings static %}
 <div class="modal-header">
   <h5 class="modal-title" id="htmxModalLabel">New Funder</h5>
   {% bootstrap_button button_class="btn-close" data_bs_dismiss="modal" button_type="button" aria_label="Close" content="" %}
@@ -12,6 +12,9 @@
   <form method="post" action="" class="wjs-submission-form" enctype="multipart/form-data" hx-post="{{ add_funding_url }}" hx-vals='{"article_id": "{{ article_id }}", "funding_pk": "{{ funding_pk|default_if_none:"" }}"}'
         hx-target="#selected-funding-wrapper">
     {% csrf_token %}
+    <div>
+      {{ journal|setting:"step7_funders_modal_intro"|safe }}
+    </div>
     {% bootstrap_form_errors form %}
     {% bootstrap_field form.name %}
     {% bootstrap_field form.fundref_id %}

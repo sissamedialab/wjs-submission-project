@@ -12,7 +12,8 @@ from submission.models import (
 )
 from utils.setting_handler import get_setting
 
-from .workflow import STEPS, Step, is_revision
+from .models import RevisionStorage
+from .workflow import STEPS, Step
 
 
 class AuthorFilteringView(UserPassesTestMixin):
@@ -98,7 +99,12 @@ class StepCheckView(ModelFormMixin):
             journal=self.request.journal, article=self.object, user=self.request.user
         )
         context["step"] = self._step_object
-        context["is_revision"] = is_revision(self.object)
+        try:
+            # If object does not exists we are not in a revision, "by definition".
+            context["revision_storage"] = RevisionStorage.objects.get(article=self.object)
+            context["is_revision"] = True
+        except RevisionStorage.DoesNotExist:
+            context["revision_storage"] = None
         return context
 
 

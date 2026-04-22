@@ -194,6 +194,7 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                 journal=self.object.journal, access_mode_id=self.object.submission_data.access_mode.pk
             )
             context["article_data"].special_request = self.object.submission_data.special_request
+            context["article_data"].cover_letter_file = self.object.submission_data.cover_letter_file
             context["correspondence_author"] = self.object.correspondence_author
             context["affiliation_country"] = self.object.submission_data.affiliation_country
             if is_revision(self.object):
@@ -202,9 +203,9 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                 if abstract := self.object.revisionstorage.data.get("abstract"):
                     context["article_data"].abstract = abstract
                 if language := self.object.revisionstorage.data.get("language"):
-                    context["article_data"]["language"] = dict(LANGUAGE_CHOICES)[language]
+                    context["article_data"].language = dict(LANGUAGE_CHOICES)[language]
                 if section := self.object.revisionstorage.data.get("section"):
-                    context["article_data"]["section"] = Section.objects.get(pk=section)
+                    context["article_data"].section = Section.objects.get(pk=section)
             context["validate_revision_data"] = self._validate_revision_data(self.object)
 
         # Include files (manuscript_files, data_figure_files, etc.)
