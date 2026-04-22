@@ -9,16 +9,16 @@ from django.conf import settings
 from django.core.files import File
 from django.core.files.base import ContentFile
 from django.db import transaction
-from django.db.models import Q, QuerySet
 from django.http import HttpRequest
 from django.urls import reverse
 from django.utils.text import format_lazy
 from identifiers.models import Identifier
 from journal.models import Journal
-from submission.models import STAGE_REJECTED, STAGE_UNSUBMITTED, Article, ArticleAuthorOrder
+from submission.models import STAGE_UNSUBMITTED, Article, ArticleAuthorOrder
 from utils.setting_handler import get_setting
 
 from .conversion import start_source_conversion
+from .unique_check import check_article_unique, get_article_matching_signature
 
 ARXIV_API_URL = "https://export.arxiv.org/api/query?id_list={}"
 
@@ -135,7 +135,9 @@ class GenericArxivError(ArXivQueryError):
         super().__init__(message=message)
 
 
-def fetch_arxiv_metadata(arxiv_id: str) -> tuple[dict, dict]:
+def fetch_arxiv_metadata(
+    arxiv_id: str, user_agent: str | None = None, from_header: str | None = None
+) -> tuple[dict, dict]:
     """
     Fetch metadata for a given arXiv ID from the arXiv API.
 
@@ -149,6 +151,10 @@ def fetch_arxiv_metadata(arxiv_id: str) -> tuple[dict, dict]:
 
     :param arxiv_id: The arXiv ID of the paper to query.
     :type arxiv_id: str
+    :param user_agent: The value of the User-Agent header used in the API request
+    :type user_agent: str
+    :param from_header: The value of the From header used in the API request
+    :type from_header: str
     :return: A tuple containing:
              1. A dictionary with keys such as "title", "abstract",
                 "category_term", "source_file", "arxiv_id", and "doi_link".
@@ -172,13 +178,17 @@ def fetch_arxiv_metadata(arxiv_id: str) -> tuple[dict, dict]:
         "arxiv_id": None,
         "doi_link": None,
     }
-
     try:
         url = ARXIV_API_URL.format(arxiv_id)
+
         headers = {
             "Accept": "*/*",
             "Connection": "close",
         }  # TODO: do we want something more specific?
+        if user_agent:
+            headers["User-agent"] = user_agent
+        if from_header:
+            headers["From"] = from_header
         r = requests.get(url, headers=headers, timeout=30)
         r.raise_for_status()
 
@@ -230,7 +240,7 @@ def fetch_arxiv_metadata(arxiv_id: str) -> tuple[dict, dict]:
     file_name, base_url = "source_file", "https://arxiv.org/src/{}"
     url = base_url.format(arxiv_id)
     try:
-        resp = requests.get(url, timeout=10)
+        resp = requests.get(url, headers=headers, timeout=10)
         if resp.status_code == 200:
             result[file_name] = resp.content
         else:
@@ -261,72 +271,6 @@ class ArXivToArticle:
     user: Account
     arxiv_article_id: int = 0
 
-    @staticmethod
-    def _get_article_candidates(response_content: dict, journal: Journal) -> QuerySet:
-        """
-        Retrieve article candidates based on the provided response content.
-
-        Matches articles using either the 'arxiv_id', title, abstract, or identifiers already associated with articles.
-
-        :param response_content: A dictionary containing 'arxiv_id', 'title',
-            and 'abstract' keys to filter candidate articles.
-        :type response_content: dict
-        :param journal: The Journal instance to filter candidates by.
-        :type journal: Journal
-        :return: A queryset of Article objects that match the given criteria.
-        :rtype: QuerySet
-        :raises KeyError: If required keys ('arxiv_id', 'title', 'abstract') are missing in
-            the response_content.
-        """
-        articles_by_identifier = Identifier.objects.filter(
-            identifier=response_content["arxiv_id"],
-            id_type="arxiv",
-            article__isnull=False,
-        ).values_list("article", flat=True)
-        return Article.objects.filter(journal=journal).filter(
-            Q(
-                title__iexact=response_content["title"],
-                abstract__iexact=response_content["abstract"],
-            )
-            | Q(pk__in=articles_by_identifier),
-        )
-
-    def _check_article_unique(self, response_content: dict, journal: Journal) -> None:
-        """
-        Raise an exception if the metadata for the given arXiv ID or title/abstract already exists in the database.
-
-        Checks:
-        - An Article with the same ArXiv ID already exists and state not in (withdrawn, unsubmitted)
-        - An Article with the same title and abstract already exists and state not in (withdrawn, unsubmitted)
-
-        :param response_content: A dictionary containing 'arxiv_id', 'title',
-            and 'abstract' keys to filter candidate articles.
-        :type response_content: dict
-        :param journal: The Journal instance to filter candidates by.
-        :type journal: Journal
-        :raises ArXivIDAlreadyUsedError: If an article with the same arXiv ID or title/abstract already exists.
-        """
-        # FIXME: Make this check pluggable and provide a base implementation in wjs-submission and create a logic
-        #   in wjs_review, where we can use ArticleWorkflow.ReviewStates for checking the states
-        #   if identifier.article.articleworkflow.state not in {
-        #       ArticleWorkflow.ReviewStates.WITHDRAWN,
-        #       ArticleWorkflow.ReviewStates.INCOMPLETE_SUBMISSION,
-        #   }:
-        #   See https://gitlab.sissamedialab.it/wjs/specs/-/issues/1809
-
-        filtered_articles = self._get_article_candidates(response_content, journal).exclude(
-            # Unsubmitted / rejected articles can be re-submitted under new ID
-            Q(stage__in={STAGE_UNSUBMITTED, STAGE_REJECTED})
-            |
-            # If current step is 0, it's an article which just have been created via ArxivMicroservice
-            Q(current_step=0)
-            |
-            # current article being submitted (this is an edit of an existing incomplete submission)
-            Q(pk=self.arxiv_article_id)
-        )
-        if filtered_articles.exists():
-            raise ArXivIDAlreadyUsedError
-
     def _get_or_create_article(self, response_content: dict) -> Article:
         """
         Retrieve or create an `Article` instance based on the given response content.
@@ -348,7 +292,7 @@ class ArXivToArticle:
         :raises KeyError: If required keys like "title", "abstract", "arxiv_id", or "category_term" are missing from
             the `response_content`.
         """
-        candidates = self._get_article_candidates(response_content, self.journal)
+        candidates = get_article_matching_signature(response_content=response_content, journal=self.journal)
         in_submission = candidates.filter(stage__in={STAGE_UNSUBMITTED}, owner=self.user)
         existing_matching_article = in_submission.first()
         # this check verifies if the recovered article is the current one which we let continue, or the
@@ -407,35 +351,43 @@ class ArXivToArticle:
         :param self: The class instance running the method.
         :return: Created Article object.
         """
+        support_email = get_setting("general", "support_email", self.journal).processed_value
+        user_agent = "WJSsubmit/1.0"
+        from_header = support_email
         with transaction.atomic():
             try:
-                result, file_errors = fetch_arxiv_metadata(self.arxiv_id)
+                result, file_errors = fetch_arxiv_metadata(self.arxiv_id, user_agent, from_header)
             except ArXivConnectionError as e:
-                from_email = get_setting("general", "support_email", self.journal).processed_value
                 msg = format_lazy(
-                    "Connection to arXiv could not be established. Please try again later or contact {from_email}"
-                    " for assistance",
-                    from_email=from_email,
+                    (
+                        "Connection to arXiv could not be established. Please try again later or contact "
+                        "{support_email} for assistance"
+                    ),
+                    support_email=support_email,
                 )
                 if settings.DEBUG:
                     msg += f" (DEBUG: {e!s})"
                 raise ArXivConnectionError(msg) from e
             except ArXivCorruptedDataError as e:
-                from_email = get_setting("general", "support_email", self.journal).processed_value
                 msg = format_lazy(
-                    "Corrupted data from arXiv. Contact the Journal for assistance ({from_email}",
-                    from_email=from_email,
+                    "Corrupted data from arXiv. Contact the Journal for assistance ({support_email})",
+                    support_email=support_email,
                 )
                 if settings.DEBUG:
                     msg += f" (DEBUG: {e!s})"
                 raise ArXivConnectionError(msg) from e
             except GenericArxivError as e:
-                from_email = get_setting("general", "support_email", self.journal).processed_value
-                msg = format_lazy("Please contact the Journal for assistance ({from_email}", from_email=from_email)
+                msg = format_lazy(
+                    "Please contact the Journal for assistance ({support_email})", support_email=support_email
+                )
                 if settings.DEBUG:
                     msg += f" (DEBUG: {e!s})"
                 raise GenericArxivError(msg) from e
-            self._check_article_unique(result, self.journal)
+
+            if not check_article_unique(
+                response_content=result, journal=self.journal, arxiv_article_id=self.arxiv_article_id
+            ):
+                raise ArXivIDAlreadyUsedError
 
             article = self._get_or_create_article(result)
 
