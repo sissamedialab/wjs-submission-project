@@ -4,7 +4,7 @@ from django.db.transaction import atomic
 from submission.models import (
     STAGE_UNDER_REVISION,
     Article,
-    ArticleAuthorOrder,
+    FrozenAuthor,
 )
 
 from ..models import (
@@ -188,21 +188,23 @@ class PopulateStep4AdditionalModels:
         :param commit: Save the updated models. Set to True if it's the last step to initialize RevisionStorage.
         :type commit: bool
         """
-        article_author = ArticleAuthorOrder.objects.filter(article=self.revision_storage.article)
-        for aa in article_author:
+        RevisionArticleAuthorOrder.objects.filter(revision_storage=self.revision_storage).delete()
+        RevisionArticleCollaboration.objects.filter(revision_storage=self.revision_storage).all().delete()
+        frozen_authors = FrozenAuthor.objects.filter(article=self.revision_storage.article)
+        for frozen_author in frozen_authors:
             RevisionArticleAuthorOrder.objects.get_or_create(
                 revision_storage=self.revision_storage,
-                author=aa.author,
-                order=aa.order,
+                author=frozen_author.author,
+                order=frozen_author.order,
             )
 
-        article_collaboration = ArticleCollaboration.objects.filter(article=self.revision_storage.article)
-        for ac in article_collaboration:
+        article_collaborations = ArticleCollaboration.objects.filter(article=self.revision_storage.article)
+        for article_collaboration in article_collaborations:
             RevisionArticleCollaboration.objects.get_or_create(
                 revision_storage=self.revision_storage,
-                collaboration=ac.collaboration,
-                relation=ac.relation,
-                order=ac.order,
+                collaboration=article_collaboration.collaboration,
+                relation=article_collaboration.relation,
+                order=article_collaboration.order,
             )
 
 
