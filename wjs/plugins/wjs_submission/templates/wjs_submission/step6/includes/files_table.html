@@ -65,7 +65,7 @@
       <div id="js-conversion-message" class="wjs-submission-form__alert-message-box wjs-submission-form__alert-message-box--warning {% if not conversion_log %}d-none{% endif %} d-flex flex-column">
         <i class="bi bi-exclamation-triangle"></i>
         {% if show_detailed_log %}
-          <div id="conversion-message" class="tex2jax_ignore">{{ conversion_log|linebreaksbr }}</div>
+          <div id="conversion-message">{{ conversion_log|linebreaksbr }}</div>
         {% endif %}
         <div id="js-conversion-log"{% if conversion_status != "completed" %} class="d-none"{% endif %}>
           Download the file to see details: <a target="_blank" id="js-conversion-log-url" href="{{ conversion_log_url }}">download</a>
