@@ -9,16 +9,16 @@ from django.conf import settings
 from django.core.files import File
 from django.core.files.base import ContentFile
 from django.db import transaction
-from django.db.models import Q, QuerySet
 from django.http import HttpRequest
 from django.urls import reverse
 from django.utils.text import format_lazy
 from identifiers.models import Identifier
 from journal.models import Journal
-from submission.models import STAGE_REJECTED, STAGE_UNSUBMITTED, Article, ArticleAuthorOrder
+from submission.models import STAGE_UNSUBMITTED, Article, ArticleAuthorOrder
 from utils.setting_handler import get_setting
 
 from .conversion import start_source_conversion
+from .unique_check import check_article_unique, get_article_matching_signature
 
 ARXIV_API_URL = "https://export.arxiv.org/api/query?id_list={}"
 
@@ -271,72 +271,6 @@ class ArXivToArticle:
     user: Account
     arxiv_article_id: int = 0
 
-    @staticmethod
-    def _get_article_candidates(response_content: dict, journal: Journal) -> QuerySet:
-        """
-        Retrieve article candidates based on the provided response content.
-
-        Matches articles using either the 'arxiv_id', title, abstract, or identifiers already associated with articles.
-
-        :param response_content: A dictionary containing 'arxiv_id', 'title',
-            and 'abstract' keys to filter candidate articles.
-        :type response_content: dict
-        :param journal: The Journal instance to filter candidates by.
-        :type journal: Journal
-        :return: A queryset of Article objects that match the given criteria.
-        :rtype: QuerySet
-        :raises KeyError: If required keys ('arxiv_id', 'title', 'abstract') are missing in
-            the response_content.
-        """
-        articles_by_identifier = Identifier.objects.filter(
-            identifier=response_content["arxiv_id"],
-            id_type="arxiv",
-            article__isnull=False,
-        ).values_list("article", flat=True)
-        return Article.objects.filter(journal=journal).filter(
-            Q(
-                title__iexact=response_content["title"],
-                abstract__iexact=response_content["abstract"],
-            )
-            | Q(pk__in=articles_by_identifier),
-        )
-
-    def _check_article_unique(self, response_content: dict, journal: Journal) -> None:
-        """
-        Raise an exception if the metadata for the given arXiv ID or title/abstract already exists in the database.
-
-        Checks:
-        - An Article with the same ArXiv ID already exists and state not in (withdrawn, unsubmitted)
-        - An Article with the same title and abstract already exists and state not in (withdrawn, unsubmitted)
-
-        :param response_content: A dictionary containing 'arxiv_id', 'title',
-            and 'abstract' keys to filter candidate articles.
-        :type response_content: dict
-        :param journal: The Journal instance to filter candidates by.
-        :type journal: Journal
-        :raises ArXivIDAlreadyUsedError: If an article with the same arXiv ID or title/abstract already exists.
-        """
-        # FIXME: Make this check pluggable and provide a base implementation in wjs-submission and create a logic
-        #   in wjs_review, where we can use ArticleWorkflow.ReviewStates for checking the states
-        #   if identifier.article.articleworkflow.state not in {
-        #       ArticleWorkflow.ReviewStates.WITHDRAWN,
-        #       ArticleWorkflow.ReviewStates.INCOMPLETE_SUBMISSION,
-        #   }:
-        #   See https://gitlab.sissamedialab.it/wjs/specs/-/issues/1809
-
-        filtered_articles = self._get_article_candidates(response_content, journal).exclude(
-            # Unsubmitted / rejected articles can be re-submitted under new ID
-            Q(stage__in={STAGE_UNSUBMITTED, STAGE_REJECTED})
-            |
-            # If current step is 0, it's an article which just have been created via ArxivMicroservice
-            Q(current_step=0)
-            |
-            # current article being submitted (this is an edit of an existing incomplete submission)
-            Q(pk=self.arxiv_article_id)
-        )
-        if filtered_articles.exists():
-            raise ArXivIDAlreadyUsedError
-
     def _get_or_create_article(self, response_content: dict) -> Article:
         """
         Retrieve or create an `Article` instance based on the given response content.
@@ -358,7 +292,7 @@ class ArXivToArticle:
         :raises KeyError: If required keys like "title", "abstract", "arxiv_id", or "category_term" are missing from
             the `response_content`.
         """
-        candidates = self._get_article_candidates(response_content, self.journal)
+        candidates = get_article_matching_signature(response_content=response_content, journal=self.journal)
         in_submission = candidates.filter(stage__in={STAGE_UNSUBMITTED}, owner=self.user)
         existing_matching_article = in_submission.first()
         # this check verifies if the recovered article is the current one which we let continue, or the
@@ -449,7 +383,11 @@ class ArXivToArticle:
                 if settings.DEBUG:
                     msg += f" (DEBUG: {e!s})"
                 raise GenericArxivError(msg) from e
-            self._check_article_unique(result, self.journal)
+
+            if not check_article_unique(
+                response_content=result, journal=self.journal, arxiv_article_id=self.arxiv_article_id
+            ):
+                raise ArXivIDAlreadyUsedError
 
             article = self._get_or_create_article(result)
 
