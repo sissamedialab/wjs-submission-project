@@ -135,7 +135,9 @@ class GenericArxivError(ArXivQueryError):
         super().__init__(message=message)
 
 
-def fetch_arxiv_metadata(arxiv_id: str) -> tuple[dict, dict]:
+def fetch_arxiv_metadata(
+    arxiv_id: str, user_agent: str | None = None, from_header: str | None = None
+) -> tuple[dict, dict]:
     """
     Fetch metadata for a given arXiv ID from the arXiv API.
 
@@ -149,6 +151,10 @@ def fetch_arxiv_metadata(arxiv_id: str) -> tuple[dict, dict]:
 
     :param arxiv_id: The arXiv ID of the paper to query.
     :type arxiv_id: str
+    :param user_agent: The value of the User-Agent header used in the API request
+    :type user_agent: str
+    :param from_header: The value of the From header used in the API request
+    :type from_header: str
     :return: A tuple containing:
              1. A dictionary with keys such as "title", "abstract",
                 "category_term", "source_file", "arxiv_id", and "doi_link".
@@ -172,13 +178,17 @@ def fetch_arxiv_metadata(arxiv_id: str) -> tuple[dict, dict]:
         "arxiv_id": None,
         "doi_link": None,
     }
-
     try:
         url = ARXIV_API_URL.format(arxiv_id)
+
         headers = {
             "Accept": "*/*",
             "Connection": "close",
         }  # TODO: do we want something more specific?
+        if user_agent:
+            headers["User-agent"] = user_agent
+        if from_header:
+            headers["From"] = from_header
         r = requests.get(url, headers=headers, timeout=30)
         r.raise_for_status()
 
@@ -230,7 +240,7 @@ def fetch_arxiv_metadata(arxiv_id: str) -> tuple[dict, dict]:
     file_name, base_url = "source_file", "https://arxiv.org/src/{}"
     url = base_url.format(arxiv_id)
     try:
-        resp = requests.get(url, timeout=10)
+        resp = requests.get(url, headers=headers, timeout=10)
         if resp.status_code == 200:
             result[file_name] = resp.content
         else:
@@ -407,31 +417,35 @@ class ArXivToArticle:
         :param self: The class instance running the method.
         :return: Created Article object.
         """
+        support_email = get_setting("general", "support_email", self.journal).processed_value
+        user_agent = "WJSsubmit/1.0"
+        from_header = support_email
         with transaction.atomic():
             try:
-                result, file_errors = fetch_arxiv_metadata(self.arxiv_id)
+                result, file_errors = fetch_arxiv_metadata(self.arxiv_id, user_agent, from_header)
             except ArXivConnectionError as e:
-                from_email = get_setting("general", "support_email", self.journal).processed_value
                 msg = format_lazy(
-                    "Connection to arXiv could not be established. Please try again later or contact {from_email}"
-                    " for assistance",
-                    from_email=from_email,
+                    (
+                        "Connection to arXiv could not be established. Please try again later or contact "
+                        "{support_email} for assistance"
+                    ),
+                    support_email=support_email,
                 )
                 if settings.DEBUG:
                     msg += f" (DEBUG: {e!s})"
                 raise ArXivConnectionError(msg) from e
             except ArXivCorruptedDataError as e:
-                from_email = get_setting("general", "support_email", self.journal).processed_value
                 msg = format_lazy(
-                    "Corrupted data from arXiv. Contact the Journal for assistance ({from_email}",
-                    from_email=from_email,
+                    "Corrupted data from arXiv. Contact the Journal for assistance ({support_email})",
+                    support_email=support_email,
                 )
                 if settings.DEBUG:
                     msg += f" (DEBUG: {e!s})"
                 raise ArXivConnectionError(msg) from e
             except GenericArxivError as e:
-                from_email = get_setting("general", "support_email", self.journal).processed_value
-                msg = format_lazy("Please contact the Journal for assistance ({from_email}", from_email=from_email)
+                msg = format_lazy(
+                    "Please contact the Journal for assistance ({support_email})", support_email=support_email
+                )
                 if settings.DEBUG:
                     msg += f" (DEBUG: {e!s})"
                 raise GenericArxivError(msg) from e
