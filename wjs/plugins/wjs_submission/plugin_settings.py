@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Any
 
+from django.conf import settings
 from utils import plugins
 from utils.install import update_settings
 from utils.logger import get_logger
@@ -44,3 +45,11 @@ def install():
 def hook_registry() -> dict[str, Any]:
     """Register hooks for current plugin."""
     return {}
+
+
+DEFAULT_UNIQUENESS_CHECK = {
+    None: "plugins.wjs_submission.unique_check.check_article_uniqueness_by_submission_status",
+    # "JCOM": "plugins.wjs_review.unique_check.check_article_uniqueness_by_submission_status_and_section", # noqa: ERA001, E501
+    # "JCAP": "plugins.wjs_review.unique_check.check_article_uniqueness_by_submission_status_and_section_in_all_journals", # noqa: ERA001, E501
+}
+UNIQUENESS_CHECK = getattr(settings, "SUBMISSION_UNIQUENESS_CHECK", DEFAULT_UNIQUENESS_CHECK)
