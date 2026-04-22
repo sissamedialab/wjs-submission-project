@@ -79,7 +79,13 @@
     </div>
 
     <div class="wjs-submission-form__section-content">
-      <div class="wjs-submission-form__text-area">{{ article_data.competing_interests|safe }}</div>
+      {% if article_data.competing_interests %}
+        <div class="wjs-submission-form__text-area">{{ article_data.competing_interests|safe }}</div>
+      {% else %}
+        <div class="wjs-submission-form__section-content">
+          <p>{% translate "Not provided" %}</p>
+        </div>
+      {% endif %}
     </div>
   </div>
 
@@ -114,7 +120,7 @@
       {% endif %}
       {% if not article_data.comments_editor and not article_data.cover_letter_file %}
         <div class="wjs-submission-form__section-content">
-          <label class="fw-bold" for="id_title">Not set</label>
+          <label class="fw-bold" for="id_title">{% translate "Not provided" %}</label>
         </div>
       {% endif %}
     </div>
@@ -254,16 +260,16 @@
     </div>
   </div>
   {% if authors_contributions %}
-  <div class="wjs-submission-form__section mb-5">
-    <div class="wjs-submission-form__form-label-title-container">
-      <h2 class="wjs-submission-form__form-label-title">
-        Authors' Contributions
-      </h2>
+    <div class="wjs-submission-form__section mb-5">
+      <div class="wjs-submission-form__form-label-title-container">
+        <h2 class="wjs-submission-form__form-label-title">
+          Authors' Contributions
+        </h2>
+      </div>
+      <div class="wjs-submission-form__section-content">
+        {{ authors_contributions|safe }}
+      </div>
     </div>
-    <div class="wjs-submission-form__section-content">
-      {{ authors_contributions|safe }}
-    </div>
-  </div>
   {% endif %}
 
   <div class="wjs-submission-form__section mb-5">
@@ -498,9 +504,9 @@
   <script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.2/MathJax.js?config=TeX-MML-AM_CHTML'></script>
   <script>
     MathJax.Hub.Config({
-      tex2jax: { inlineMath: [["\\(", "\\)"], ["$", "$"]] },
+      tex2jax: {inlineMath: [["\\(", "\\)"], ["$", "$"]]},
       "HTML-CSS": {
-        linebreaks: { automatic: true, width: "container" },
+        linebreaks: {automatic: true, width: "container"},
       },
     });
   </script>
