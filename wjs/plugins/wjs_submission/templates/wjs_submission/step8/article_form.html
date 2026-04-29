@@ -501,11 +501,5 @@
 {% endblock submission_footer %}
 {% block js %}
   {{ block.super }}
-  <script>
-    MathJax = {
-      tex: { inlineMath: [["\\(", "\\)"], ["$", "$"]] },
-      output: { displayOverflow: 'linebreak' },
-    };
-  </script>
-  <script src='https://cdn.jsdelivr.net/npm/mathjax@4.1.1/tex-mml-chtml.js' async></script>
+  {% include "wjs/base/fragments/mathjax.html" %}
 {% endblock %}
