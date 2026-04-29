@@ -37,6 +37,12 @@ class SubmissionStep3View(AuthorFilteringView, StepCheckView, UpdateView):
         filter_path = submission_settings.KEYWORD_FILTERS.get(journal, submission_settings.KEYWORD_FILTERS.get(None))
         filter_fn = import_string(filter_path)
         context["keywords_list"] = filter_fn(journal, arxiv_category)
+        min_max_keywords_count = submission_settings.MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL.get(
+            journal, [submission_settings.BASIC_MIN_KEYWORD_COUNT, submission_settings.BASIC_MAX_KEYWORD_COUNT]
+        )
+        context["min_keywords_count"] = min_max_keywords_count[0]
+        context["max_keywords_count"] = min_max_keywords_count[1]
+        context["keyword_validators_complex_logic"] = journal in submission_settings.KEYWORD_VALIDATORS_COMPLEX_LOGIC
         return context
 
     def get_form_kwargs(self):
