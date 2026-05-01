@@ -23,10 +23,32 @@ function toggleAuthorsContributionsVisibility(triggers) {
           el.style.display = "none";
           document.querySelector("#id_authors_contributions").removeAttribute("js_required");
         }
-      populateRequiredChecklist(document.querySelector("#wjs-submission-form__fields-list"));
       }
+      populateRequiredChecklist(document.querySelector("#wjs-submission-form__fields-list"));
     }
   });
+}
+
+/**
+ * Sets up the author selection process by adding an event listener
+ * to monitor the "typeahead:asyncreceive" event and trigger the
+ * necessary updates to author fields.
+ *
+ * @return {void} No return value.
+ */
+function setupAuthorSelection() {
+  document.addEventListener("typeahead:asyncreceive", function() {
+    updateAuthorFieldsStatus();
+  });
+}
+
+/**
+ * Enable the "add-author-btn" button when a search is initiated.
+ *
+ * @return {void} Does not return a value.
+ */
+function updateAuthorFieldsStatus() {
+  document.getElementById("add-author-btn").disabled = false;
 }
 
 document.body.addEventListener("htmx:afterRequest", e => {
