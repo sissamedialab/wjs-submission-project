@@ -41,8 +41,12 @@ def test_jquant_rule(jquant_journal, keyword_setup, weights, assign_group, expec
         journal.keywords.add(kw)
         keyword_weights[kw.id] = weight
 
-    ok, _ = jquant_keyword_selection_rule(keyword_weights, journal=journal)
+    ok, error = jquant_keyword_selection_rule(keyword_weights, journal=journal)
     assert ok == expected_ok
+    if expected_ok:
+        assert error is None
+    else:
+        assert error is not None
 
 
 @pytest.mark.django_db

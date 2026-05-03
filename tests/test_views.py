@@ -327,7 +327,7 @@ def test_submission_disabled(
 @pytest.mark.django_db
 def test_keyword_handling(client, article, post_data, expected_keywords, expect_error):
     settings.WJS_KEYWORD_WEIGHT_VALIDATORS = {
-        "JQUANT": ("plugins.wjs_submission.logic.always_pass",),
+        "JQuant": ("plugins.wjs_submission.logic.always_pass",),
     }
 
     Keyword.objects.create(pk=1, word="keyword1", journal=article.journal)

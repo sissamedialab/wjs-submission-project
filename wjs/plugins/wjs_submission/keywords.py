@@ -2,7 +2,23 @@ from django.db.models import Q, QuerySet
 from journal.models import Journal
 from submission.models import Keyword, KeywordGroup
 
-from .settings import BASIC_MAX_KEYWORD_COUNT, BASIC_MIN_KEYWORD_COUNT, MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL
+from .settings import KEYWORDS_INTERVAL_PER_JOURNAL
+
+
+def get_keyword_range_by_journal(journal: Journal) -> tuple[int, int]:
+    """
+    Retrieve the keyword range tuple for a given journal.
+
+    This function uses the journal's code to look up the corresponding keyword
+    range from a predefined mapping. If no match is found for the given journal,
+    it defaults to using the keyword range for `None`.
+
+    :param journal: The Journal instance for which the keyword range is sought.
+    :type journal: Journal
+    :return: A tuple containing the lower and upper bounds of the keyword range.
+    :rtype: tuple[int, int]
+    """
+    return KEYWORDS_INTERVAL_PER_JOURNAL.get(journal.code, KEYWORDS_INTERVAL_PER_JOURNAL[None])
 
 
 def get_keywords_by_journal(journal: Journal, arxiv_category: str | None = None) -> QuerySet:
@@ -73,33 +89,37 @@ def always_pass(
 
 def basic_keyword_selection_rule(
     keyword_weights: dict,
+    journal: Journal,
+    arxiv_category: str | None = None,
 ) -> tuple[bool, str | None]:
     """
     Validate keyword selection for JCOM and JCOMAL submissions.
 
     Rules:
-    - A submission must include between BASIC_MIN_KEYWORD_COUNT and BASIC_MAX_KEYWORD_COUNT keywords.
+    - A submission must include a range of keywords defined in KEYWORDS_INTERVAL_PER_JOURNAL settin.
 
     :param keyword_weights: Dictionary of keyword_id -> weight.
+    :param journal: Journal instance against which keywords are validated.
+    :param arxiv_category: Optional arXiv category (unused here).
     :return: Tuple (is_valid, error_message). If valid, error_message is None.
     """
+    keyword_range = get_keyword_range_by_journal(journal)
     count = len(keyword_weights)
-    if count < BASIC_MIN_KEYWORD_COUNT or count > BASIC_MAX_KEYWORD_COUNT:
-        return False, f"You must select between {BASIC_MIN_KEYWORD_COUNT} and {BASIC_MAX_KEYWORD_COUNT} keywords."
+    if not (keyword_range[0] <= count <= keyword_range[1]):
+        return False, f"You must select between {keyword_range[0]} and {keyword_range[1]} keywords."
     return True, None
 
 
 def jquant_keyword_selection_rule(
     keyword_weights: dict,
-    journal: Journal | None = None,
+    journal: Journal,
     arxiv_category: str | None = None,
 ) -> tuple[bool, str | None]:
     """
     Validate keyword selection for JQuant submissions.
 
     Rules:
-    - A submission must include between MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL["JQUANT"][0]
-    and MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL["JQUANT"][1] keywords.
+    - A submission must include a range of keywords defined in KEYWORDS_INTERVAL_PER_JOURNAL settin.
     - All keyword IDs must exist in the database and belong to the given journal.
     - All keywords must belong to a group (free keywords are not allowed).
 
@@ -108,15 +128,10 @@ def jquant_keyword_selection_rule(
     :param arxiv_category: Optional arXiv category (unused here).
     :return: Tuple (is_valid, error_message). If valid, error_message is None.
     """
+    keyword_range = get_keyword_range_by_journal(journal)
     count = len(keyword_weights)
-    if (
-        count < MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL["JQUANT"][0]
-        or count > MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL["JQUANT"][1]
-    ):
-        return False, (
-            f"You must select between {MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL['JQUANT'][0]} "
-            f"and {MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL['JQUANT'][1]} keywords."
-        )
+    if not (keyword_range[0] <= count <= keyword_range[1]):
+        return False, f"You must select between {keyword_range[0]} and {keyword_range[1]} keywords."
 
     submitted_ids = set(keyword_weights.keys())
 
@@ -136,7 +151,7 @@ def jquant_keyword_selection_rule(
 
 def jhep_keyword_selection_rule(
     keyword_weights: dict,
-    journal: Journal | None = None,
+    journal: Journal,
     arxiv_category: str | None = None,
 ) -> tuple[bool, str | None]:
     """
@@ -147,14 +162,14 @@ def jhep_keyword_selection_rule(
         * Exactly one keyword must be selected.
         * It must belong to the "hep-ex" group.
     - Otherwise:
-        * At least MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL["JHEP"][0] keywords must come from the same journal group.
-        * Up to 2 additional keywords may come from other groups
-        (total max MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL["JHEP"][1]).
+        * At least 2 keywords must come from the same journal group.
         * Keywords from the "hep-ex" group are not allowed.
+        * A submission must include a range of keywords defined in KEYWORDS_INTERVAL_PER_JOURNAL settin.
     """
     ok = True
     message: str | None = None
 
+    keyword_range = get_keyword_range_by_journal(journal)
     submitted_ids = set(keyword_weights.keys())
     if not submitted_ids:
         return False, "You must select at least one keyword."
@@ -186,22 +201,17 @@ def jhep_keyword_selection_rule(
                     message = "For hep-ex, the single keyword must belong to the hep-ex group."
         else:
             total = len(submitted_ids)
-            if (
-                total < MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL["JHEP"][0]
-                or total > MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL["JHEP"][1]
-            ):
+
+            if not (keyword_range[0] <= total <= keyword_range[1]):
                 ok = False
-                message = (
-                    f"You must select between {MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL['JHEP'][0]} "
-                    f"and {MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL['JHEP'][1]} keywords."
-                )
+                message = f"You must select between {keyword_range[0]} and {keyword_range[1]} keywords."
             elif "hep-ex" in group_map:
                 ok = False
                 message = "Keywords from the hep-ex group are not allowed for this arXiv category."
             else:
                 max_in_group = max(len(ids) for ids in group_map.values())
-                if max_in_group < 2:
+                if max_in_group < keyword_range[0]:
                     ok = False
-                    message = "You must select at least 2 keywords from the same journal group."
+                    message = f"You must select at least {keyword_range[0]} keywords from the same journal group."  # noqa: S608
 
     return ok, message

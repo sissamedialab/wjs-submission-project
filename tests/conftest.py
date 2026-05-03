@@ -114,8 +114,8 @@ def hierarchical_keywords(journal):
 
 @pytest.fixture
 def jquant_journal(press, roles) -> Journal:
-    """Create a journal with code JQUANT for tests."""
-    journal = _journal_factory("JQUANT", press, domain="jquant.testserver.org")
+    """Create a journal with code JQuant for tests."""
+    journal = _journal_factory("JQuant", press, domain="jquant.testserver.org")
     set_script_prefix(f"/{journal.code}")
     journal.submissionconfiguration.hierarchical_keywords = True
     journal.submissionconfiguration.autocomplete_keywords = True

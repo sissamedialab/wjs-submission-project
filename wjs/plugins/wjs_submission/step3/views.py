@@ -1,6 +1,7 @@
 from django.urls import reverse_lazy
 from django.utils.module_loading import import_string
 from django.views.generic import UpdateView
+from plugins.wjs_submission.keywords import get_keyword_range_by_journal
 from submission.models import Article
 
 from .. import settings as submission_settings
@@ -31,18 +32,15 @@ class SubmissionStep3View(AuthorFilteringView, StepCheckView, UpdateView):
         :return: Context.
         """
         context = super().get_context_data(**kwargs)
-        journal = getattr(self.request, "journal", None)
+        keyword_range = get_keyword_range_by_journal(self.request.journal)
         arxiv_category = getattr(getattr(self.get_object(), "submission_data", None), "arxiv_category", None)
 
-        filter_path = submission_settings.KEYWORD_FILTERS.get(journal, submission_settings.KEYWORD_FILTERS.get(None))
-        filter_fn = import_string(filter_path)
-        context["keywords_list"] = filter_fn(journal, arxiv_category)
-        min_max_keywords_count = submission_settings.MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL.get(
-            journal, [submission_settings.BASIC_MIN_KEYWORD_COUNT, submission_settings.BASIC_MAX_KEYWORD_COUNT]
+        filter_path = submission_settings.KEYWORD_FILTERS.get(
+            self.request.journal, submission_settings.KEYWORD_FILTERS.get(None)
         )
-        context["min_keywords_count"] = min_max_keywords_count[0]
-        context["max_keywords_count"] = min_max_keywords_count[1]
-        context["keyword_validators_complex_logic"] = journal in submission_settings.KEYWORD_VALIDATORS_COMPLEX_LOGIC
+        filter_fn = import_string(filter_path)
+        context["keywords_list"] = filter_fn(self.request.journal, arxiv_category)
+        context["keywords_count"] = keyword_range
         return context
 
     def get_form_kwargs(self):

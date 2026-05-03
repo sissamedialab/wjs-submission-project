@@ -1,29 +1,25 @@
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
+DEFAULT_KEYWORDS_INTERVAL_PER_JOURNAL = {
+    None: (2, 4),
+    "JQuant": (1, 3),
+    "JCAP": (1, 3),
+}
+
 DEFAULT_KEYWORD_VALIDATORS = {
     None: ("plugins.wjs_submission.keywords.always_pass",),
     "JCOM": ("plugins.wjs_submission.keywords.basic_keyword_selection_rule",),
     "JCOMAL": ("plugins.wjs_submission.keywords.basic_keyword_selection_rule",),
-    "JQUANT": ("plugins.wjs_submission.keywords.jquant_keyword_selection_rule",),
+    "JQuant": ("plugins.wjs_submission.keywords.jquant_keyword_selection_rule",),
     "JHEP": ("plugins.wjs_submission.keywords.jhep_keyword_selection_rule",),
-}
-
-BASIC_MAX_KEYWORD_COUNT = 4
-BASIC_MIN_KEYWORD_COUNT = 1
-
-MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL = {
-    "JCOM": (BASIC_MIN_KEYWORD_COUNT, BASIC_MAX_KEYWORD_COUNT),
-    "JCOMAL": (BASIC_MIN_KEYWORD_COUNT, BASIC_MAX_KEYWORD_COUNT),
-    "JQUANT": (1, 3),
-    "JHEP": (2, 4),
 }
 
 DEFAULT_KEYWORD_FILTERS = {
     None: "plugins.wjs_submission.keywords.get_keywords_by_journal",
     "JCOM": "plugins.wjs_submission.keywords.get_keywords_by_journal",
     "JCOMAL": "plugins.wjs_submission.keywords.get_keywords_by_journal",
-    "JQUANT": "plugins.wjs_submission.keywords.get_keywords_by_journal",
+    "JQuant": "plugins.wjs_submission.keywords.get_keywords_by_journal",
     "JHEP": "plugins.wjs_submission.keywords.get_keywords_by_journal_and_arxiv_category",
 }
 
@@ -34,7 +30,7 @@ DEFAULT_ARTICLE_LANGUAGES = {
 DEFAULT_ACCESS_MODE_CONTROL_FUNCTION = {
     None: "plugins.wjs_submission.access_mode.noop",
     "JINST": "plugins.wjs_submission.access_mode.get_cern_oata_fallback_access_mode",
-    "JQUANT": "plugins.wjs_submission.access_mode.get_cern_journals_access_mode",
+    "JQuant": "plugins.wjs_submission.access_mode.get_cern_journals_access_mode",
     "JHEP": "plugins.wjs_submission.access_mode.get_cern_journals_access_mode",
 }
 
@@ -121,14 +117,10 @@ DEFAULT_SUBMISSION_FILE_TYPES = {
 }
 
 
+KEYWORDS_INTERVAL_PER_JOURNAL = getattr(
+    settings, "SUBMISSION_KEYWORDS_INTERVAL_PER_JOURNAL", DEFAULT_KEYWORDS_INTERVAL_PER_JOURNAL
+)
 KEYWORD_VALIDATORS = getattr(settings, "SUBMISSION_KEYWORD_VALIDATORS", DEFAULT_KEYWORD_VALIDATORS)
-
-KEYWORD_VALIDATORS_COMPLEX_LOGIC = [
-    key
-    for key, validators in KEYWORD_VALIDATORS.items()
-    if key is not None and validators != ("plugins.wjs_submission.keywords.basic_keyword_selection_rule",)
-]
-
 KEYWORD_FILTERS = getattr(settings, "SUBMISSION_KEYWORD_VALIDATORS", DEFAULT_KEYWORD_FILTERS)
 ARTICLE_LANGUAGES = getattr(settings, "SUBMISSION_ARTICLE_LANGUAGES", DEFAULT_ARTICLE_LANGUAGES)
 

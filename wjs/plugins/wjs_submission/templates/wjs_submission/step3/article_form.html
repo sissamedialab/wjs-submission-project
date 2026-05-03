@@ -193,15 +193,14 @@
 
 {% block js %}
   {{ block.super }}
+  <script>
+    const MIN_KEYWORDS_COUNT = {{ keywords_count.0 }};
+    const MAX_KEYWORDS_COUNT = {{ keywords_count.1 }};
+  </script>
   <link rel="stylesheet" href="https://code.jquery.com/ui/1.11.0/themes/smoothness/jquery-ui.css">
   <script type="text/javascript" src="{% static "admin/js/vendor/jquery/jquery.js" %}"></script>
   <script src="{% static 'common/js/jq-ui.min.js' %}"></script>
   <script src="{% static 'common/js/tagit.js' %}"></script>
-  <script>
-    const MIN_KEYWORDS_COUNT = {{ min_keywords_count }};
-    const MAX_KEYWORDS_COUNT = {{ max_keywords_count }};
-    const KEYWORD_VALIDATORS_COMPLEX_LOGIC = {{ keyword_validators_complex_logic|yesno:"true,false" }};
-  </script>
   <script src="{% static "js/keywords.js" %}"></script>
   <script>
     $(document).ready(function() {
