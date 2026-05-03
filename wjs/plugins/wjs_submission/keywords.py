@@ -2,6 +2,8 @@ from django.db.models import Q, QuerySet
 from journal.models import Journal
 from submission.models import Keyword, KeywordGroup
 
+from .settings import BASIC_MAX_KEYWORD_COUNT, BASIC_MIN_KEYWORD_COUNT, MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL
+
 
 def get_keywords_by_journal(journal: Journal, arxiv_category: str | None = None) -> QuerySet:
     """
@@ -76,14 +78,14 @@ def basic_keyword_selection_rule(
     Validate keyword selection for JCOM and JCOMAL submissions.
 
     Rules:
-    - A submission must include between 1 and 4 keywords.
+    - A submission must include between BASIC_MIN_KEYWORD_COUNT and BASIC_MAX_KEYWORD_COUNT keywords.
 
     :param keyword_weights: Dictionary of keyword_id -> weight.
     :return: Tuple (is_valid, error_message). If valid, error_message is None.
     """
     count = len(keyword_weights)
-    if count < 1 or count > 4:
-        return False, "You must select between 1 and 4 keywords."
+    if count < BASIC_MIN_KEYWORD_COUNT or count > BASIC_MAX_KEYWORD_COUNT:
+        return False, f"You must select between {BASIC_MIN_KEYWORD_COUNT} and {BASIC_MAX_KEYWORD_COUNT} keywords."
     return True, None
 
 
@@ -96,7 +98,8 @@ def jquant_keyword_selection_rule(
     Validate keyword selection for JQuant submissions.
 
     Rules:
-    - A submission must include between 1 and 3 keywords.
+    - A submission must include between MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL["JQUANT"][0]
+    and MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL["JQUANT"][1] keywords.
     - All keyword IDs must exist in the database and belong to the given journal.
     - All keywords must belong to a group (free keywords are not allowed).
 
@@ -106,8 +109,14 @@ def jquant_keyword_selection_rule(
     :return: Tuple (is_valid, error_message). If valid, error_message is None.
     """
     count = len(keyword_weights)
-    if count < 1 or count > 3:
-        return False, "You must select between 2 and 3 keywords."
+    if (
+        count < MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL["JQUANT"][0]
+        or count > MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL["JQUANT"][1]
+    ):
+        return False, (
+            f"You must select between {MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL['JQUANT'][0]} "
+            f"and {MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL['JQUANT'][1]} keywords."
+        )
 
     submitted_ids = set(keyword_weights.keys())
 
@@ -138,8 +147,9 @@ def jhep_keyword_selection_rule(
         * Exactly one keyword must be selected.
         * It must belong to the "hep-ex" group.
     - Otherwise:
-        * At least 2 keywords must come from the same journal group.
-        * Up to 2 additional keywords may come from other groups (total max 4).
+        * At least MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL["JHEP"][0] keywords must come from the same journal group.
+        * Up to 2 additional keywords may come from other groups
+        (total max MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL["JHEP"][1]).
         * Keywords from the "hep-ex" group are not allowed.
     """
     ok = True
@@ -176,9 +186,15 @@ def jhep_keyword_selection_rule(
                     message = "For hep-ex, the single keyword must belong to the hep-ex group."
         else:
             total = len(submitted_ids)
-            if total < 2 or total > 4:
+            if (
+                total < MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL["JHEP"][0]
+                or total > MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL["JHEP"][1]
+            ):
                 ok = False
-                message = "You must select between 2 and 4 keywords."
+                message = (
+                    f"You must select between {MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL['JHEP'][0]} "
+                    f"and {MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL['JHEP'][1]} keywords."
+                )
             elif "hep-ex" in group_map:
                 ok = False
                 message = "Keywords from the hep-ex group are not allowed for this arXiv category."

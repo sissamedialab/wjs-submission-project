@@ -9,6 +9,16 @@ DEFAULT_KEYWORD_VALIDATORS = {
     "JHEP": ("plugins.wjs_submission.keywords.jhep_keyword_selection_rule",),
 }
 
+BASIC_MAX_KEYWORD_COUNT = 4
+BASIC_MIN_KEYWORD_COUNT = 1
+
+MIN_MAX_KEYWORDS_COUNT_PER_JOURNAL = {
+    "JCOM": (BASIC_MIN_KEYWORD_COUNT, BASIC_MAX_KEYWORD_COUNT),
+    "JCOMAL": (BASIC_MIN_KEYWORD_COUNT, BASIC_MAX_KEYWORD_COUNT),
+    "JQUANT": (1, 3),
+    "JHEP": (2, 4),
+}
+
 DEFAULT_KEYWORD_FILTERS = {
     None: "plugins.wjs_submission.keywords.get_keywords_by_journal",
     "JCOM": "plugins.wjs_submission.keywords.get_keywords_by_journal",
@@ -112,6 +122,13 @@ DEFAULT_SUBMISSION_FILE_TYPES = {
 
 
 KEYWORD_VALIDATORS = getattr(settings, "SUBMISSION_KEYWORD_VALIDATORS", DEFAULT_KEYWORD_VALIDATORS)
+
+KEYWORD_VALIDATORS_COMPLEX_LOGIC = [
+    key
+    for key, validators in KEYWORD_VALIDATORS.items()
+    if key is not None and validators != ("plugins.wjs_submission.keywords.basic_keyword_selection_rule",)
+]
+
 KEYWORD_FILTERS = getattr(settings, "SUBMISSION_KEYWORD_VALIDATORS", DEFAULT_KEYWORD_FILTERS)
 ARTICLE_LANGUAGES = getattr(settings, "SUBMISSION_ARTICLE_LANGUAGES", DEFAULT_ARTICLE_LANGUAGES)
 

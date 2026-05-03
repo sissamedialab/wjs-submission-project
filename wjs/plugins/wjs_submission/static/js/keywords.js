@@ -44,14 +44,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const freeKeywordsSection = document.getElementById("js-free-keyword-section");
     if (freeKeywordsSection) {
-      if (checkedCount >= 1) {
+      if (checkedCount >= MIN_KEYWORDS_COUNT) {
         freeKeywordsSection.classList.remove('d-none');
       } else {
         freeKeywordsSection.classList.add('d-none');
       }
     }
 
-    if (checkedCount < 1 || checkedCount > 3) {
+    if (checkedCount < MIN_KEYWORDS_COUNT || checkedCount > MAX_KEYWORDS_COUNT) {
       if (submitBtn) submitBtn.disabled = true;
       if (hiddenCbChecked) {
         hiddenCbChecked.checked = false;
@@ -72,7 +72,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function disableCbMaxSelected() {
     const keywordCheckboxes = document.querySelectorAll('input[type="checkbox"][name="keywords"], input[type="checkbox"][name="keyword"]');
     const checkedCount = Array.from(keywordCheckboxes).filter(cb => cb.checked).length;
-    const disable = checkedCount >= 3;
+    const disable = checkedCount >= MAX_KEYWORDS_COUNT;
 
     keywordCheckboxes.forEach(cb => {
       if (!cb.checked) {
