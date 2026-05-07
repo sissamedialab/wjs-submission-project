@@ -25,9 +25,11 @@
             </div>
             <div id="form-footer"></div>
           {% endblock submission_required_fields %}
-          <div class="wjs-submission-form__footer-button">
-            <button type="submit" class="btn btn-primary" id="submit-btn" disabled>Save and continue</button>
-          </div>
+          {% block submission_buttons %}
+            <div class="wjs-submission-form__footer-button">
+              <button type="submit" class="btn btn-primary" id="submit-btn" disabled>Save and continue</button>
+            </div>
+          {% endblock submission_buttons %}
         </div>
       {% endblock submission_footer %}
     </form>

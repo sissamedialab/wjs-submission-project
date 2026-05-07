@@ -18,6 +18,7 @@ from ..step6.views import get_conversion_status, get_files
 from ..step7.views import get_article_fundings
 from ..workflow import (
     is_revision,
+    is_revision_confirm,
     is_revision_full,
     is_revision_metadata,
     step_check_access_funding,
@@ -144,10 +145,13 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
             context["arxiv_id"] = arxiv_identifier.identifier
         context["show_issue"] = step_check_select_issue(self.object.journal, user=self.request.user)
         context["is_revision"] = is_revision(self.object)
+        context["is_revision_metadata"] = is_revision_metadata(self.object)
+        context["is_revision_full"] = is_revision_full(self.object)
+        context["is_revision_confirm"] = is_revision_confirm(self.object)
         context["articles_fundings"] = get_article_fundings(self.object)
         context["article_authors"] = get_article_authors(self.object)
         context["article_collaborations"] = get_article_collaborations(self.object)
-        if is_revision_full(self.object):
+        if context["is_revision_full"]:
             context["article_data"] = self.object.revisionstorage.data
             context["files_data"] = {
                 "cas": self.object.revisionstorage.data["cas"],
@@ -175,7 +179,7 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
             context["correspondence_author"] = Account.objects.get(pk=context["article_data"]["correspondence_author"])
             context["affiliation_country"] = Country.objects.get(pk=context["article_data"]["affiliation_country"])
             context["validate_revision_data"] = self._validate_revision_data(self.object)
-            context["authors_contributions"] = self.object.revisionstorage.data["authors_contributions"]
+            context["authors_contributions"] = self.object.revisionstorage.data.get("authors_contributions")
         else:
             context["article_data"] = self.object
             context["files_data"] = {
@@ -193,11 +197,9 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
             context["access_mode"] = AccessModeJournal.objects.get(
                 journal=self.object.journal, access_mode_id=self.object.submission_data.access_mode.pk
             )
-            context["article_data"].special_request = self.object.submission_data.special_request
-            context["article_data"].cover_letter_file = self.object.submission_data.cover_letter_file
             context["correspondence_author"] = self.object.correspondence_author
             context["affiliation_country"] = self.object.submission_data.affiliation_country
-            if is_revision(self.object):
+            if context["is_revision"]:
                 if title := self.object.revisionstorage.data.get("title"):
                     context["article_data"].title = title
                 if abstract := self.object.revisionstorage.data.get("abstract"):
@@ -206,6 +208,17 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                     context["article_data"].language = dict(LANGUAGE_CHOICES)[language]
                 if section := self.object.revisionstorage.data.get("section"):
                     context["article_data"].section = Section.objects.get(pk=section)
+                context["article_data"].special_request = self.object.revisionstorage.data.get("special_request", "")
+                context["article_data"].comments_editor = self.object.revisionstorage.data.get("comments_editor", "")
+                context["article_data"].cover_letter_file = self.object.revisionstorage.data.get(
+                    "cover_letter_file", ""
+                )
+                context["article_data"].competing_interests = self.object.revisionstorage.data.get(
+                    "competing_interests", ""
+                )
+            else:
+                context["article_data"].special_request = self.object.submission_data.special_request
+                context["article_data"].cover_letter_file = self.object.submission_data.cover_letter_file
             context["validate_revision_data"] = self._validate_revision_data(self.object)
 
         # Include files (manuscript_files, data_figure_files, etc.)
