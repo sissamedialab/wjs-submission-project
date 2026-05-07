@@ -1,13 +1,4 @@
 /**
- * Enable the "add-author-btn" button when a search is initiated.
- *
- * @return {void} Does not return a value.
- */
-function updateAuthorFieldsStatus() {
-  document.getElementById("add-author-btn").disabled = false;
-}
-
-/**
  * Updates the visibility and required status of collaboration-related fields based on the provided value.
  * Toggles classes and triggers updates to a required fields checklist if necessary.
  *
@@ -63,18 +54,5 @@ function setupCollaborationsSelection() {
     button.addEventListener("change", function(event) {
       updateCollaborationFieldsStatus("collaboration_relation", event.target.value);
     });
-  });
-}
-
-/**
- * Sets up the author selection process by adding an event listener
- * to monitor the "typeahead:asyncreceive" event and trigger the
- * necessary updates to author fields.
- *
- * @return {void} No return value.
- */
-function setupAuthorSelection() {
-  document.addEventListener("typeahead:asyncreceive", function() {
-    updateAuthorFieldsStatus();
   });
 }
