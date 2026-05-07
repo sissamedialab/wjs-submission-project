@@ -38,7 +38,11 @@
         {% endif %}
         {% for answer in article.fieldanswer_set.all %}
           {% if is_revision %}
-            {% include "wjs_submission/step8/includes/submission_field.html" with label=answer.field.name kind=answer.field.kind answer=article_data|get_value:answer.field.name %}
+            {% if article_data|get_value:answer.field.name %}
+              {% include "wjs_submission/step8/includes/submission_field.html" with label=answer.field.name kind=answer.field.kind answer=article_data|get_value:answer.field.name %}
+            {% else %}
+              {% include "wjs_submission/step8/includes/submission_field.html" with label=answer.field.name kind=answer.field.kind answer=answer.answer %}
+            {% endif %}
           {% else %}
             {% include "wjs_submission/step8/includes/submission_field.html" with label=answer.field.name kind=answer.field.kind answer=answer.answer %}
           {% endif %}
@@ -89,42 +93,44 @@
     </div>
   </div>
 
-  <div class="wjs-submission-form__section mb-5">
-    <div class="wjs-submission-form__form-label-title-container">
-      <h2 class="wjs-submission-form__form-label-title">
-        Cover letter
-      </h2>
+  {% if not is_revision_metadata %}
+    <div class="wjs-submission-form__section mb-5">
+      <div class="wjs-submission-form__form-label-title-container">
+        <h2 class="wjs-submission-form__form-label-title">
+          Cover letter
+        </h2>
 
-      {% if steps.1.available %}
-        <a href="{% url 'wjs_submission_1' article_id=article.pk %}#cover_letter-section" class="wjs-submission-navigation-step__link">
-          <i class="bi bi-pencil ms-1" aria-hidden="true"></i>
-        </a>
-      {% endif %}
+        {% if steps.1.available %}
+          <a href="{% url 'wjs_submission_1' article_id=article.pk %}#cover_letter-section" class="wjs-submission-navigation-step__link">
+            <i class="bi bi-pencil ms-1" aria-hidden="true"></i>
+          </a>
+        {% endif %}
+      </div>
+      <div class="wjs-submission-form__section-content">
+        {% if article_data.comments_editor %}
+          <div class="wjs-submission-form__text-area mb-3">
+            {{ article_data.comments_editor|safe }}
+          </div>
+        {% endif %}
+        {% if article_data.cover_letter_file %}
+          <div class="d-flex justify-content-between">
+            {% url "article_file_download" identifier_type="id" identifier=article.pk file_id=article_data.cover_letter_file.pk as cover_letter_file_url %}
+            <p><strong>Attachment:</strong>&nbsp;<a href="{{ cover_letter_file_url }}">{{ article_data.cover_letter_file.original_filename }}</a></p>
+            <p>
+              <a href="{{ cover_letter_file_url }}" class="fs-5 text">
+                <i class="bi bi-cloud-arrow-down ms-1" aria-hidden="true"></i>
+              </a>
+            </p>
+          </div>
+        {% endif %}
+        {% if not article_data.comments_editor and not article_data.cover_letter_file %}
+          <div class="wjs-submission-form__section-content">
+            <p>{% translate "Not provided" %}</p>
+          </div>
+        {% endif %}
+      </div>
     </div>
-    <div class="wjs-submission-form__section-content">
-      {% if article_data.comments_editor %}
-        <div class="wjs-submission-form__text-area mb-3">
-          {{ article_data.comments_editor|safe }}
-        </div>
-      {% endif %}
-      {% if article_data.cover_letter_file %}
-        <div class="d-flex justify-content-between">
-          {% url "article_file_download" identifier_type="id" identifier=article.pk file_id=article_data.cover_letter_file.pk as cover_letter_file_url %}
-          <p><strong>Attachment:</strong>&nbsp;<a href="{{ cover_letter_file_url }}">{{ article_data.cover_letter_file.original_filename }}</a></p>
-          <p>
-            <a href="{{ cover_letter_file_url }}">
-              <i class="bi bi-cloud-arrow-down ms-1" aria-hidden="true"></i>
-            </a>
-          </p>
-        </div>
-      {% endif %}
-      {% if not article_data.comments_editor and not article_data.cover_letter_file %}
-        <div class="wjs-submission-form__section-content">
-          <label class="fw-bold" for="id_title">{% translate "Not provided" %}</label>
-        </div>
-      {% endif %}
-    </div>
-  </div>
+  {% endif %}
 
   {% if show_issue %}
     <div class="wjs-submission-form__section mb-5">
@@ -417,61 +423,59 @@
 
   {% if journal.submissionconfiguration.funding %}
     <div class="wjs-submission-form__section mb-5">
-    <div class="wjs-submission-form__form-label-title-container">
-      <h2 class="wjs-submission-form__form-label-title">
-        Funders
-      </h2>
-      {% if steps.7.available %}
-        <a href="{% url 'wjs_submission_7' article_id=article.pk %}#step7-funder" class="wjs-submission-navigation-step__link">
-          <i class="bi bi-pencil ms-1" aria-hidden="true"></i>
-        </a>
-      {% endif %}
+      <div class="wjs-submission-form__form-label-title-container">
+        <h2 class="wjs-submission-form__form-label-title">
+          Funders
+        </h2>
+        {% if steps.7.available %}
+          <a href="{% url 'wjs_submission_7' article_id=article.pk %}#step7-funder" class="wjs-submission-navigation-step__link">
+            <i class="bi bi-pencil ms-1" aria-hidden="true"></i>
+          </a>
+        {% endif %}
+      </div>
+      {% for funding in articles_fundings %}
+        <div class="wjs-submission-form__section-content mb-2 d-flex">
+          <div class="w-25">
+            <label class=" fw-bold">Name</label>
+            <div>{{ funding.name }}</div>
+          </div>
+          <div class="w-25">
+            <label class=" fw-bold">DOI</label>
+            <div>{{ funding.fundref_id|default:"-" }}</div>
+          </div>
+          <div class="w-25">
+            <label class=" fw-bold">Country</label>
+            <div>{{ funding.country|default:"-" }}</div>
+          </div>
+          <div class="w-25">
+            <label class=" fw-bold">Grant / award number</label>
+            <div>{{ funding.funding_id|default:"-" }}</div>
+          </div>
+        </div>
+        {% if funding.funding_statement %}
+          <div class="wjs-submission-form__section-content mb-2">
+            <label class=" fw-bold">Statement</label>
+            <div class="wjs-submission-form__text-area">{{ funding.funding_statement }}</div>
+          </div>
+        {% endif %}
+        {% if not forloop.last %}
+          <hr class="mt-4 mb-4">{% endif %}
+      {% empty %}
+        <div class="wjs-submission-form__section-content">
+          <label class="fw-bold" for="id_title">Not set</label>
+        </div>
+      {% endfor %}
     </div>
-    {% for funding in articles_fundings %}
-      <div class="wjs-submission-form__section-content mb-2 d-flex">
-        <div class="w-25">
-          <label class=" fw-bold">Name</label>
-          <div>{{ funding.name }}</div>
-        </div>
-        <div class="w-25">
-          <label class=" fw-bold">DOI</label>
-          <div>{{ funding.fundref_id|default:"-" }}</div>
-        </div>
-        <div class="w-25">
-          <label class=" fw-bold">Country</label>
-          <div>{{ funding.country|default:"-" }}</div>
-        </div>
-        <div class="w-25">
-          <label class=" fw-bold">Grant / award number</label>
-          <div>{{ funding.funding_id|default:"-" }}</div>
-        </div>
-      </div>
-      {% if funding.funding_statement %}
-        <div class="wjs-submission-form__section-content mb-2">
-          <label class=" fw-bold">Statement</label>
-          <div class="wjs-submission-form__text-area">{{ funding.funding_statement }}</div>
-        </div>
-      {% endif %}
-      {% if not forloop.last %}
-        <hr class="mt-4 mb-4">{% endif %}
-    {% empty %}
-      <div class="wjs-submission-form__section-content">
-        <label class="fw-bold" for="id_title">Not set</label>
-      </div>
-    {% endfor %}
   {% endif %}
-</div>
 
 {% endblock submission_flow %}
 
-{% block submission_footer %}
+{% block submission_required_fields %}
   {% if is_revision %}
     {% if validate_revision_data.valid %}
-      <div class="wjs-submission-form__footer">
         <div class="wjs-submission-form__footer-button d-flex justify-content-between align-items-center">
           <a href="{% url 'wjs_submission_7' article_id=article.pk %}" class="btn btn-secondary" id="back-btn">Back</a>
           <button type="submit" class="btn btn-primary" id="submit-btn">Submit</button>
-        </div>
       </div>
     {% else %}
       <div class="mx-2 my-1">
@@ -491,14 +495,16 @@
       </ul>
     {% endif %}
   {% else %}
-    <div class="wjs-submission-form__footer">
       <div class="wjs-submission-form__footer-button d-flex justify-content-between align-items-center">
         <a href="{% url 'wjs_submission_7' article_id=article.pk %}" class="btn btn-secondary" id="back-btn">Back</a>
         <button type="submit" class="btn btn-primary" id="submit-btn">Submit</button>
       </div>
-    </div>
   {% endif %}
-{% endblock submission_footer %}
+{% endblock submission_required_fields %}
+
+{% block submission_buttons %}
+{% endblock submission_buttons %}
+
 {% block js %}
   {{ block.super }}
   {% include "wjs/base/fragments/mathjax.html" %}

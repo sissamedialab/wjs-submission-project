@@ -1,3 +1,5 @@
+import contextlib
+
 from core import files as core_files
 from core.models import File
 from django import forms
@@ -6,6 +8,7 @@ from django.forms import ModelForm
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 from events import logic as events_logic
+from plugins.wjs_submission.workflow import is_revision_confirm, is_revision_full
 from submission.models import Article, Field, FieldAnswer
 from utils.logic import get_current_request
 from utils.setting_handler import get_setting
@@ -119,7 +122,11 @@ class SubmissionStep1Form(forms.ModelForm):
             # Using a custom attribute to not trigger bootstrap validation as we use custom logic which checks tinymce
             self.fields["competing_interests"].widget.attrs["js_required"] = True
 
-        if self.journal.submissionconfiguration.comments_to_the_editor:
+        if (
+            self.journal.submissionconfiguration.comments_to_the_editor
+            or is_revision_full(self.instance)
+            or is_revision_confirm(self.instance)
+        ):
             # Using a custom attribute to not trigger bootstrap validation as we use custom logic which checks tinymce
             self.fields["comments_editor"].widget.attrs["js_required"] = True
             self.fields["comments_editor"].widget.attrs["alternate_field"] = "cover_letter_file"
@@ -334,11 +341,13 @@ class RevisionConfirmForm(SubmissionStep1Form):
                 continue
             kwargs["initial"][field] = value
 
+        super().__init__(*args, **kwargs)
+
         if cover_letter_file_id := revision_storage.data.get("cover_letter_file"):
             django_file = CoreFileWrapper(File.objects.get(id=cover_letter_file_id))
-            kwargs["initial"].update({"cover_letter_file": django_file})
-
-        super().__init__(*args, **kwargs)
+            self.initial.update({"cover_letter_file": django_file})
+        else:
+            self.initial.update({"cover_letter_file": None})
 
         if not get_setting("general", "revision_checklist", self.journal).processed_value:
             self.fields["submission_requirements"].widget = forms.HiddenInput()
@@ -388,12 +397,18 @@ class RevisionConfirmForm(SubmissionStep1Form):
                         pass
                     elif field_value is False:
                         # "False" here means that we should clear the existing file
-                        File.objects.get(id=revision_storage.data[field_name]).delete()
+                        # We want to ignore non existing file (which means the user have some some back-and-fort
+                        # or messed with parallels tabs
+                        with contextlib.suppress(File.DoesNotExist):
+                            File.objects.get(id=revision_storage.data[field_name]).delete()
                         revision_storage.data.pop(field_name)
                     else:
                         # Delete existing (draft) file if it exists
                         if old_file_id := revision_storage.data.get(field_name):
-                            File.objects.get(id=old_file_id).delete()
+                            # We want to ignore non existing file (which means the user have some some back-and-fort
+                            # or messed with parallels tabs
+                            with contextlib.suppress(File.DoesNotExist):
+                                File.objects.get(id=old_file_id).delete()
 
                         # Save the file and store its pk
                         saved_file = core_files.save_file_to_article(
