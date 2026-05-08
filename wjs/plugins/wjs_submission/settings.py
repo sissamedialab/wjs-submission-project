@@ -3,6 +3,8 @@ from django.utils.translation import gettext_lazy as _
 
 DEFAULT_KEYWORDS_INTERVAL_PER_JOURNAL = {
     None: (1, 4),
+    "JQuant": (2, 4),
+    "JHEP": (2, 4),
 }
 
 DEFAULT_KEYWORD_VALIDATORS = {

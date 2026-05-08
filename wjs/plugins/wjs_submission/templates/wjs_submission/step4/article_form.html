@@ -13,6 +13,7 @@
     <div class="wjs-submission-form__section-content">
       {% url 'add-author' article.pk as add_author_url %}
       {% if settings.DEBUG %}{{ form.errors }}{% endif %}
+    {{ form.errors }}
       <div class="wjs-submission-form__authors-intro-text">
         {% if is_revision %}
           {{ journal|setting:"step4_intro_text_revision"|safe }}

@@ -173,7 +173,7 @@ def get_oa_transformative_agreement(user: Account, article: Article) -> AccessMo
     oa = AccessMode.objects.get(code=OA_CODE_TA)
     countries = ACCESS_MODE_COUNTRIES.get(article.journal.code, ACCESS_MODE_COUNTRIES[None])
     affiliation_country = get_affiliation_country(article)
-    if affiliation_country.code in countries:
+    if affiliation_country and affiliation_country.code in countries:
         return get_configuration(oa, article.journal)
     return get_configuration(None, article.journal)
 
