@@ -5,20 +5,20 @@ document.addEventListener("DOMContentLoaded", function () {
     const accordionContainer = document.getElementById("groupAccordion");
 
     function getAccordionState() {
-      if (!accordionContainer) return { buttons: [], allExpanded: false };
+      if (!accordionContainer) return {buttons: [], allExpanded: false};
       const buttons = accordionContainer.querySelectorAll('.accordion-button[type="button"][data-bs-toggle="collapse"]');
       const allExpanded = buttons.length > 0 && Array.from(buttons).every(btn => btn.getAttribute('aria-expanded') === 'true');
-      return { buttons, allExpanded };
+      return {buttons, allExpanded};
     }
 
     function updateToggleAllButtonState() {
-      const { allExpanded } = getAccordionState();
+      const {allExpanded} = getAccordionState();
       toggleBtn.setAttribute('aria-expanded', allExpanded);
       toggleBtn.textContent = allExpanded ? "Close All" : "Open All";
     }
 
     toggleBtn.addEventListener("click", function () {
-      const { buttons, allExpanded } = getAccordionState();
+      const {buttons, allExpanded} = getAccordionState();
       buttons.forEach(function (btn) {
         const target = document.querySelector(btn.getAttribute("data-bs-target"));
         if (target) {
@@ -50,18 +50,17 @@ document.addEventListener("DOMContentLoaded", function () {
         freeKeywordsSection.classList.add('d-none');
       }
     }
-
     if (checkedCount < MIN_KEYWORDS_COUNT || checkedCount > MAX_KEYWORDS_COUNT) {
       if (submitBtn) submitBtn.disabled = true;
       if (hiddenCbChecked) {
         hiddenCbChecked.checked = false;
-        hiddenCbChecked.dispatchEvent(new Event("change", { bubbles: true }));
+        hiddenCbChecked.dispatchEvent(new Event("change", {bubbles: true}));
       }
     } else {
       if (submitBtn) submitBtn.disabled = false;
       if (hiddenCbChecked) {
         hiddenCbChecked.checked = true;
-        hiddenCbChecked.dispatchEvent(new Event("change", { bubbles: true }));
+        hiddenCbChecked.dispatchEvent(new Event("change", {bubbles: true}));
       }
     }
   }
@@ -104,20 +103,20 @@ document.addEventListener("DOMContentLoaded", function () {
     const hiddenCbChecked = document.getElementById("js-keywords-weight-hidden-required");
     if (hiddenCbChecked) {
       hiddenCbChecked.checked = isValid;
-      hiddenCbChecked.dispatchEvent(new Event("change", { bubbles: true }));
+      hiddenCbChecked.dispatchEvent(new Event("change", {bubbles: true}));
     }
   }
 
   function addKeywordWeightList() {
-let initialKeywordWeights = {};
-const jsonScript = document.getElementById("initial-keyword-weights");
-if (jsonScript) {
-  try {
-    initialKeywordWeights = JSON.parse(jsonScript.textContent);
-  } catch (e) {
-    console.warn("Failed to parse initial keyword weights", e);
-  }
-}
+    let initialKeywordWeights = {};
+    const jsonScript = document.getElementById("initial-keyword-weights");
+    if (jsonScript) {
+      try {
+        initialKeywordWeights = JSON.parse(jsonScript.textContent);
+      } catch (e) {
+        console.warn("Failed to parse initial keyword weights", e);
+      }
+    }
 
     const keywordWeightListContainer = document.querySelector('.wjs-submission-form__keywords-weight-container');
     if (!keywordWeightListContainer) return;
@@ -180,7 +179,7 @@ if (jsonScript) {
         radio.value = weight;
 
         if ((prevSelectedWeights[radioName] && prevSelectedWeights[radioName] == String(weight)) ||
-            (initialKeywordWeights[checkbox.value] && String(initialKeywordWeights[checkbox.value]) === String(weight))) {
+          (initialKeywordWeights[checkbox.value] && String(initialKeywordWeights[checkbox.value]) === String(weight))) {
           radio.checked = true;
         }
 
@@ -228,7 +227,7 @@ if (jsonScript) {
     keywordCheckboxes.forEach(checkbox => {
       const subgroupCollapse = checkbox.closest('.accordion-collapse');
       if (subgroupCollapse) {
-        bootstrap.Collapse.getOrCreateInstance(subgroupCollapse, { toggle: false }).show();
+        bootstrap.Collapse.getOrCreateInstance(subgroupCollapse, {toggle: false}).show();
 
         const subgroupButton = subgroupCollapse.previousElementSibling?.querySelector('.accordion-button');
         if (subgroupButton) {
@@ -240,7 +239,7 @@ if (jsonScript) {
         if (subgroupItem) {
           const parentCollapse = subgroupItem.closest('.accordion-collapse');
           if (parentCollapse) {
-            bootstrap.Collapse.getOrCreateInstance(parentCollapse, { toggle: false }).show();
+            bootstrap.Collapse.getOrCreateInstance(parentCollapse, {toggle: false}).show();
             const parentButton = parentCollapse.previousElementSibling?.querySelector('.accordion-button');
             if (parentButton) {
               parentButton.classList.remove('collapsed');
