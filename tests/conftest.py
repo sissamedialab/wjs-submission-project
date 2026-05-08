@@ -4,7 +4,15 @@ from datetime import timedelta
 from pathlib import Path
 
 import pytest
-from core.models import File, SupplementaryFile
+from core.models import (
+    ControlledAffiliation,
+    Country,
+    File,
+    Location,
+    Organization,
+    OrganizationName,
+    SupplementaryFile,
+)
 from django.apps import apps
 from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model
@@ -172,15 +180,22 @@ def _user(name: str = "user", admin_flag: bool = False) -> Account:
     user, _ = Account.objects.get_or_create(
         username=f"{name}@invalid.com",
         email=f"{name}@invalid.com",
-        first_name="name",
-        last_name="name",
+        first_name=name,
+        last_name=f"last {name}",
         is_active=True,
         is_staff=admin_flag,
         is_admin=admin_flag,
         is_superuser=admin_flag,
+        orcid="0000-0000-0000-0000",
     )
     user.set_password("password")
     user.save()
+    country = Country.objects.create(name="United Kingdom", code="GB")
+    location = Location.objects.create(country=country, name="Test City")
+    organization = Organization.objects.create()
+    OrganizationName.objects.create(value="Test Company", ror_display_for=organization)
+    organization.locations.add(location)
+    ControlledAffiliation.objects.create(account=user, title="Prof", is_primary=True, organization=organization)
     # FIXME: This is needed to run tests using wjs.defaults.tests (wjs.jcom-profile defaults)
     #  instead of wjs.defaults.tests_submission (wjs-submission defaults) due to the privacy checking middleware
     try:

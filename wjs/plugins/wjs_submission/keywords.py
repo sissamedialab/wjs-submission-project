@@ -166,7 +166,7 @@ def jhep_keyword_selection_rule(
         * Keywords from the "hep-ex" group are not allowed.
         * A submission must include a range of keywords defined in KEYWORDS_INTERVAL_PER_JOURNAL settin.
     """
-    ok = True
+    generic_keywords_check = True
     message: str | None = None
 
     keyword_range = get_keyword_range_by_journal(journal)
@@ -178,40 +178,40 @@ def jhep_keyword_selection_rule(
     found_ids = {kw["id"] for kw in keywords}
     invalid_ids = submitted_ids - found_ids
     if invalid_ids:
-        ok = False
+        generic_keywords_check = False
         message = f"Invalid keyword(s) for this journal: {sorted(invalid_ids)}"
 
     group_map: dict[str, set[int]] = {}
     for kw in keywords:
         group = kw["group__name"]
         if group is None:
-            ok = False
+            generic_keywords_check = False
             message = f"Keyword {kw['id']} is not assigned to any group and cannot be selected."
         group_map.setdefault(group, set()).add(kw["id"])
 
-    if ok:
+    if generic_keywords_check:
         if arxiv_category == "hep-ex":
             if len(submitted_ids) != 1:
-                ok = False
+                generic_keywords_check = False
                 message = "For hep-ex, you must select exactly 1 keyword."
             else:
                 group = next(iter(group_map.keys()))
                 if group != "hep-ex":
-                    ok = False
+                    generic_keywords_check = False
                     message = "For hep-ex, the single keyword must belong to the hep-ex group."
         else:
             total = len(submitted_ids)
 
             if not (keyword_range[0] <= total <= keyword_range[1]):
-                ok = False
+                generic_keywords_check = False
                 message = f"You must select between {keyword_range[0]} and {keyword_range[1]} keywords."
             elif "hep-ex" in group_map:
-                ok = False
+                generic_keywords_check = False
                 message = "Keywords from the hep-ex group are not allowed for this arXiv category."
             else:
                 max_in_group = max(len(ids) for ids in group_map.values())
                 if max_in_group < keyword_range[0]:
-                    ok = False
+                    generic_keywords_check = False
                     message = f"You must select at least {keyword_range[0]} keywords from the same journal group."  # noqa: S608
 
-    return ok, message
+    return generic_keywords_check, message

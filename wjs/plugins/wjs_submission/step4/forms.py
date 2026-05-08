@@ -3,7 +3,7 @@ from core.models import Account, ControlledAffiliation
 from django import forms
 from django.db.models import QuerySet
 from django.utils.translation import gettext_lazy as _
-from submission.models import Article, ArticleAuthorOrder, FrozenAuthor
+from submission.models import Article, FrozenAuthor
 
 from ..account_validation import (
     ProfileCompletionStatus,
@@ -434,7 +434,7 @@ class RevisionStep4Form(SubmissionStep4Form):
         revision_storage.data["affiliation_pk"] = self.cleaned_data.get("affiliation").pk
         revision_storage.data["authors_contributions"] = self.cleaned_data.get("authors_contributions")
 
-        author_ids = ArticleAuthorOrder.objects.filter(article=self.instance).values_list("author_id", flat=True)
+        author_ids = FrozenAuthor.objects.filter(article=self.instance).values_list("author_id", flat=True)
         revision_storage.data["article_authors"] = list(author_ids)
         revision_storage.save()
         if self.cleaned_data.get("collaboration_relation") == "none":

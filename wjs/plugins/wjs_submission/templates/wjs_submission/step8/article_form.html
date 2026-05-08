@@ -112,7 +112,7 @@
             {{ article_data.comments_editor|safe }}
           </div>
         {% endif %}
-        {% if article_data.cover_letter_file %}
+        {% if article_data.cover_letter_file and article_data.cover_letter_file.original_filename %}
           <div class="d-flex justify-content-between">
             {% url "article_file_download" identifier_type="id" identifier=article.pk file_id=article_data.cover_letter_file.pk as cover_letter_file_url %}
             <p><strong>Attachment:</strong>&nbsp;<a href="{{ cover_letter_file_url }}">{{ article_data.cover_letter_file.original_filename }}</a></p>
@@ -358,7 +358,7 @@
       {% include "wjs_submission/step6/includes/files_table.html" with files_list=manuscript_files show_conversion=True button_name="trigger_manuscript" file_type="manuscript" read_only=True %}
     </div>
     <div class="wjs-submission-form__section-content">
-      <h3 class="wjs-submission-form__form-label">Electronic Supplementary Material file</h3>
+      <h3 class="wjs-submission-form__form-label">Electronic Supplementary Material</h3>
       {% include "wjs_submission/step6/includes/files_table.html" with files_list=esm button_name="trigger_esm" file_type="esm" read_only=True %}
     </div>
     <div class="wjs-submission-form__section-content">

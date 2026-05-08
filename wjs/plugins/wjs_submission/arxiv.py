@@ -14,7 +14,7 @@ from django.urls import reverse
 from django.utils.text import format_lazy
 from identifiers.models import Identifier
 from journal.models import Journal
-from submission.models import STAGE_UNSUBMITTED, Article, ArticleAuthorOrder
+from submission.models import STAGE_UNSUBMITTED, Article, FrozenAuthor
 from utils.setting_handler import get_setting
 
 from .conversion import start_source_conversion
@@ -466,7 +466,7 @@ class HandleArticleCreation:
             }
         )
         new_article = Article.objects.create(**base_data)
-        ArticleAuthorOrder.objects.get_or_create(
+        FrozenAuthor.objects.get_or_create(
             article=new_article,
             author=self.user,
             defaults={"order": 0},

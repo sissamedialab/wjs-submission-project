@@ -402,12 +402,15 @@ def test_access_mode_form(
         ACCESS_MODE_CONTROL_FUNCTION.get.return_value = (
             "plugins.wjs_submission.access_mode.get_oa_transformative_agreement"
         )
-        ACCESS_MODE_COUNTRIES.get.return_value = ["fr", "it", "gb"]
+        ACCESS_MODE_COUNTRIES.get.return_value = ["FR", "IT", "GB"]
         if access_mode_fixed:
-            country, __ = Country.objects.get_or_create(code="it", name="Italy")
+            country, __ = Country.objects.get_or_create(code="IT", name="Italy")
         else:
-            country, __ = Country.objects.get_or_create(code="ru", name="Russia")
-        article.submission_data.affiliation_country = country
+            country, __ = Country.objects.get_or_create(code="RU", name="Russia")
+        location = user.primary_affiliation().organization.locations.first()
+        location.country = country
+        location.save()
+        article.submission_data.affiliation = user.primary_affiliation()
         article.submission_data.save()
         configuration = get_access_mode_configuration(user, article)
         form = SubmissionStep7Form(
