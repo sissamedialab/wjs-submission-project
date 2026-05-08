@@ -1,7 +1,6 @@
 from collections.abc import Callable
 
 import pytest
-from core.middleware import GlobalRequestMiddleware
 from core.models import Account
 from django.http import HttpRequest
 from identifiers.models import Identifier
