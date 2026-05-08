@@ -3,7 +3,6 @@ from core.models import Account, ControlledAffiliation
 from django import forms
 from django.db.models import QuerySet
 from django.utils.translation import gettext_lazy as _
-from review.models import RevisionRequest
 from submission.models import Article, ArticleAuthorOrder, FrozenAuthor
 
 from ..account_validation import (
