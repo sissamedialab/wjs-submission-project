@@ -168,7 +168,7 @@
     window.addEventListener("load", function() {
       // Close the HTMX modal when requested by the backend
       document.body.addEventListener("close-active-modal", function() {
-        document.querySelector("#htmxModal").querySelector("[aria-label=Close]").click();
+        document.querySelector("#htmxModal")?.querySelector("[aria-label=Close]")?.click();
       });
     });
 

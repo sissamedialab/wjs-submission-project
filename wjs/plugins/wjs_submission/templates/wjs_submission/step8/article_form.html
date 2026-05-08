@@ -112,7 +112,7 @@
             {{ article_data.comments_editor|safe }}
           </div>
         {% endif %}
-        {% if article_data.cover_letter_file %}
+        {% if article_data.cover_letter_file and article_data.cover_letter_file.original_filename %}
           <div class="d-flex justify-content-between">
             {% url "article_file_download" identifier_type="id" identifier=article.pk file_id=article_data.cover_letter_file.pk as cover_letter_file_url %}
             <p><strong>Attachment:</strong>&nbsp;<a href="{{ cover_letter_file_url }}">{{ article_data.cover_letter_file.original_filename }}</a></p>
