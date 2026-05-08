@@ -5,6 +5,7 @@ from core.models import SupplementaryFile
 from django import forms
 from django.utils.translation import gettext_lazy as _
 from submission.models import Article
+from utils.setting_handler import get_setting
 
 from ..conversion import start_source_conversion
 from ..models import ArticleSubmission, RevisionStorage
@@ -42,7 +43,15 @@ class SubmissionStep6Form(forms.ModelForm):
             d = kwargs["data"].copy()
             d["current_step"] = self.step
             kwargs["data"] = d
+        enable_cas = get_setting("wjs_submission", "enable_cas", self.journal).processed_value
+        enable_das = get_setting("wjs_submission", "enable_das", self.journal).processed_value
         super().__init__(*args, **kwargs)
+        self.fields["das"].required = enable_das
+        if not enable_das:
+            self.fields["das"].widget = forms.HiddenInput()
+        self.fields["cas"].required = enable_cas
+        if not enable_cas:
+            self.fields["cas"].widget = forms.HiddenInput()
 
     def clean_cas_url(self):
         """Check cas_url field when cas required URL."""
