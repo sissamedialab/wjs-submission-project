@@ -1,5 +1,5 @@
 {% extends "wjs_submission/base.html" %}
-{% load django_bootstrap5 field static submission_tags wjs_tags %}
+{% load django_bootstrap5 field settings static submission_tags wjs_tags %}
 
 {% block bootstrap5_extra_head %}
   {{ block.super }}
@@ -367,6 +367,7 @@
     </div>
   </div>
 
+  {% if journal|setting:"enable_das" %}
   <div class="wjs-submission-form__section mb-5">
     <div class="wjs-submission-form__form-label-title-container">
       <h2 class="wjs-submission-form__form-label-title">Data Availability Statement:</h2>
@@ -380,7 +381,9 @@
       <p>{{ files_data.das_display }}{% if files_data.das_show_url %}:&nbsp;{{ files_data.das_url }}{% endif %}</p>
     </div>
   </div>
+  {% endif %}
 
+  {% if journal|setting:"enable_cas" %}
   <div class="wjs-submission-form__section mb-5">
     <div class="wjs-submission-form__form-label-title-container">
       <h2 class="wjs-submission-form__form-label-title">Code Availability Statement:</h2>
@@ -394,6 +397,7 @@
       <p>{{ files_data.cas_display }}{% if files_data.cas_show_url %}: &nbsp;{{ files_data.cas_url }}{% endif %}</p>
     </div>
   </div>
+  {% endif %}
 
   <div class="wjs-submission-form__section mb-5">
     <div class="wjs-submission-form__form-label-title-container">
