@@ -9,6 +9,8 @@ from ..settings_helpers import get_article_language_choices
 
 
 class SubmissionStep5Form(ArticleInfo):
+    FILTER_PUBLIC_FIELDS = True
+
     title = WjsSimpleBleach(
         label=_("Title"),
         max_length=255,
