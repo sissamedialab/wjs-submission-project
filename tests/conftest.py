@@ -180,8 +180,8 @@ def _user(name: str = "user", admin_flag: bool = False) -> Account:
     user, _ = Account.objects.get_or_create(
         username=f"{name}@invalid.com",
         email=f"{name}@invalid.com",
-        first_name="name",
-        last_name="name",
+        first_name=name,
+        last_name=f"last {name}",
         is_active=True,
         is_staff=admin_flag,
         is_admin=admin_flag,

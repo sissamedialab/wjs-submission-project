@@ -2,7 +2,7 @@ from core.models import Account, ControlledAffiliation
 from django.db import models
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
-from submission.models import Article, ArticleAuthorOrder, ArticleFunding
+from submission.models import Article, ArticleFunding, FrozenAuthor
 
 from .settings import ARXIV_BASE_DOI
 from .signals import *  # noqa
@@ -387,7 +387,7 @@ class RevisionArticleCollaboration(models.Model):
 
 
 def next_author_sort(self, revision: bool = False, *args, **kwargs) -> int:
-    model = RevisionArticleAuthorOrder if revision else ArticleAuthorOrder
+    model = RevisionArticleAuthorOrder if revision else FrozenAuthor
     filters = {"revision_storage": RevisionStorage.objects.get(article=self)} if revision else {"article": self}
     current_orders = model.objects.filter(**filters).values_list("order", flat=True)
     return (max(current_orders) + 1) if current_orders else 0

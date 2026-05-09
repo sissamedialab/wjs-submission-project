@@ -2,7 +2,7 @@ from core.models import Account, ControlledAffiliation
 from django.urls import reverse_lazy
 from django.views.generic import UpdateView
 from repository.models import Author
-from submission.models import LANGUAGE_CHOICES, Article, ArticleAuthorOrder, Section
+from submission.models import LANGUAGE_CHOICES, Article, FrozenAuthor, Section
 
 from ..access_mode import get_access_mode_configuration
 from ..data import RevisionValidationData
@@ -32,7 +32,7 @@ def get_article_authors(article) -> list[Author]:
         return [
             author.author for author in RevisionArticleAuthorOrder.objects.filter(revision_storage__article=article)
         ]
-    return [author.author for author in ArticleAuthorOrder.objects.filter(article=article)]
+    return [author.author for author in FrozenAuthor.objects.filter(article=article)]
 
 
 def get_article_collaborations(article) -> list[RevisionArticleCollaboration] | list[ArticleCollaboration]:

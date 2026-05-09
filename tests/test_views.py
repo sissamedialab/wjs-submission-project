@@ -19,7 +19,7 @@ from plugins.wjs_submission.views import SubmissionLastStepRedirectView
 from plugins.wjs_submission.workflow import STEPS
 from submission.models import (
     Article,
-    ArticleAuthorOrder,
+    FrozenAuthor,
     Keyword,
     KeywordArticle,
     KeywordGroup,
@@ -480,8 +480,8 @@ def test_submission_step4_form_saves_country_and_authors(client, article, collab
     article.owner = _user("owner")
     article.save()
 
-    ArticleAuthorOrder.objects.create(article=article, author=author1, order=1)
-    ArticleAuthorOrder.objects.create(article=article, author=author2, order=2)
+    FrozenAuthor.objects.create(article=article, author=author1, order=1)
+    FrozenAuthor.objects.create(article=article, author=author2, order=2)
 
     article.correspondence_author = author1
     article.save()
@@ -508,8 +508,8 @@ def test_submission_step4_form_saves_country_and_authors(client, article, collab
     assert article.correspondence_author == author1
     assert Article.objects.get(pk=article.pk).submission_data.affiliation == author1.primary_affiliation()
 
-    ids_in_order = set(ArticleAuthorOrder.objects.filter(article=article).values_list("author_id", flat=True))
-    ids_on_article = set(article.authors.values_list("id", flat=True))
+    ids_in_order = set(FrozenAuthor.objects.filter(article=article).values_list("author_id", flat=True))
+    ids_on_article = set(article.author_accounts.values_list("id", flat=True))
     assert ids_in_order == ids_on_article
 
     if expect_clear:
