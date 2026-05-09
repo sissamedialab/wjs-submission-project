@@ -71,7 +71,6 @@ def test_jhep_rule(jhep_journal, keyword_setup, weights, assign_group, arxiv_cat
     journal = jhep_journal
     keyword_weights = {}
 
-    main_group = None
     for i, (name, weight) in enumerate(zip(keyword_setup, weights, strict=False), start=1):
         if assign_group:
             if arxiv_category == "hep-ex":
