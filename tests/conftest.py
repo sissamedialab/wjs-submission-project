@@ -190,7 +190,7 @@ def _user(name: str = "user", admin_flag: bool = False) -> Account:
     )
     user.set_password("password")
     user.save()
-    country = Country.objects.create(name="United Kingdom", code="uk")
+    country = Country.objects.create(name="United Kingdom", code="GB")
     location = Location.objects.create(country=country, name="Test City")
     organization = Organization.objects.create()
     OrganizationName.objects.create(value="Test Company", ror_display_for=organization)

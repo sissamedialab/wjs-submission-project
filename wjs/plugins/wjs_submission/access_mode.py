@@ -144,10 +144,10 @@ def get_affiliation_country(article: Article) -> Country | None:
                 return ControlledAffiliation.objects.get(pk=affiliation_pk).organization.country
         except (ControlledAffiliation.DoesNotExist, RevisionStorage.DoesNotExist):
             pass
-        else:
-            return article.submission_data.affiliation.organization.country
+        finally:
+            return article.submission_data.affiliation.organization.country  # noqa: B012
     except (AttributeError, ValueError, TypeError):
-        # Even if affiliation exists, it mught have null organisation or country, which are not guaranteed by
+        # Even if affiliation exists, it might have null organization or country, which are not guaranteed by
         # janeway's models. In this case we can only consider this value null
         return None
 
