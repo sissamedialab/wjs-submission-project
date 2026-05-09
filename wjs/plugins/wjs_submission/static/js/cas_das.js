@@ -7,6 +7,7 @@
  */
 function urlSelectedCheck(field, value) {
   const fieldUrl = document.getElementById(`id_${field}_url`);
+  if(!fieldUrl) return
   const fieldUrlWrapper = fieldUrl.closest(".wjs-submission-form__form-label-wrapper");
   const fieldsStatusList = document.getElementById("wjs-submission-form__fields-list");
 
