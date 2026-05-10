@@ -159,31 +159,26 @@
         </div>
       </div>
     {% else %}
-      <div class="wjs-submission-form__keywords-section">
+      <div class="wjs-submission-form__section-content">
         {% if settings.DEBUG %}{{ form.errors }}{% endif %}
-        <div class="wjs-submission-form__keywords">
-          <p class="wjs-submission-form__keywords-label">Add keywords</p>
-          <p class="wjs-submission-form__keywords-intro">
-            Lorem ipsum dolor sit amet consectetur. Sed vitae suspendisse rhoncus sed.
-            Rhoncus pulvinar turpis arcu facilisi cras orci integer tellus id. Id massa phasellus elementum
-            adipiscing. Urna sagittis condimentum ut nisl proin egestas.
-          </p>
+        <div class="wjs-submission-form__keywords-controls">
+          <div class="wjs-submission-form__keywords-requirements">{{ journal|setting:"step3_intro_text"|safe }}</div>
           <input type="checkbox" id="js-keywords-hidden-required" class="d-none" required>
-          <div class="wjs-submission-form__keywords-list wjs-submission-form__keywords-list--has-keywords d-flex flex-wrap gap-2">
-            {% for keyword in keywords_list %}
-              <div class="form-check wjs-submission-form__keywords-list-item">
-                <input class="wjs-submission-form__keywords-checkbox form-check-input"
-                       type="checkbox"
-                       name="keywords"
-                       value="{{ keyword.id }}"
-                       id="keyword{{ keyword.id }}"
-                       {% if keyword.pk in form.selected_grouped_keywords or keyword in form.keywords.initial %}checked{% endif %}>
-                <label class="form-check-label wjs-submission-form__keywords-checkbox-label" for="keyword{{ keyword.id }}">
-                  {{ keyword }}
-                </label>
-              </div>
-            {% endfor %}
-          </div>
+        </div>
+        <div class="wjs-submission-form__keywords-list wjs-submission-form__keywords-list--has-keywords d-flex flex-wrap gap-2">
+          {% for keyword in keywords_list %}
+            <div class="form-check wjs-submission-form__keywords-list-item">
+              <input class="wjs-submission-form__keywords-checkbox form-check-input"
+                     type="checkbox"
+                     name="keywords"
+                     value="{{ keyword.id }}"
+                     id="keyword{{ keyword.id }}"
+                     {% if keyword.pk in form.selected_grouped_keywords or keyword in form.keywords.initial %}checked{% endif %}>
+              <label class="form-check-label wjs-submission-form__keywords-checkbox-label" for="keyword{{ keyword.id }}">
+                {{ keyword }}
+              </label>
+            </div>
+          {% endfor %}
         </div>
       </div>
     {% endif %}
@@ -203,8 +198,8 @@
   <script src="{% static 'common/js/tagit.js' %}"></script>
   <script src="{% static "js/keywords.js" %}"></script>
   <script>
-    $(document).ready(function() {
-      $("#id_keywords").tagit({ allowSpaces: true });
+    $(document).ready(function () {
+      $("#id_keywords").tagit({allowSpaces: true});
     });
   </script>
   {{ form.media.js }}
