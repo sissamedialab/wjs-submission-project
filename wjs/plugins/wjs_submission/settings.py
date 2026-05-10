@@ -2,7 +2,7 @@ from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
 DEFAULT_KEYWORDS_INTERVAL_PER_JOURNAL = {
-    None: (1, 4),
+    None: (1, 3),
     "JQuant": (2, 4),
     "JHEP": (1, 4),
 }
