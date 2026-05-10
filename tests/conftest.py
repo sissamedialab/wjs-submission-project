@@ -268,7 +268,7 @@ def sections(journal):
             obj = submission_models.Section.objects.create(
                 journal=journal,
                 name=f"section{i}",
-                public_submissions=False,
+                public_submissions=True,
             )
             sections_pk.append(obj.pk)
     return submission_models.Section.objects.filter(pk__in=sections_pk)
