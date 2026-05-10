@@ -4,6 +4,7 @@ from django import forms
 from django.db.models import QuerySet
 from django.utils.translation import gettext_lazy as _
 from submission.models import Article, FrozenAuthor
+from utils.setting_handler import get_setting
 
 from ..account_validation import (
     ProfileCompletionStatus,
@@ -56,6 +57,10 @@ class SubmissionStep4Form(forms.ModelForm):
             ArticleCollaboration.objects.filter(article=kwargs["instance"]).values_list("relation", flat=True).first()
         ) or CollaborationRelation.NONE
         super().__init__(*args, **kwargs)
+        enable_collaboration = get_setting(
+            "wjs_submission", "enable_collaboration", self.instance.journal
+        ).processed_value
+        self.fields["collaboration_relation"].required = enable_collaboration
 
         authors_list = self._get_correspondence_author_list(self.instance)
         self.fields["correspondence_author"].queryset = authors_list
