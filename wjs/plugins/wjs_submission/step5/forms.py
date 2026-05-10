@@ -31,6 +31,8 @@ class SubmissionStep5Form(ArticleInfo):
             self.fields["section"].label = _("Article type")
             self.fields["section"].required = True
 
+        self.fields["title"].label = _("Title")
+        self.fields["abstract"].label = _("Abstract")
         for field in self.fields:
             if self.fields[field].required:
                 if field == "abstract":
