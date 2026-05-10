@@ -268,7 +268,7 @@
         },
         "setting": {
             "description": "Enable DAS",
-            "is_translatable": true,
+            "is_translatable": false,
             "name": "enable_das",
             "pretty_name": "Enable DAS",
             "type": "boolean"
@@ -283,13 +283,28 @@
         },
         "setting": {
             "description": "Enable CAS",
-            "is_translatable": true,
+            "is_translatable": false,
             "name": "enable_cas",
             "pretty_name": "Enable CAS",
             "type": "boolean"
         },
         "value": {
             "default": "true"
+        }
+    },
+    {
+        "group": {
+            "name": "wjs_submission"
+        },
+        "setting": {
+            "description": "Enable Collaboration section",
+            "is_translatable": false,
+            "name": "enable_collaboration",
+            "pretty_name": "Enable Collaboration section",
+            "type": "boolean"
+        },
+        "value": {
+            "default": "false"
         }
     }
 ]

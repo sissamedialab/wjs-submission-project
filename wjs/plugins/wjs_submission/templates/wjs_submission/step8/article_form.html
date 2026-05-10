@@ -278,32 +278,34 @@
     </div>
   {% endif %}
 
-  <div class="wjs-submission-form__section mb-5">
-    <div class="wjs-submission-form__form-label-title-container">
-      <h2 class="wjs-submission-form__form-label-title">
-        Selected Collaborations
-      </h2>
-      {% if steps.4.available %}
-        <a href="{% url 'wjs_submission_4' article_id=article.pk %}#collaborations-section" class="wjs-submission-navigation-step__link">
-          <i class="bi bi-pencil ms-1" aria-hidden="true"></i>
-        </a>
-      {% endif %}
+  {% if request.journal|setting:"enable_collaboration" %}
+    <div class="wjs-submission-form__section mb-5">
+      <div class="wjs-submission-form__form-label-title-container">
+        <h2 class="wjs-submission-form__form-label-title">
+          Selected Collaborations
+        </h2>
+        {% if steps.4.available %}
+          <a href="{% url 'wjs_submission_4' article_id=article.pk %}#collaborations-section" class="wjs-submission-navigation-step__link">
+            <i class="bi bi-pencil ms-1" aria-hidden="true"></i>
+          </a>
+        {% endif %}
+      </div>
+      <div class="wjs-submission-form__section-content">
+        <ul class="list-unstyled">
+          {% for collab_article in article_collaborations %}
+            {% if collab_article.relation == "by" %}
+              <li class="wjs-submission-form__form-review-list-item">by {{ collab_article.collaboration.name }}</li>
+            {% elif collab_article.relation == "on_behalf_of" %}
+              <li class="wjs-submission-form__form-review-list-item">on behalf of {{ collab_article.collaboration.name }}</li>
+            {% endif %}
+            {# <li class="wjs-submission-form__form-review-list-item">{{ collab_article.get_relation_display }}: {{ collab_article.collaboration.name }}</li> #}
+          {% empty %}
+            <li class="wjs-submission-form__form-review-list-item">No collaboration involved</li>
+          {% endfor %}
+        </ul>
+      </div>
     </div>
-    <div class="wjs-submission-form__section-content">
-      <ul class="list-unstyled">
-        {% for collab_article in article_collaborations %}
-          {% if collab_article.relation == "by" %}
-            <li class="wjs-submission-form__form-review-list-item">by {{ collab_article.collaboration.name }}</li>
-          {% elif collab_article.relation == "on_behalf_of" %}
-            <li class="wjs-submission-form__form-review-list-item">on behalf of {{ collab_article.collaboration.name }}</li>
-          {% endif %}
-          {# <li class="wjs-submission-form__form-review-list-item">{{ collab_article.get_relation_display }}: {{ collab_article.collaboration.name }}</li> #}
-        {% empty %}
-          <li class="wjs-submission-form__form-review-list-item">No collaboration involved</li>
-        {% endfor %}
-      </ul>
-    </div>
-  </div>
+  {% endif %}
 
   <div class="wjs-submission-form__section mb-5">
     <div class="wjs-submission-form__form-label-title-container">
@@ -368,35 +370,35 @@
   </div>
 
   {% if journal|setting:"enable_das" %}
-  <div class="wjs-submission-form__section mb-5">
-    <div class="wjs-submission-form__form-label-title-container">
-      <h2 class="wjs-submission-form__form-label-title">Data Availability Statement:</h2>
-      {% if steps.6.available %}
-        <a href="{% url 'wjs_submission_6' article_id=article.pk %}#step6-das-section" class="wjs-submission-navigation-step__link">
-          <i class="bi bi-pencil ms-1" aria-hidden="true"></i>
-        </a>
-      {% endif %}
+    <div class="wjs-submission-form__section mb-5">
+      <div class="wjs-submission-form__form-label-title-container">
+        <h2 class="wjs-submission-form__form-label-title">Data Availability Statement:</h2>
+        {% if steps.6.available %}
+          <a href="{% url 'wjs_submission_6' article_id=article.pk %}#step6-das-section" class="wjs-submission-navigation-step__link">
+            <i class="bi bi-pencil ms-1" aria-hidden="true"></i>
+          </a>
+        {% endif %}
+      </div>
+      <div class="wjs-submission-form__section-content">
+        <p>{{ files_data.das_display }}{% if files_data.das_show_url %}:&nbsp;{{ files_data.das_url }}{% endif %}</p>
+      </div>
     </div>
-    <div class="wjs-submission-form__section-content">
-      <p>{{ files_data.das_display }}{% if files_data.das_show_url %}:&nbsp;{{ files_data.das_url }}{% endif %}</p>
-    </div>
-  </div>
   {% endif %}
 
   {% if journal|setting:"enable_cas" %}
-  <div class="wjs-submission-form__section mb-5">
-    <div class="wjs-submission-form__form-label-title-container">
-      <h2 class="wjs-submission-form__form-label-title">Code Availability Statement:</h2>
-      {% if steps.6.available %}
-        <a href="{% url 'wjs_submission_6' article_id=article.pk %}#step6-cas-section" class="wjs-submission-navigation-step__link">
-          <i class="bi bi-pencil ms-1" aria-hidden="true"></i>
-        </a>
-      {% endif %}
+    <div class="wjs-submission-form__section mb-5">
+      <div class="wjs-submission-form__form-label-title-container">
+        <h2 class="wjs-submission-form__form-label-title">Code Availability Statement:</h2>
+        {% if steps.6.available %}
+          <a href="{% url 'wjs_submission_6' article_id=article.pk %}#step6-cas-section" class="wjs-submission-navigation-step__link">
+            <i class="bi bi-pencil ms-1" aria-hidden="true"></i>
+          </a>
+        {% endif %}
+      </div>
+      <div class="wjs-submission-form__section-content">
+        <p>{{ files_data.cas_display }}{% if files_data.cas_show_url %}: &nbsp;{{ files_data.cas_url }}{% endif %}</p>
+      </div>
     </div>
-    <div class="wjs-submission-form__section-content">
-      <p>{{ files_data.cas_display }}{% if files_data.cas_show_url %}: &nbsp;{{ files_data.cas_url }}{% endif %}</p>
-    </div>
-  </div>
   {% endif %}
 
   <div class="wjs-submission-form__section mb-5">
@@ -477,9 +479,9 @@
 {% block submission_required_fields %}
   {% if is_revision %}
     {% if validate_revision_data.valid %}
-        <div class="wjs-submission-form__footer-button d-flex justify-content-between align-items-center">
-          <a href="{% url 'wjs_submission_7' article_id=article.pk %}" class="btn btn-secondary" id="back-btn">Back</a>
-          <button type="submit" class="btn btn-primary" id="submit-btn">Submit</button>
+      <div class="wjs-submission-form__footer-button d-flex justify-content-between align-items-center">
+        <a href="{% url 'wjs_submission_7' article_id=article.pk %}" class="btn btn-secondary" id="back-btn">Back</a>
+        <button type="submit" class="btn btn-primary" id="submit-btn">Submit</button>
       </div>
     {% else %}
       <div class="mx-2 my-1">
@@ -499,10 +501,10 @@
       </ul>
     {% endif %}
   {% else %}
-      <div class="wjs-submission-form__footer-button d-flex justify-content-between align-items-center">
-        <a href="{% url 'wjs_submission_7' article_id=article.pk %}" class="btn btn-secondary" id="back-btn">Back</a>
-        <button type="submit" class="btn btn-primary" id="submit-btn">Submit</button>
-      </div>
+    <div class="wjs-submission-form__footer-button d-flex justify-content-between align-items-center">
+      <a href="{% url 'wjs_submission_7' article_id=article.pk %}" class="btn btn-secondary" id="back-btn">Back</a>
+      <button type="submit" class="btn btn-primary" id="submit-btn">Submit</button>
+    </div>
   {% endif %}
 {% endblock submission_required_fields %}
 
