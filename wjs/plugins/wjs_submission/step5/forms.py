@@ -33,8 +33,12 @@ class SubmissionStep5Form(ArticleInfo):
 
         for field in self.fields:
             if self.fields[field].required:
-                self.fields[field].widget.attrs["required"] = True
-                self.fields[field].help_text = _("Required")
+                if field == "abstract":
+                    self.fields["comments_editor"].widget.attrs["js_required"] = True
+                    self.fields[field].help_text = _("Required")
+                else:
+                    self.fields[field].widget.attrs["required"] = True
+                    self.fields[field].help_text = _("Required")
 
     def save(self, commit=True, request=None):
         """
