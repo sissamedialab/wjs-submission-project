@@ -3,6 +3,7 @@ from django.urls import reverse_lazy
 from django.views.generic import UpdateView
 from repository.models import Author
 from submission.models import LANGUAGE_CHOICES, Article, FrozenAuthor, Section
+from utils.setting_handler import get_setting
 
 from ..access_mode import get_access_mode_configuration
 from ..data import RevisionValidationData
@@ -151,24 +152,35 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
         context["articles_fundings"] = get_article_fundings(self.object)
         context["article_authors"] = get_article_authors(self.object)
         context["article_collaborations"] = get_article_collaborations(self.object)
+        enable_cas = get_setting("wjs_submission", "enable_cas", self.object.journal).processed_value
+        enable_das = get_setting("wjs_submission", "enable_das", self.object.journal).processed_value
+        context["files_data"] = {}
         if context["is_revision_full"]:
             context["article_data"] = self.object.revisionstorage.data
-            context["files_data"] = {
-                "cas": self.object.revisionstorage.data["cas"],
-                "cas_display": self.object.submission_data.CasDeclaration.as_dict()[
-                    self.object.revisionstorage.data["cas"]
-                ],
-                "cas_url": self.object.revisionstorage.data["cas_url"],
-                "cas_show_url": self.object.revisionstorage.data["cas"]
-                == self.object.submission_data.CasDeclaration.URL.value,
-                "das": self.object.revisionstorage.data["das"],
-                "das_display": self.object.submission_data.CasDeclaration.as_dict()[
-                    self.object.revisionstorage.data["das"]
-                ],
-                "das_url": self.object.revisionstorage.data["das_url"],
-                "das_show_url": self.object.revisionstorage.data["das"]
-                == self.object.submission_data.DasDeclaration.URL.value,
-            }
+            if enable_cas:
+                context["files_data"].update(
+                    {
+                        "cas": self.object.revisionstorage.data["cas"],
+                        "cas_display": self.object.submission_data.CasDeclaration.as_dict()[
+                            self.object.revisionstorage.data["cas"]
+                        ],
+                        "cas_url": self.object.revisionstorage.data["cas_url"],
+                        "cas_show_url": self.object.revisionstorage.data["cas"]
+                        == self.object.submission_data.CasDeclaration.URL.value,
+                    }
+                )
+            if enable_das:
+                context["files_data"].update(
+                    {
+                        "das": self.object.revisionstorage.data["das"],
+                        "das_display": self.object.submission_data.CasDeclaration.as_dict()[
+                            self.object.revisionstorage.data["das"]
+                        ],
+                        "das_url": self.object.revisionstorage.data["das_url"],
+                        "das_show_url": self.object.revisionstorage.data["das"]
+                        == self.object.submission_data.DasDeclaration.URL.value,
+                    }
+                )
             if context["article_data"].get("language"):
                 context["article_data"]["language"] = dict(LANGUAGE_CHOICES)[context["article_data"]["language"]]
             if context["article_data"].get("section"):
@@ -182,18 +194,26 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
             context["authors_contributions"] = self.object.revisionstorage.data.get("authors_contributions")
         else:
             context["article_data"] = self.object
-            context["files_data"] = {
-                "cas": self.object.submission_data.cas,
-                "cas_display": self.object.submission_data.get_cas_display(),
-                "cas_url": self.object.submission_data.cas_url,
-                "cas_show_url": self.object.submission_data.cas
-                == self.object.submission_data.CasDeclaration.URL.value,
-                "das": self.object.submission_data.das,
-                "das_display": self.object.submission_data.get_das_display(),
-                "das_url": self.object.submission_data.das_url,
-                "das_show_url": self.object.submission_data.das
-                == self.object.submission_data.DasDeclaration.URL.value,
-            }
+            if enable_cas:
+                context["files_data"].update(
+                    {
+                        "cas": self.object.submission_data.cas,
+                        "cas_display": self.object.submission_data.get_cas_display(),
+                        "cas_url": self.object.submission_data.cas_url,
+                        "cas_show_url": self.object.submission_data.cas
+                        == self.object.submission_data.CasDeclaration.URL.value,
+                    }
+                )
+            if enable_das:
+                context["files_data"].update(
+                    {
+                        "das": self.object.submission_data.das,
+                        "das_display": self.object.submission_data.get_das_display(),
+                        "das_url": self.object.submission_data.das_url,
+                        "das_show_url": self.object.submission_data.das
+                        == self.object.submission_data.DasDeclaration.URL.value,
+                    }
+                )
             context["access_mode"] = AccessModeJournal.objects.get(
                 journal=self.object.journal, access_mode_id=self.object.submission_data.access_mode.pk
             )
