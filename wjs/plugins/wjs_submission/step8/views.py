@@ -78,10 +78,10 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
         """
         configuration = get_access_mode_configuration(self.request.user, self.object)
         editable_revision = is_revision_full(self.object) or is_revision_metadata(self.object)
-        if not editable_revision and self._step7_skipped and configuration.access_mode:
+        if not editable_revision and self._step7_skipped() and configuration.access_mode:
             self.object.submission_data.access_mode = configuration.access_mode
             self.object.submission_data.save()
-        if editable_revision and self._step7_skipped and configuration.access_mode:
+        if editable_revision and self._step7_skipped() and configuration.access_mode:
             revision_storage = RevisionStorage.objects.get(article=self.object)
             revision_storage.data["access_mode"] = configuration.access_mode.pk
             revision_storage.save()
