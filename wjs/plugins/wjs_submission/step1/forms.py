@@ -36,7 +36,8 @@ class SubmissionStep1Form(forms.ModelForm):
         height="15rem",
         help_text=_(
             "Please disclose any relevant financial or personal relationships that could be viewed as inappropriately "
-            "influencing your work or hindering transparency."
+            "influencing your work or hindering transparency.<br>"
+            'If you have no Conflicts of Interest to declare, please write "No CoI to declare".'
         ),
         required=False,
     )
