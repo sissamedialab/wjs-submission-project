@@ -304,7 +304,22 @@
             "type": "boolean"
         },
         "value": {
-            "default": "false"
+            "default": "true"
+        }
+    },
+    {
+        "group": {
+            "name": "wjs_submission"
+        },
+        "setting": {
+            "description": "Enable Affiliation selection",
+            "is_translatable": false,
+            "name": "enable_affiliation",
+            "pretty_name": "Enable Affiliation selection",
+            "type": "boolean"
+        },
+        "value": {
+            "default": "true"
         }
     }
 ]

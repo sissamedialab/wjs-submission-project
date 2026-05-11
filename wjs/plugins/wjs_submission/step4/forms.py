@@ -60,7 +60,11 @@ class SubmissionStep4Form(forms.ModelForm):
         enable_collaboration = get_setting(
             "wjs_submission", "enable_collaboration", self.instance.journal
         ).processed_value
+        enable_affiliation = get_setting("wjs_submission", "enable_affiliation", self.instance.journal).processed_value
         self.fields["collaboration_relation"].required = enable_collaboration
+        self.fields["affiliation"].required = enable_affiliation
+        if not enable_affiliation:
+            self.fields["affiliation"].widget = forms.HiddenInput()
 
         authors_list = self._get_correspondence_author_list(self.instance)
         self.fields["correspondence_author"].queryset = authors_list
@@ -82,6 +86,22 @@ class SubmissionStep4Form(forms.ModelForm):
         :raises: None
         """
         return article.author_accounts.all()
+
+    def clean_affiliation(self):
+        """
+        Cleansand retrieves the appropriate affiliation information based on journal settings and author details.
+
+        If affiliation is disabled by journal settings, the primary affiliation (if any) is set.
+        Otherwise, the affiliation field is shown and user can select the appropriate affiliation.
+
+        :return: The affiliation information based on conditions or None if no relevant affiliation is found.
+        :rtype: str or None
+        """
+        if get_setting("wjs_submission", "enable_affiliation", self.instance.journal).processed_value:
+            return self.cleaned_data["affiliation"]
+        if self.cleaned_data.get("correspondence_author"):
+            return self.cleaned_data.get("correspondence_author").primary_affiliation()
+        return None
 
     def save(self, commit: bool = True) -> Account:
         """
