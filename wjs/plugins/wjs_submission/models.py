@@ -152,7 +152,7 @@ class ArticleSubmission(models.Model):
                     access_mode=self.access_mode, journal=self.article.journal
                 )
                 if journal_access_mode_parameters.exists():
-                    self.article.licence = journal_access_mode_parameters.first().licence
+                    self.article.license = journal_access_mode_parameters.first().licence
                     self.article.rigths = journal_access_mode_parameters.first().copyright
             except AccessModeJournal.DoesNotExist:
                 # ignoring configuration error to avoid breaking submission process
