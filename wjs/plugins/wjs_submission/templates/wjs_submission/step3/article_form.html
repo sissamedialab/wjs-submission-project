@@ -165,7 +165,7 @@
           <div class="wjs-submission-form__keywords-requirements">{{ journal|setting:"step3_intro_text"|safe }}</div>
           <input type="checkbox" id="js-keywords-hidden-required" class="d-none" required>
         </div>
-        <div class="wjs-submission-form__keywords-list wjs-submission-form__keywords-list--has-keywords d-flex flex-wrap gap-2">
+        <div class="wjs-submission-form__keywords-list wjs-submission-form__keywords-list--has-keywords d-flex flex-wrap gap-2 mb-5">
           {% for keyword in keywords_list %}
             <div class="form-check wjs-submission-form__keywords-list-item">
               <input class="wjs-submission-form__keywords-checkbox form-check-input"
@@ -180,6 +180,15 @@
             </div>
           {% endfor %}
         </div>
+        <div class="wjs-submission-form__free-keywords-section" id="js-free-keyword-section">
+          <div class="wjs-submission-form__free-keywords">
+            <div class="wjs-submission-form__free-keywords-intro">
+              <div class="wjs-submission-form__free-keywords-label">Add free keywords</div>
+              You may add keywords of your choice to better describe the subject of your manuscript. After typing them, please click “enter” on your keywboard to confirm them.
+              {{ form.keywords }}
+            </div>
+          </div>
+        </div>
       </div>
     {% endif %}
   </div>
@@ -191,16 +200,11 @@
   <script>
     const MIN_KEYWORDS_COUNT = {{ keywords_count.0 }};
     const MAX_KEYWORDS_COUNT = {{ keywords_count.1 }};
+    const HIDE_FREE_KEYWORDS = {{ journal.submissionconfiguration.hierarchical_keywords|yesno:"true,false" }};
   </script>
   <link rel="stylesheet" href="https://code.jquery.com/ui/1.11.0/themes/smoothness/jquery-ui.css">
   <script type="text/javascript" src="{% static "admin/js/vendor/jquery/jquery.js" %}"></script>
   <script src="{% static 'common/js/jq-ui.min.js' %}"></script>
-  <script src="{% static 'common/js/tagit.js' %}"></script>
   <script src="{% static "js/keywords.js" %}"></script>
-  <script>
-    $(document).ready(function () {
-      $("#id_keywords").tagit({allowSpaces: true});
-    });
-  </script>
   {{ form.media.js }}
 {% endblock %}
