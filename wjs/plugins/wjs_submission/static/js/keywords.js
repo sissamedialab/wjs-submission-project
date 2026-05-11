@@ -43,7 +43,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const hiddenCbChecked = document.getElementById("js-keywords-hidden-required");
 
     const freeKeywordsSection = document.getElementById("js-free-keyword-section");
-    if (freeKeywordsSection) {
+    if (freeKeywordsSection && HIDE_FREE_KEYWORDS) {
       if (checkedCount >= MIN_KEYWORDS_COUNT) {
         freeKeywordsSection.classList.remove('d-none');
       } else {
