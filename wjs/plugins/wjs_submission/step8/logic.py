@@ -28,7 +28,6 @@ class CompleteSubmission:
         with transaction.atomic():
             self.article.date_submitted = now()
             self.article.stage = STAGE_UNASSIGNED
-            self.article.snapshot_authors(self.article)
             self.article.save()
             event_logic.Events.raise_event(
                 event_logic.Events.ON_WORKFLOW_ELEMENT_COMPLETE,
