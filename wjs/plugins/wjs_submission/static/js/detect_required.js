@@ -63,6 +63,25 @@ function hasContent(field) {
 }
 
 /**
+ * Retrieves the alternate field specified by the "alternate_field" attribute of the given field.
+ *
+ * If the field declares an alternate field, that field can be checked instead.
+ *
+ * @param {HTMLFormElement} form The form containing the alternate field.
+ * @param {HTMLElement} field The field element to check for an alternate field.
+ * @return {HTMLElement | null} The alternate field element if it exists; otherwise, null.
+ */
+function getAlternateField(form, field) {
+  const alternateFieldName = field.getAttribute("alternate_field");
+
+  if (!alternateFieldName) {
+    return null;
+  }
+
+  return form.querySelector(`[name="${alternateFieldName}"]`);
+}
+
+/**
  * Checks if all the provided form fields are filled based on their types.
  * For radio inputs, it verifies if any option in the group is selected.
  * For checkboxes, it checks if the box is checked.
@@ -76,12 +95,9 @@ function hasContent(field) {
 function allFilled(form, fields) {
 
   return fields.every(field => {
-    let alternateField;
     // Skip fields that might not be rendered yet
     if (!field) return true;
-    // If field declare an alternate field, check that one instead; if alternate field is not empty we can exit early
-    if (field.getAttribute("alternate_field"))
-      alternateField = form.querySelector(`[name="${field.getAttribute("alternate_field")}"]`);
+    const alternateField = getAlternateField(form, field)
     return _verifyFieldValue(form, field) || (alternateField && _verifyFieldValue(form, alternateField));
   });
 }
@@ -272,7 +288,15 @@ function populateRequiredChecklist(fieldsStatusList) {
     fieldsStatusListItem.dataset.section = section;
     fieldsStatusListItem.dataset.fields = JSON.stringify(fields.map(field => field.id));
     fieldsStatusList.appendChild(fieldsStatusListItem);
-    attachEventListener(form, fields);
+    let mappedFields = [];
+    fields.forEach((field) => {
+      const alternateField = getAlternateField(form, field);
+      if (alternateField) {
+        mappedFields.push(alternateField);
+      }
+      mappedFields.push(field);
+    })
+    attachEventListener(form, mappedFields);
   });
   updateRequiredChecklist();
 }
