@@ -63,7 +63,7 @@ def test_jquant_rule(jquant_journal, keyword_setup, weights, assign_group, expec
         (["kw1", "kw2"], [25, 50], True, "hep-ph", True),
         # hep-ph: 3 keywords, 2 in main group + 1 in other group -> should pass
         (["kw1", "kw2", "kw3"], [25, 50, 75], True, "hep-ph", True),
-        # hep-ph: 4 keywords, 2 in main group + 2 in other groups -> should pass
+        # hep-ph: 4 keywords, 2 in main group + 2 in other groups -> should fail
         (["kw1", "kw2", "kw3", "kw4"], [25, 50, 75, 100], True, "hep-ph", True),
     ],
 )
@@ -87,8 +87,12 @@ def test_jhep_rule(jhep_journal, keyword_setup, weights, assign_group, arxiv_cat
         journal.keywords.add(kw)
         keyword_weights[kw.id] = weight
 
-    ok, _ = jhep_keyword_selection_rule(keyword_weights, journal=journal, arxiv_category=arxiv_category)
+    ok, text = jhep_keyword_selection_rule(keyword_weights, journal=journal, arxiv_category=arxiv_category)
     assert ok == expected_ok
+    if expected_ok:
+        assert text is None
+    else:
+        assert text
 
 
 @pytest.mark.django_db
