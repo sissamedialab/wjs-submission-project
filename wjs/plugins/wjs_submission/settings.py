@@ -37,11 +37,12 @@ DEFAULT_ACCESS_MODE_CONTROL_FUNCTION = {
 
 DEFAULT_CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION = {
     "JCAP": "plugins.wjs_submission.account_validation.jcap_correspondence_author_validation",
+    "JCOM": "plugins.wjs_submission.account_validation.jcom_correspondence_author_validation",
+    "JCOMAL": "plugins.wjs_submission.account_validation.jcom_correspondence_author_validation",
     None: "plugins.wjs_submission.account_validation.default_correspondence_author_validation",
 }
 
 DEFAULT_CORRESPONDENCE_AUTHOR_COMPLETION_FUNCTION = {
-    "JCAP": "plugins.wjs_submission.account_validation.default_correspondence_author_completion",
     None: "plugins.wjs_submission.account_validation.default_correspondence_author_completion",
 }
 

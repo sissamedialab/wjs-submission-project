@@ -85,6 +85,33 @@ def default_correspondence_author_validation(user: Account) -> bool:
     return is_active and personal_data and professional_data
 
 
+def jcom_correspondence_author_validation(user: Account) -> bool:
+    """
+    Validate whether a user meets the default criteria to be a correspondence author.
+
+    :param user: The user account to validate
+    :type user: Account
+    :return: True if the user is valid as a correspondence author, False otherwise
+    :rtype: bool
+    """
+    jcomprofile = user.jcomprofile
+    is_active = user.is_active
+    personal_data = bool(
+        (user.last_name or user.first_name) and user.email and jcomprofile.profession and user.biography
+    )
+    professional_data = bool(
+        jcomprofile.records_scix
+        or jcomprofile.records_inspire
+        or jcomprofile.records_arxiv
+        or jcomprofile.records_other
+        or user.facebook
+        or user.twitter
+        or user.linkedin
+        or jcomprofile.records_other
+    )
+    return is_active and personal_data and professional_data
+
+
 def jcap_correspondence_author_validation(user: Account) -> bool:
     """
     Validate whether a user meets the JCAP criteria to be a correspondence author.
