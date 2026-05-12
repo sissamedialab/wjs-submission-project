@@ -133,15 +133,17 @@
             {% endfor %}
           </div>
 
-          <div class="d-none wjs-submission-form__free-keywords-section" id="js-free-keyword-section">
-            <div class="wjs-submission-form__free-keywords">
-              <div class="wjs-submission-form__free-keywords-intro">
-                <div class="wjs-submission-form__free-keywords-label">Add free keywords</div>
-                You may add keywords of your choice to better describe the subject of your manuscript. After typing them, please click “enter” on your keywboard to confirm them.
-                {{ form.keywords }}
+          {% if False %}
+            <div class="d-none wjs-submission-form__free-keywords-section" id="js-free-keyword-section">
+              <div class="wjs-submission-form__free-keywords">
+                <div class="wjs-submission-form__free-keywords-intro">
+                  <div class="wjs-submission-form__free-keywords-label">Add free keywords</div>
+                  You may add keywords of your choice to better describe the subject of your manuscript. After typing them, please click “enter” on your keywboard to confirm them.
+                  {{ form.keywords }}
+                </div>
               </div>
             </div>
-          </div>
+          {% endif %}
 
           <div class="wjs-submission-form__keywords-weight">
             <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label--required d-none">Keywords weight</h2>
@@ -180,15 +182,17 @@
             </div>
           {% endfor %}
         </div>
-        <div class="wjs-submission-form__free-keywords-section" id="js-free-keyword-section">
-          <div class="wjs-submission-form__free-keywords">
-            <div class="wjs-submission-form__free-keywords-intro">
-              <div class="wjs-submission-form__free-keywords-label">Add free keywords</div>
-              You may add keywords of your choice to better describe the subject of your manuscript. After typing them, please click “enter” on your keywboard to confirm them.
-              {{ form.keywords }}
+        {% if False %}
+          <div class="wjs-submission-form__free-keywords-section" id="js-free-keyword-section">
+            <div class="wjs-submission-form__free-keywords">
+              <div class="wjs-submission-form__free-keywords-intro">
+                <div class="wjs-submission-form__free-keywords-label">Add free keywords</div>
+                You may add keywords of your choice to better describe the subject of your manuscript. After typing them, please click “enter” on your keywboard to confirm them.
+                {{ form.keywords }}
+              </div>
             </div>
           </div>
-        </div>
+        {% endif %}
       </div>
     {% endif %}
   </div>
