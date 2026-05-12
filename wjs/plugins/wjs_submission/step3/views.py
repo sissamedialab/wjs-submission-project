@@ -41,6 +41,7 @@ class SubmissionStep3View(AuthorFilteringView, StepCheckView, UpdateView):
         filter_fn = import_string(filter_path)
         context["keywords_list"] = filter_fn(self.request.journal, arxiv_category)
         context["keywords_count"] = keyword_range
+        context["ENABLE_FREE_KEYWORD"] = submission_settings.ENABLE_FREE_KEYWORD
         return context
 
     def get_form_kwargs(self):
