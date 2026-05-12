@@ -95,12 +95,13 @@ class FundingTableRenderingMixin:
     def get_context_data(self, **kwargs):
         """Construct and returns the context data dictionary."""
         context = super().get_context_data(**kwargs)
-        context["articles_funding"] = self.model.objects.filter(article=self.article)
         context["funding_pk"] = self.request.GET.get("funding_pk")
         if self.is_revision:
+            context["articles_funding"] = self.model.objects.filter(revision_storage=self.revision_storage)
             context["add_funding_url"] = reverse("add-funding-revision", kwargs={"article_id": self.article.pk})
             context["delete_funding_url"] = reverse("delete-funding-revision", kwargs={"article_id": self.article.pk})
         else:
+            context["articles_funding"] = self.model.objects.filter(article=self.article)
             context["add_funding_url"] = reverse("add-funding", kwargs={"article_id": self.article.pk})
             context["delete_funding_url"] = reverse("delete-funding", kwargs={"article_id": self.article.pk})
         return context

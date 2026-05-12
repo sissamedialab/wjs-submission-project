@@ -212,7 +212,7 @@ class AddFrozenAutorObjectForm(forms.Form):
         self.article = kwargs.pop("article")
         super().__init__(*args, **kwargs)
 
-    def save(self, commit: bool = True) -> FrozenAuthor:
+    def save(self, commit: bool = True) -> FrozenAuthor | RevisionArticleAuthorOrder:
         """
         Save the current instance and associates it with an author snapshot.
 
@@ -222,11 +222,19 @@ class AddFrozenAutorObjectForm(forms.Form):
         :param commit: Whether to commit the changes to the database. Defaults to True.
         :type commit: bool
         :return: The author instance that was either fetched or newly created.
-        :rtype: FrozenAuthor
+        :rtype: FrozenAuthor | RevisionArticleAuthorOrder
         """
-        frozen_author, __ = FrozenAuthor.get_or_snapshot_if_email_found(
-            email=self.instance.email, article=self.article
-        )
+        if self.is_revision:
+            frozen_author, __ = RevisionArticleAuthorOrder.objects.get_or_create(
+                author=self.instance,
+                revision_storage=RevisionStorage.objects.get(article=self.article),
+                order=self.article.next_frozen_author_order(),
+            )
+        else:
+            frozen_author, __ = FrozenAuthor.get_or_snapshot_if_email_found(
+                email=self.instance.email, article=self.article
+            )
+
         return frozen_author
 
 
