@@ -159,3 +159,5 @@ DEFAULT_USE_OF_AI_FIELD_LABEL = getattr(
     "Author(s) take full responsibility for any use of Artificial Intelligence made in preparing this paper",
 )
 USE_OF_AI_FIELD_LABEL = getattr(settings, "SUBMISSION_USE_OF_AI_FIELD_LABEL", DEFAULT_USE_OF_AI_FIELD_LABEL)
+
+ENABLE_FREE_KEYWORD = getattr(settings, "SUBMISSION_ENABLE_FREE_KEYWORD", True)
