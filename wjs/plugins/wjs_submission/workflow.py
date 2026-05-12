@@ -143,7 +143,7 @@ class Step:
         :rtype: dict[int, StepState]
         """
         states = {}
-        offset = 1
+        offset = 0
         for step in STEPS.values():
             active = step.is_active(journal, article, user)
             if not active:
