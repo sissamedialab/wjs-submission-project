@@ -99,7 +99,7 @@ class SubmissionStep1Form(forms.ModelForm):
         copyright_label = mark_safe(  # noqa S308
             get_setting(
                 "general",
-                "copyright_submission_label",
+                "copyright_notice",
                 self.journal,
             ).processed_value
         )
