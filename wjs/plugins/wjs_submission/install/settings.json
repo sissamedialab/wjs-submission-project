@@ -321,5 +321,20 @@
         "value": {
             "default": "true"
         }
+    },
+    {
+        "group": {
+            "name": "wjs_submission"
+        },
+        "setting": {
+            "description": "Instructions for Conflict of Interest field",
+            "is_translatable": false,
+            "name": "competing_interest_instructions_text",
+            "pretty_name": "Instructions for Conflict of Interest field",
+            "type": "rich-text"
+        },
+        "value": {
+            "default": "<p>Please disclose any relevant financial or personal relationships that could be viewed as inappropriately influencing your work or hindering transparency.</p><p>If you have no Conflicts of Interest to declare, please write \"No CoI to declare\".</p>"
+        }
     }
 ]
