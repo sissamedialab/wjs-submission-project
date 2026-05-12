@@ -34,11 +34,6 @@ class SubmissionStep1Form(forms.ModelForm):
     competing_interests = WjsMiniHTMLFormField(
         label=_("Competing interests"),
         height="15rem",
-        help_text=_(
-            "Please disclose any relevant financial or personal relationships that could be viewed as inappropriately "
-            "influencing your work or hindering transparency.<br>"
-            'If you have no Conflicts of Interest to declare, please write "No CoI to declare".'
-        ),
         required=False,
     )
     cover_letter_file = forms.FileField(
@@ -96,6 +91,14 @@ class SubmissionStep1Form(forms.ModelForm):
             pass
         super().__init__(*args, **kwargs)
 
+        competing_interest_instructions_text = mark_safe(  # noqa: S308
+            get_setting(
+                "wjs_submission",
+                "competing_interest_instructions_text",
+                self.journal,
+            ).processed_value
+        )
+        self.fields["competing_interests"].help_text = competing_interest_instructions_text
         copyright_label = mark_safe(  # noqa S308
             get_setting(
                 "general",
