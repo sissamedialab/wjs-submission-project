@@ -442,11 +442,12 @@ def test_free_text_keywords(client, article):
 
     g1 = KeywordGroup.objects.create(name="group1")
     g2 = KeywordGroup.objects.create(name="group2")
-    kw1 = Keyword.objects.create(word="kw1", journal=journal, group=g1)
-    kw2 = Keyword.objects.create(word="kw2", journal=journal, group=g2)
+    kw1 = Keyword.objects.create(word="kw1", group=g1)
+    kw2 = Keyword.objects.create(word="kw2", group=g2)
     journal.keywords.add(kw1, kw2)
 
-    free_keywords = [Keyword.objects.create(word=f"free{i}", journal=journal) for i in range(3)]
+    free_keywords = [Keyword.objects.create(word=f"free{i}") for i in range(3)]
+    journal.keywords.add(*free_keywords)
 
     post_data = {
         "keywords": [str(kw.pk) for kw in free_keywords],
