@@ -85,6 +85,8 @@ class SubmissionStep4Form(forms.ModelForm):
         :rtype: QuerySet
         :raises: None
         """
+        if not article.author_accounts.exists():
+            return Account.objects.filter(pk=article.correspondence_author)
         return article.author_accounts.all()
 
     def clean_affiliation(self):

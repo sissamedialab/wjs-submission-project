@@ -1,6 +1,7 @@
 import dataclasses
 
 from django.db.transaction import atomic
+from plugins.wjs_submission.access_mode import get_access_mode_configuration
 from submission.models import (
     STAGE_UNDER_REVISION,
     Article,
@@ -191,6 +192,10 @@ class PopulateStep4AdditionalModels:
         RevisionArticleAuthorOrder.objects.filter(revision_storage=self.revision_storage).delete()
         RevisionArticleCollaboration.objects.filter(revision_storage=self.revision_storage).all().delete()
         frozen_authors = FrozenAuthor.objects.filter(article=self.revision_storage.article)
+        # compatibility step from imported articles without FrozenAuthor set (because the old submission
+        # creates FrozenAuthor only after acceptance
+        if not frozen_authors.exists():
+            frozen_authors = self.revision_storage.article.articleauthororder_set.all()
         for frozen_author in frozen_authors:
             RevisionArticleAuthorOrder.objects.get_or_create(
                 revision_storage=self.revision_storage,
@@ -299,7 +304,14 @@ class PopulateStep7:
         :type commit: bool
         """
         if self.revision_storage.article.submission_data.access_mode:
-            self.revision_storage.data["access_mode"] = self.revision_storage.article.submission_data.access_mode.pk
+            access_mode = self.revision_storage.article.submission_data.access_mode
+        else:
+            configuration = get_access_mode_configuration(
+                self.revision_storage.article.correspondence_author, self.revision_storage.article
+            )
+            if configuration:
+                access_mode = configuration.access_mode
+        self.revision_storage.data["access_mode"] = access_mode.pk
         self.revision_storage.data["special_request"] = self.revision_storage.article.submission_data.special_request
 
         fundings = SubmissionArticleFunding.objects.filter(article=self.revision_storage.article)

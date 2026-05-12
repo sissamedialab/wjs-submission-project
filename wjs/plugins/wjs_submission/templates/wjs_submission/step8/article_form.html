@@ -255,6 +255,7 @@
       </table>
     </div>
   </div>
+  {% if request.journal|setting:"enable_affiliation" %}
   <div class="wjs-submission-form__section mb-5">
     <div class="wjs-submission-form__form-label-title-container">
       <h2 class="wjs-submission-form__form-label-title">
@@ -265,6 +266,7 @@
       {{ affiliation }}
     </div>
   </div>
+  {% endif %}
   {% if authors_contributions %}
     <div class="wjs-submission-form__section mb-5">
       <div class="wjs-submission-form__form-label-title-container">

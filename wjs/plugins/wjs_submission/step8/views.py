@@ -186,10 +186,13 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
             if context["article_data"].get("section"):
                 context["article_data"]["section"] = Section.objects.get(pk=context["article_data"]["section"])
             context["access_mode"] = AccessModeJournal.objects.get(
-                journal=self.object.journal, access_mode_id=context["article_data"]["access_mode"]
+                journal=self.object.journal, access_mode_id=context["article_data"].get("access_mode", None)
             )
             context["correspondence_author"] = Account.objects.get(pk=context["article_data"]["correspondence_author"])
-            context["affiliation"] = ControlledAffiliation.objects.get(pk=context["article_data"]["affiliation_pk"])
+            if context["article_data"].get("affiliation_pk", None):
+                context["affiliation"] = ControlledAffiliation.objects.get(
+                    pk=context["article_data"]["affiliation_pk"]
+                )
             context["validate_revision_data"] = self._validate_revision_data(self.object)
             context["authors_contributions"] = self.object.revisionstorage.data.get("authors_contributions")
         else:
