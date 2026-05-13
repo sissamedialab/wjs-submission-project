@@ -35,15 +35,22 @@ function setupFundingEvents() {
     updateFundingFieldsStatus();
   });
   document.body.addEventListener("close-active-modal", function() {
+    console.log("cl;ose 2")
     document.querySelector("#htmxModal").querySelector("[aria-label=Close]").click();
   });
   document.body.addEventListener("open-active-modal", function() {
+    console.log("open")
     const htmxModal = new bootstrap.Modal(document.getElementById("htmxModal"));
     htmxModal.show();
   });
   const modal = document.getElementById("htmxModal");
   modal.addEventListener("hidden.bs.modal", function() {
+    // this cleanup modal disposal issues
     document.getElementById("htmxModalContent").innerHTML = "";
+    document.body.classList.remove('modal-open');
+    document.body.style.removeProperty('overflow');
+    document.body.style.removeProperty('padding-right');
+    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
   });
 }
 

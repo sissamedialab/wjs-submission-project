@@ -2,9 +2,9 @@ from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
 DEFAULT_KEYWORDS_INTERVAL_PER_JOURNAL = {
-    None: (2, 4),
-    "JQuant": (1, 3),
-    "JCAP": (1, 3),
+    None: (1, 3),
+    "JQuant": (2, 4),
+    "JHEP": (1, 4),
 }
 
 DEFAULT_KEYWORD_VALIDATORS = {
@@ -37,11 +37,12 @@ DEFAULT_ACCESS_MODE_CONTROL_FUNCTION = {
 
 DEFAULT_CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION = {
     "JCAP": "plugins.wjs_submission.account_validation.jcap_correspondence_author_validation",
+    "JCOM": "plugins.wjs_submission.account_validation.jcom_correspondence_author_validation",
+    "JCOMAL": "plugins.wjs_submission.account_validation.jcom_correspondence_author_validation",
     None: "plugins.wjs_submission.account_validation.default_correspondence_author_validation",
 }
 
 DEFAULT_CORRESPONDENCE_AUTHOR_COMPLETION_FUNCTION = {
-    "JCAP": "plugins.wjs_submission.account_validation.default_correspondence_author_completion",
     None: "plugins.wjs_submission.account_validation.default_correspondence_author_completion",
 }
 
@@ -158,3 +159,5 @@ DEFAULT_USE_OF_AI_FIELD_LABEL = getattr(
     "Author(s) take full responsibility for any use of Artificial Intelligence made in preparing this paper",
 )
 USE_OF_AI_FIELD_LABEL = getattr(settings, "SUBMISSION_USE_OF_AI_FIELD_LABEL", DEFAULT_USE_OF_AI_FIELD_LABEL)
+
+ENABLE_FREE_KEYWORD = getattr(settings, "SUBMISSION_ENABLE_FREE_KEYWORD", True)

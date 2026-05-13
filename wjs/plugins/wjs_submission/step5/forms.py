@@ -9,6 +9,8 @@ from ..settings_helpers import get_article_language_choices
 
 
 class SubmissionStep5Form(ArticleInfo):
+    FILTER_PUBLIC_FIELDS = True
+
     title = WjsSimpleBleach(
         label=_("Title"),
         max_length=255,
@@ -29,10 +31,16 @@ class SubmissionStep5Form(ArticleInfo):
             self.fields["section"].label = _("Article type")
             self.fields["section"].required = True
 
+        self.fields["title"].label = _("Title")
+        self.fields["abstract"].label = _("Abstract")
         for field in self.fields:
             if self.fields[field].required:
-                self.fields[field].widget.attrs["required"] = True
-                self.fields[field].help_text = _("Required")
+                if field == "abstract":
+                    self.fields[field].widget.attrs["js_required"] = True
+                    self.fields[field].help_text = _("Required")
+                else:
+                    self.fields[field].widget.attrs["required"] = True
+                    self.fields[field].help_text = _("Required")
 
     def save(self, commit=True, request=None):
         """

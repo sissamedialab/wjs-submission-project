@@ -1,14 +1,13 @@
 from core import files as core_files
-from core.models import Account, Country
+from core.models import Account, ControlledAffiliation
 from django import forms
 from django.db.models import QuerySet
 from django.utils.translation import gettext_lazy as _
-from submission.models import Article, ArticleAuthorOrder
+from submission.models import Article, FrozenAuthor
+from utils.setting_handler import get_setting
 
 from ..account_validation import (
     ProfileCompletionStatus,
-    is_user_eligible_for_correspondence_author,
-    verify_profile_completion,
 )
 from ..fields import WjsMiniHTMLFormField
 from ..models import (
@@ -22,7 +21,7 @@ from ..models import (
 
 
 class SubmissionStep4Form(forms.ModelForm):
-    country = forms.ModelChoiceField(queryset=Country.objects.all())
+    affiliation = forms.ModelChoiceField(queryset=ControlledAffiliation.objects.all())
     collaboration_relation = forms.ChoiceField(
         choices=CollaborationRelation.choices,
         widget=forms.RadioSelect(
@@ -49,28 +48,31 @@ class SubmissionStep4Form(forms.ModelForm):
         :param kwargs: Keyword arguments; none mandatory;
         """
         self.step = kwargs.pop("step", None)
+        if "initial" not in kwargs:
+            kwargs["initial"] = {}
+        kwargs["initial"]["correspondence_author"] = kwargs["instance"].correspondence_author
+        if kwargs["initial"]["correspondence_author"]:
+            kwargs["initial"]["affiliation"] = kwargs["instance"].correspondence_author.primary_affiliation()
+        kwargs["initial"]["collaboration_relation"] = (
+            ArticleCollaboration.objects.filter(article=kwargs["instance"]).values_list("relation", flat=True).first()
+        ) or CollaborationRelation.NONE
         super().__init__(*args, **kwargs)
+        enable_collaboration = get_setting(
+            "wjs_submission", "enable_collaboration", self.instance.journal
+        ).processed_value
+        enable_affiliation = get_setting("wjs_submission", "enable_affiliation", self.instance.journal).processed_value
+        self.fields["collaboration_relation"].required = enable_collaboration
+        self.fields["affiliation"].required = enable_affiliation
+        if not enable_affiliation:
+            self.fields["affiliation"].widget = forms.HiddenInput()
 
         authors_list = self._get_correspondence_author_list(self.instance)
         self.fields["correspondence_author"].queryset = authors_list
-
-        self.disabled_accounts = self._get_disabled_accounts(authors_list)
-        # The following error can be used by the view's template in order to
-        # indicate required/desirable actions to the operator:
-        self.correspondence_author_error = verify_profile_completion(
-            journal=self.instance.journal,
-            disabled_users=self.disabled_accounts,
-            user=self.instance.correspondence_author,
-            is_owner=self.instance.correspondence_author == self.instance.owner,
-        )
-
         if self.instance.correspondence_author:
-            self.fields["correspondence_author"].initial = self.instance.correspondence_author
-            self.fields["country"].initial = self.instance.correspondence_author.country
-
-        self.fields["collaboration_relation"].initial = (
-            ArticleCollaboration.objects.filter(article=self.instance).values_list("relation", flat=True).first()
-        ) or CollaborationRelation.NONE
+            self.fields["affiliation"].queryset = self.instance.correspondence_author.affiliations
+        for field in self.fields:
+            if self.fields[field].required:
+                self.fields[field].help_text = _("Required")
 
     @staticmethod
     def _get_correspondence_author_list(article: Article) -> QuerySet:
@@ -83,41 +85,37 @@ class SubmissionStep4Form(forms.ModelForm):
         :rtype: QuerySet
         :raises: None
         """
-        return Account.objects.filter(
-            id__in=ArticleAuthorOrder.objects.filter(article=article).values_list("author_id", flat=True)
-        )
+        if not article.author_accounts.exists():
+            return Account.objects.filter(pk=article.correspondence_author)
+        return article.author_accounts.all()
 
-    def _get_disabled_accounts(self, authors: QuerySet) -> set:
+    def clean_affiliation(self):
         """
-        Identify and return the IDs of disabled accounts based on the given criteria.
+        Cleansand retrieves the appropriate affiliation information based on journal settings and author details.
 
-        :param authors: A QuerySet of author objects to evaluate
-        :type authors: QuerySet
-        :return: A set containing the IDs of authors whose accounts are considered disabled
-        :rtype: set
+        If affiliation is disabled by journal settings, the primary affiliation (if any) is set.
+        Otherwise, the affiliation field is shown and user can select the appropriate affiliation.
+
+        :return: The affiliation information based on conditions or None if no relevant affiliation is found.
+        :rtype: str or None
         """
-        return {
-            author.pk
-            for author in authors
-            if not is_user_eligible_for_correspondence_author(self.instance.journal, author)
-        }
+        if get_setting("wjs_submission", "enable_affiliation", self.instance.journal).processed_value:
+            return self.cleaned_data["affiliation"]
+        if self.cleaned_data.get("correspondence_author"):
+            return self.cleaned_data.get("correspondence_author").primary_affiliation()
+        return None
 
     def save(self, commit: bool = True) -> Account:
         """
-        Handle only affiliation_country and article.authors.
+        Cleanup collaboration_relation on save.
 
         The view manages most data due to heavy HTMX usage.
         """
         self.instance.current_step = max(self.instance.current_step, self.step)
         instance = super().save()
 
-        instance.submission_data.affiliation_country = self.cleaned_data.get("country")
+        instance.submission_data.affiliation = self.cleaned_data.get("affiliation")
         instance.submission_data.save()
-
-        instance.authors.clear()
-        authors = ArticleAuthorOrder.objects.filter(article=instance).values_list("author", flat=True)
-
-        instance.authors.add(*authors)
 
         if self.cleaned_data.get("collaboration_relation") == "none":
             ArticleCollaboration.objects.filter(article=instance).delete()
@@ -145,37 +143,183 @@ class AddAuthorForm(forms.ModelForm):
         :param args: Positional arguments passed to the parent form.
         :param kwargs: Keyword arguments; must include 'article_id'.
         """
-        article_id = kwargs.pop("article_id")
-        self.is_revision = kwargs.pop("is_revision", False)
-        self.article = Article.objects.get(pk=article_id)
+        self.is_revision = kwargs.pop("is_revision")
+        self.article = kwargs.pop("article")
         super().__init__(*args, **kwargs)
 
-        self.fields["first_name"].required = True
-        self.fields["last_name"].required = True
-        self.fields["email"].required = True
+        self.fields["first_name"].required = self.instance is None
+        self.fields["last_name"].required = self.instance is None
+        self.fields["email"].required = self.instance is None
         for field in self.fields:
             if self.fields[field].required:
                 self.fields[field].help_text = _("Required")
 
     def save(self, commit: bool = True) -> Account:
         """
-        Save the author instance and create an ArticleAuthorOrder entry.
+        Save the author instance and create an FrozenAuthor entry.
 
         :param commit: Whether to commit the instance to the database.
         :return: The saved Account instance.
         """
         instance = super().save()
-        model, fk = (
-            (RevisionArticleAuthorOrder, {"revision_storage": RevisionStorage.objects.get(article=self.article)})
-            if self.is_revision
-            else (ArticleAuthorOrder, {"article": self.article})
-        )
-        model.objects.get_or_create(
-            **fk,
-            author=instance,
-            defaults={"order": self.article.next_author_sort(revision=self.is_revision)},
-        )
+        if self.is_revision:
+            model, fk = (
+                (RevisionArticleAuthorOrder, {"revision_storage": RevisionStorage.objects.get(article=self.article)})
+                if self.is_revision
+                else (FrozenAuthor, {"article": self.article})
+            )
+            model.objects.get_or_create(
+                **fk,
+                author=instance,
+                defaults={"order": self.article.next_author_sort(revision=self.is_revision)},
+            )
+        else:
+            FrozenAuthor.get_or_snapshot_if_email_found(email=instance.email, article=self.article)
         return instance
+
+
+class AddFrozenAutorObjectForm(forms.Form):
+    """
+    Associate a frozen author to an article.
+
+    Handle the creation or retrieval of a frozen author object associated with a given
+    article and email. This form is intended to manage frozen author objects in the
+    context of articles efficiently. It also allows for customization of form initialization
+    where revision-specific features might be employed.
+
+    :ivar is_revision: Indicates whether the form instance is being used for a revision
+        workflow.
+    :type is_revision: bool
+    :ivar instance: An object representing details about the author, typically passed
+        as an instance to the form.
+    :type instance: Any
+    :ivar article: An object representing the article associated with the frozen author
+        operation.
+    :type article: Any
+    """
+
+    def __init__(self, *args, **kwargs):
+        """
+        Initialize an instance of the class and sets up the provided attributes.
+
+        :param args: Positional arguments passed during initialization.
+        :param kwargs: Keyword arguments passed during initialization. Expected
+            keys include:
+            - is_revision (bool): Indicates if the object is a revision.
+            - instance: Specifies the instance of the object.
+            - article: Specifies the related article.
+        """
+        self.is_revision = kwargs.pop("is_revision")
+        self.instance = kwargs.pop("instance")
+        self.article = kwargs.pop("article")
+        super().__init__(*args, **kwargs)
+
+    def save(self, commit: bool = True) -> FrozenAuthor | RevisionArticleAuthorOrder:
+        """
+        Save the current instance and associates it with an author snapshot.
+
+        If an email match is found in the database. If no match is found, a new author
+        snapshot is created.
+
+        :param commit: Whether to commit the changes to the database. Defaults to True.
+        :type commit: bool
+        :return: The author instance that was either fetched or newly created.
+        :rtype: FrozenAuthor | RevisionArticleAuthorOrder
+        """
+        if self.is_revision:
+            frozen_author, __ = RevisionArticleAuthorOrder.objects.get_or_create(
+                author=self.instance,
+                revision_storage=RevisionStorage.objects.get(article=self.article),
+                order=self.article.next_frozen_author_order(),
+            )
+        else:
+            frozen_author, __ = FrozenAuthor.get_or_snapshot_if_email_found(
+                email=self.instance.email, article=self.article
+            )
+
+        return frozen_author
+
+
+class AddCollaborationObjectForm(forms.Form):
+    """
+    Handles the form initialization and saving for adding a collaboration object.
+
+    This class is designed to be used when dealing with collaboration objects,
+    allowing instances to be linked to articles or revisions based on the provided
+    context. It manages the linkage logic and provides a method to save the
+    collaboration to the appropriate model.
+
+    :ivar is_revision: Indicator of whether the collaboration is related to a
+        revision. Determines the model and fields to use during saving.
+    :type is_revision: bool
+    :ivar instance: The collaboration instance to be linked. Represents the main
+        collaboration object being processed by the form.
+    :type instance: Collaboration
+    :ivar article: The article object to which the collaboration is to be linked.
+    :type article: Article
+    :ivar collaboration_relation: Defines the type of relationship or relation
+        between the article and the collaboration instance.
+    :type collaboration_relation: str
+    :ivar user: The user performing the collaboration operation.
+    :type user: User
+    """
+
+    def __init__(self, *args, **kwargs):
+        """
+        Initialize an instance of the class and sets up the provided attributes.
+
+        :param args: Positional arguments to be passed to the superclass initializer.
+        :param kwargs: Keyword arguments, including specific ones for initializing the
+            instance attributes:
+
+            - is_revision: Indicates whether the entity represents a revision.
+            - instance: Represents the instance of the related object.
+            - article: Associated article object.
+            - collaboration_relation: Denotes the relationship for collaboration.
+            - user: User associated with the operation.
+        """
+        self.is_revision = kwargs.pop("is_revision")
+        self.instance = kwargs.pop("instance")
+        self.article = kwargs.pop("article")
+        self.collaboration_relation = kwargs.pop("collaboration_relation")
+        self.user = kwargs.pop("user")
+        super().__init__(*args, **kwargs)
+
+    def save(self, commit: bool = True) -> RevisionArticleCollaboration | ArticleCollaboration:
+        """
+        Associate the collaboration instance to the articl.
+
+        It creates or retrieves the appropriate collaboration
+        link based on whether the instance is associated with a revision or not. The function
+        decides the correct model (either RevisionArticleCollaboration or ArticleCollaboration)
+        to use based on the `is_revision` attribute. It then utilizes the foreign key filters
+        to retrieve or create a collaboration link and set default attributes where necessary.
+
+        :param commit: Flag indicating whether to persist the save operation immediately
+                       after creating or retrieving the collaboration instance.
+                       Defaults to `True`.
+        :type commit: bool
+        :return: The created or retrieved `RevisionArticleCollaboration` or
+                 `ArticleCollaboration` instance, based on the `is_revision` attribute.
+        :rtype: RevisionArticleCollaboration | ArticleCollaboration
+        """
+        model, fk_filter = (
+            (
+                RevisionArticleCollaboration,
+                {"revision_storage": RevisionStorage.objects.get(article=self.article)},
+            )
+            if self.is_revision
+            else (ArticleCollaboration, {"article": self.article})
+        )
+        collaboration_link = model.objects.get_or_create(
+            **fk_filter,
+            collaboration=self.instance,
+            defaults={
+                "relation": self.collaboration_relation,
+                "order": self.instance.next_collaboration_sort(article=self.article, revision=self.is_revision),
+            },
+        )
+        return collaboration_link  # noqa: RET504
 
 
 class AddCollaborationForm(forms.ModelForm):
@@ -212,12 +356,12 @@ class AddCollaborationForm(forms.ModelForm):
         :param kwargs: Keyword arguments; must include 'article_id',
                        'collaboration_relation', and 'user'.
         """
-        article_id = kwargs.pop("article_id")
-        self.is_revision = kwargs.pop("is_revision", False)
-        self.article = Article.objects.get(pk=article_id)
-        self.collaboration_relation = kwargs.pop("collaboration_relation", False)
+        self.is_revision = kwargs.pop("is_revision")
+        self.article = kwargs.pop("article")
+        self.collaboration_relation = kwargs.pop("collaboration_relation")
         self.user = kwargs.pop("user")
         super().__init__(*args, **kwargs)
+
         self.fields["collaboration_relation"].initial = self.collaboration_relation
         for field in self.fields:
             if self.fields[field].required:
@@ -283,6 +427,8 @@ class RevisionStep4Form(SubmissionStep4Form):
         """
         self.revision_storage = RevisionStorage.objects.get(article=kwargs["instance"])
         self.has_author_list_changed = kwargs.pop("has_author_list_changed", False)
+        kwargs.setdefault("initial", {})
+        kwargs["initial"]["collaboration_relation"] = self.revision_storage.data.get("collaboration_relation")
         super().__init__(*args, **kwargs)
         self.fields["authors_contributions"].required = self.has_author_list_changed
         # Using a custom attribute to not trigger bootstrap validation as we use custom logic which checks tinymce
@@ -320,10 +466,10 @@ class RevisionStep4Form(SubmissionStep4Form):
         revision_storage = RevisionStorage.objects.get(article=self.instance)
         revision_storage.revision_step = max(revision_storage.revision_step, self.step)
 
-        revision_storage.data["affiliation_country"] = self.cleaned_data.get("country").pk
+        revision_storage.data["affiliation_pk"] = self.cleaned_data.get("affiliation").pk
         revision_storage.data["authors_contributions"] = self.cleaned_data.get("authors_contributions")
 
-        author_ids = ArticleAuthorOrder.objects.filter(article=self.instance).values_list("author_id", flat=True)
+        author_ids = FrozenAuthor.objects.filter(article=self.instance).values_list("author_id", flat=True)
         revision_storage.data["article_authors"] = list(author_ids)
         revision_storage.save()
         if self.cleaned_data.get("collaboration_relation") == "none":

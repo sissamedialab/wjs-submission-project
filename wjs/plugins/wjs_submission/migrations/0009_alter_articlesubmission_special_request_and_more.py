@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("submission", "0085_submissionconfiguration_autocomplete_keywords"),
         ("wjs_submission", "0008_define_access_mode"),
     ]
 

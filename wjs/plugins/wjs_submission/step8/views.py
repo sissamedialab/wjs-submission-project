@@ -1,8 +1,9 @@
-from core.models import Account, Country
+from core.models import Account, ControlledAffiliation
 from django.urls import reverse_lazy
 from django.views.generic import UpdateView
 from repository.models import Author
-from submission.models import LANGUAGE_CHOICES, Article, ArticleAuthorOrder, Section
+from submission.models import LANGUAGE_CHOICES, Article, FrozenAuthor, Section
+from utils.setting_handler import get_setting
 
 from ..access_mode import get_access_mode_configuration
 from ..data import RevisionValidationData
@@ -32,7 +33,7 @@ def get_article_authors(article) -> list[Author]:
         return [
             author.author for author in RevisionArticleAuthorOrder.objects.filter(revision_storage__article=article)
         ]
-    return [author.author for author in ArticleAuthorOrder.objects.filter(article=article)]
+    return [author.author for author in FrozenAuthor.objects.filter(article=article)]
 
 
 def get_article_collaborations(article) -> list[RevisionArticleCollaboration] | list[ArticleCollaboration]:
@@ -77,10 +78,10 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
         """
         configuration = get_access_mode_configuration(self.request.user, self.object)
         editable_revision = is_revision_full(self.object) or is_revision_metadata(self.object)
-        if not editable_revision and self._step7_skipped and configuration.access_mode:
+        if not editable_revision and self._step7_skipped() and configuration.access_mode:
             self.object.submission_data.access_mode = configuration.access_mode
             self.object.submission_data.save()
-        if editable_revision and self._step7_skipped and configuration.access_mode:
+        if editable_revision and self._step7_skipped() and configuration.access_mode:
             revision_storage = RevisionStorage.objects.get(article=self.object)
             revision_storage.data["access_mode"] = configuration.access_mode.pk
             revision_storage.save()
@@ -151,54 +152,76 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
         context["articles_fundings"] = get_article_fundings(self.object)
         context["article_authors"] = get_article_authors(self.object)
         context["article_collaborations"] = get_article_collaborations(self.object)
+        enable_cas = get_setting("wjs_submission", "enable_cas", self.object.journal).processed_value
+        enable_das = get_setting("wjs_submission", "enable_das", self.object.journal).processed_value
+        context["files_data"] = {}
         if context["is_revision_full"]:
             context["article_data"] = self.object.revisionstorage.data
-            context["files_data"] = {
-                "cas": self.object.revisionstorage.data["cas"],
-                "cas_display": self.object.submission_data.CasDeclaration.as_dict()[
-                    self.object.revisionstorage.data["cas"]
-                ],
-                "cas_url": self.object.revisionstorage.data["cas_url"],
-                "cas_show_url": self.object.revisionstorage.data["cas"]
-                == self.object.submission_data.CasDeclaration.URL.value,
-                "das": self.object.revisionstorage.data["das"],
-                "das_display": self.object.submission_data.CasDeclaration.as_dict()[
-                    self.object.revisionstorage.data["das"]
-                ],
-                "das_url": self.object.revisionstorage.data["das_url"],
-                "das_show_url": self.object.revisionstorage.data["das"]
-                == self.object.submission_data.DasDeclaration.URL.value,
-            }
+            if enable_cas:
+                context["files_data"].update(
+                    {
+                        "cas": self.object.revisionstorage.data["cas"],
+                        "cas_display": self.object.submission_data.CasDeclaration.as_dict()[
+                            self.object.revisionstorage.data["cas"]
+                        ],
+                        "cas_url": self.object.revisionstorage.data["cas_url"],
+                        "cas_show_url": self.object.revisionstorage.data["cas"]
+                        == self.object.submission_data.CasDeclaration.URL.value,
+                    }
+                )
+            if enable_das:
+                context["files_data"].update(
+                    {
+                        "das": self.object.revisionstorage.data["das"],
+                        "das_display": self.object.submission_data.CasDeclaration.as_dict()[
+                            self.object.revisionstorage.data["das"]
+                        ],
+                        "das_url": self.object.revisionstorage.data["das_url"],
+                        "das_show_url": self.object.revisionstorage.data["das"]
+                        == self.object.submission_data.DasDeclaration.URL.value,
+                    }
+                )
             if context["article_data"].get("language"):
                 context["article_data"]["language"] = dict(LANGUAGE_CHOICES)[context["article_data"]["language"]]
             if context["article_data"].get("section"):
                 context["article_data"]["section"] = Section.objects.get(pk=context["article_data"]["section"])
             context["access_mode"] = AccessModeJournal.objects.get(
-                journal=self.object.journal, access_mode_id=context["article_data"]["access_mode"]
+                journal=self.object.journal, access_mode_id=context["article_data"].get("access_mode", None)
             )
             context["correspondence_author"] = Account.objects.get(pk=context["article_data"]["correspondence_author"])
-            context["affiliation_country"] = Country.objects.get(pk=context["article_data"]["affiliation_country"])
+            if context["article_data"].get("affiliation_pk", None):
+                context["affiliation"] = ControlledAffiliation.objects.get(
+                    pk=context["article_data"]["affiliation_pk"]
+                )
             context["validate_revision_data"] = self._validate_revision_data(self.object)
             context["authors_contributions"] = self.object.revisionstorage.data.get("authors_contributions")
         else:
             context["article_data"] = self.object
-            context["files_data"] = {
-                "cas": self.object.submission_data.cas,
-                "cas_display": self.object.submission_data.get_cas_display(),
-                "cas_url": self.object.submission_data.cas_url,
-                "cas_show_url": self.object.submission_data.cas
-                == self.object.submission_data.CasDeclaration.URL.value,
-                "das": self.object.submission_data.das,
-                "das_display": self.object.submission_data.get_das_display(),
-                "das_url": self.object.submission_data.das_url,
-                "das_show_url": self.object.submission_data.das
-                == self.object.submission_data.DasDeclaration.URL.value,
-            }
+            if enable_cas:
+                context["files_data"].update(
+                    {
+                        "cas": self.object.submission_data.cas,
+                        "cas_display": self.object.submission_data.get_cas_display(),
+                        "cas_url": self.object.submission_data.cas_url,
+                        "cas_show_url": self.object.submission_data.cas
+                        == self.object.submission_data.CasDeclaration.URL.value,
+                    }
+                )
+            if enable_das:
+                context["files_data"].update(
+                    {
+                        "das": self.object.submission_data.das,
+                        "das_display": self.object.submission_data.get_das_display(),
+                        "das_url": self.object.submission_data.das_url,
+                        "das_show_url": self.object.submission_data.das
+                        == self.object.submission_data.DasDeclaration.URL.value,
+                    }
+                )
             context["access_mode"] = AccessModeJournal.objects.get(
                 journal=self.object.journal, access_mode_id=self.object.submission_data.access_mode.pk
             )
             context["correspondence_author"] = self.object.correspondence_author
-            context["affiliation_country"] = self.object.submission_data.affiliation_country
+            context["affiliation"] = self.object.submission_data.affiliation
             if context["is_revision"]:
                 if title := self.object.revisionstorage.data.get("title"):
                     context["article_data"].title = title
@@ -217,6 +240,7 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                     "competing_interests", ""
                 )
             else:
+                context["article_data"].language = self.object.get_language_display()
                 context["article_data"].special_request = self.object.submission_data.special_request
                 context["article_data"].cover_letter_file = self.object.submission_data.cover_letter_file
             context["validate_revision_data"] = self._validate_revision_data(self.object)

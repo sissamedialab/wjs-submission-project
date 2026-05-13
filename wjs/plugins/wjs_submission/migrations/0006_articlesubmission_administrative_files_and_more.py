@@ -27,15 +27,9 @@ class Migration(migrations.Migration):
             name="cas",
             field=models.CharField(
                 choices=[
-                    (
-                        "no",
-                        "My article has no associated code or the code will not be deposited",
-                    ),
-                    (
-                        "esm",
-                        "My article has code included as electronic supplementary material",
-                    ),
-                    ("url", "My article has associated code in a data repository"),
+                    ("no", "My article has no associated code or the code will not be deposited"),
+                    ("esm", "My article has code included as electronic supplementary material"),
+                    ("url", "My article has associated code in a repository"),
                 ],
                 default="",
                 max_length=255,
@@ -52,15 +46,9 @@ class Migration(migrations.Migration):
             name="das",
             field=models.CharField(
                 choices=[
-                    (
-                        "no",
-                        "My article has no associated data or the data will not be deposited",
-                    ),
-                    (
-                        "esm",
-                        "My article has data included as electronic supplementary material",
-                    ),
-                    ("url", "My article has associated data in a data repository"),
+                    ("no", "My article has no associated data or the data will not be deposited"),
+                    ("esm", "My article has data included as electronic supplementary material"),
+                    ("url", "My article has associated data in a repository"),
                 ],
                 default="",
                 max_length=255,

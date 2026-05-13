@@ -22,16 +22,16 @@ cache:
 #       clear that wjs-profile depends on wjs-submission)
 include:
   - project: 'wjs/wjs-profile-project'
-    ref: wjs-production
+    ref: integration-1.8
     file: '.gitlab-ci-pkg-build-and-upload.yml'
   - project: 'wjs/wjs-profile-project'
-    ref: wjs-production
+    ref: integration-1.8
     file: '.gitlab-ci-pkg-deploy.yml'
   - project: 'wjs/wjs-profile-project'
-    ref: wjs-production
+    ref: integration-1.8
     file: '.gitlab-ci-run-tests.yml'
   - project: 'wjs/wjs-profile-project'
-    ref: wjs-production
+    ref: integration-1.8
     file: '.gitlab-ci-pre-commit.yml'
 
 
@@ -47,10 +47,11 @@ run-tests:
   tags:
     - fast-test
   stage: test
-  image: registry.gitlab.sissamedialab.it/wjs/janeway/debian-python-git-janeway:wjs-submission
+  image: registry.gitlab.sissamedialab.it/wjs/janeway/debian-python-git-janeway:${JANEWAY_VERSION}
 
   # NB: Must match with test_settings.DATABASES
   variables:
+    JANEWAY_VERSION: "1.8"
     POSTGRES_USER: janeway
     POSTGRES_PASSWORD: janeway
     POSTGRES_DB: janeway

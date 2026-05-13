@@ -261,5 +261,80 @@
         "value": {
             "default": "<p>Data will be visible on your manuscript page during review. During production stage they will be placed before the bibliography in the following form: 'Institution, grant number (doi, description)'.</p>"
         }
+    },
+    {
+        "group": {
+            "name": "wjs_submission"
+        },
+        "setting": {
+            "description": "Enable DAS",
+            "is_translatable": false,
+            "name": "enable_das",
+            "pretty_name": "Enable DAS",
+            "type": "boolean"
+        },
+        "value": {
+            "default": "true"
+        }
+    },
+    {
+        "group": {
+            "name": "wjs_submission"
+        },
+        "setting": {
+            "description": "Enable CAS",
+            "is_translatable": false,
+            "name": "enable_cas",
+            "pretty_name": "Enable CAS",
+            "type": "boolean"
+        },
+        "value": {
+            "default": "true"
+        }
+    },
+    {
+        "group": {
+            "name": "wjs_submission"
+        },
+        "setting": {
+            "description": "Enable Collaboration section",
+            "is_translatable": false,
+            "name": "enable_collaboration",
+            "pretty_name": "Enable Collaboration section",
+            "type": "boolean"
+        },
+        "value": {
+            "default": "true"
+        }
+    },
+    {
+        "group": {
+            "name": "wjs_submission"
+        },
+        "setting": {
+            "description": "Enable Affiliation selection",
+            "is_translatable": false,
+            "name": "enable_affiliation",
+            "pretty_name": "Enable Affiliation selection",
+            "type": "boolean"
+        },
+        "value": {
+            "default": "true"
+        }
+    },
+    {
+        "group": {
+            "name": "wjs_submission"
+        },
+        "setting": {
+            "description": "Instructions for Conflict of Interest field",
+            "is_translatable": false,
+            "name": "competing_interest_instructions_text",
+            "pretty_name": "Instructions for Conflict of Interest field",
+            "type": "rich-text"
+        },
+        "value": {
+            "default": "<p>Please disclose any relevant financial or personal relationships that could be viewed as inappropriately influencing your work or hindering transparency.</p><p>If you have no Conflicts of Interest to declare, please write \"No CoI to declare\".</p>"
+        }
     }
 ]

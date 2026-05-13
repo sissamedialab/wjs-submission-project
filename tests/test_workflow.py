@@ -273,7 +273,7 @@ def test_step_state_mapping(
     """
     article.current_step = step_number
     states = Step.get_steps_states(article.journal, article)
-    offset = 1
+    offset = 0
     for state in states.values():
         if not state.state:
             assert state.available is False
@@ -289,7 +289,7 @@ def test_step_state_mapping(
         (True, True, True),
         (False, True, True),
         (True, False, True),
-        (False, False, False),
+        (False, False, True),
     ],
 )
 @pytest.mark.django_db

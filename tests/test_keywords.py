@@ -13,8 +13,8 @@ from submission.models import Keyword, KeywordGroup
 @pytest.mark.parametrize(
     ("keyword_setup", "weights", "assign_group", "expected_ok"),
     [
-        # valid 1 keyword with group -> should pass
-        (["kw1"], [25], True, True),
+        # valid 2 keyword with group -> fail
+        (["kw1"], [25], True, False),
         # valid 2 keywords with group -> should pass
         (["kw1", "kw2"], [25, 50], True, True),
         # too few keywords -> fail
@@ -25,8 +25,8 @@ from submission.models import Keyword, KeywordGroup
         (["kw1", "kw2", "kw3"], [25, 50, 75], True, True),
         # 4 keywords, one free -> fail
         (["kw1", "kw2", "kw3", "kw4"], [25, 50, 75, 100], False, False),
-        # 4 keywords, all grouped -> fail
-        (["kw1", "kw2", "kw3", "kw4"], [25, 50, 75, 100], True, False),
+        # 4 keywords, all grouped -> should pass
+        (["kw1", "kw2", "kw3", "kw4"], [25, 50, 75, 100], True, True),
         # 5 keywords -> fail
         (["kw1", "kw2", "kw3", "kw4", "kw5"], [25, 50, 75, 100, 25], True, False),
     ],
@@ -55,15 +55,15 @@ def test_jquant_rule(jquant_journal, keyword_setup, weights, assign_group, expec
     [
         # hep-ex: 1 keyword in hep-ex -> should pass
         (["kw1"], [25], True, "hep-ex", True),
-        # hep-ph: 1 keyword -> fail (less than 2 for non-hep-ex)
-        (["kw1"], [25], True, "hep-ph", False),
+        # hep-ph: 1 keyword -> should pass
+        (["kw1"], [25], True, "hep-ph", True),
         # hep-ex: 2 keywords -> fail (must select exactly 1)
         (["kw1", "kw2"], [25, 50], True, "hep-ex", False),
         # hep-ph: 2 keywords same group -> should pass
         (["kw1", "kw2"], [25, 50], True, "hep-ph", True),
         # hep-ph: 3 keywords, 2 in main group + 1 in other group -> should pass
         (["kw1", "kw2", "kw3"], [25, 50, 75], True, "hep-ph", True),
-        # hep-ph: 4 keywords, 2 in main group + 2 in other groups -> should pass
+        # hep-ph: 4 keywords, 2 in main group + 2 in other groups -> should fail
         (["kw1", "kw2", "kw3", "kw4"], [25, 50, 75, 100], True, "hep-ph", True),
     ],
 )
@@ -71,7 +71,6 @@ def test_jhep_rule(jhep_journal, keyword_setup, weights, assign_group, arxiv_cat
     journal = jhep_journal
     keyword_weights = {}
 
-    main_group = None
     for i, (name, weight) in enumerate(zip(keyword_setup, weights, strict=False), start=1):
         if assign_group:
             if arxiv_category == "hep-ex":
@@ -88,8 +87,12 @@ def test_jhep_rule(jhep_journal, keyword_setup, weights, assign_group, arxiv_cat
         journal.keywords.add(kw)
         keyword_weights[kw.id] = weight
 
-    ok, _ = jhep_keyword_selection_rule(keyword_weights, journal=journal, arxiv_category=arxiv_category)
+    ok, text = jhep_keyword_selection_rule(keyword_weights, journal=journal, arxiv_category=arxiv_category)
     assert ok == expected_ok
+    if expected_ok:
+        assert text is None
+    else:
+        assert text
 
 
 @pytest.mark.django_db

@@ -11,7 +11,9 @@
   <div class="wjs-submission-form__section mb-5" id="authors-section">
     <h2 class="wjs-submission-form__form-label-title">{% translate "Select co-authors" %}</h2>
     <div class="wjs-submission-form__section-content">
+      {% url 'add-author' article.pk as add_author_url %}
       {% if settings.DEBUG %}{{ form.errors }}{% endif %}
+      {{ form.errors }}
       <div class="wjs-submission-form__authors-intro-text">
         {% if is_revision %}
           {{ journal|setting:"step4_intro_text_revision"|safe }}
@@ -28,14 +30,13 @@
       >
       </div>
       <input class="d-none" name="author_id" id="id_author_id"
-             hx-post="{% url 'wjs_submission_4' article.pk %}"
+             hx-post="{{ add_author_url }}"
              hx-trigger="change"
              hx-swap="innerHTML"
              hx-target="#selected-authors-wrapper"
       >
     </div>
     <div class="wjs-submission-form__section-content">
-      {% url 'add-author' as add_author_url %}
       <div class="d-flex justify-content-end">
         <button type="button"
                 class="btn btn-primary"
@@ -44,7 +45,6 @@
                 hx-get="{{ add_author_url }}"
                 hx-trigger="click"
                 hx-target="#htmxModalContent"
-                hx-vals='{"article_id": "{{ article.pk }}"}'
                 id="add-author-btn"
                 disabled=""
                 aria-label="Add">
@@ -54,68 +54,65 @@
     </div>
   </div>
 
-  {% include "wjs_submission/step4/selected_authors.html" %}
+  {% include "wjs_submission/step4/selected_authors.html" with step_form=form %}
 
-  <div class="wjs-submission-form__section mb-5" id="collaborations-section">
-    <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Collaboration</h2>
-    <div class="wjs-submission-form__section-content">
-      {% if not is_revision %}
-        <p class="wjs-submission-form__authors-intro-text">
-          State whether your paper is authored by a collaboration as a whole, or it is written by some authors on behalf of a collaboration or there is no collaboration involved.
-
-          In the first 2 cases, <b>search for registered collaborations</b>. If found, they will be added to the collaboration list (see “Selected collaborations” below). If it is not yet registered, use <b>Add new collaboration</b>.
-        </p>
-      {% endif %}
-      <div class="mb-3">
-        <label class="form-label"><strong>{{ form.collaboration_relation.label }}</strong></label>
-        <div class="d-flex justify-content-between align-items-center">
-          <div class="d-flex">
-            {% for radio in form.collaboration_relation %}
-              <div class="form-check form-check-inline">
-                {{ radio.tag }}
-                <label class="form-check-label" for="{{ radio.id_for_label }}">
-                  {{ radio.choice_label }}
-                </label>
-              </div>
-            {% endfor %}
+  {% if request.journal|setting:"enable_collaboration" %}
+    <div class="wjs-submission-form__section mb-5" id="collaborations-section">
+      <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Collaboration</h2>
+      <div class="wjs-submission-form__section-content">
+          <p class="wjs-submission-form__authors-intro-text">
+            State whether your paper is authored by a collaboration as a whole, or it is written by some authors on behalf of a collaboration or there is no collaboration involved.<br>
+            In the first 2 cases, <b>search for registered collaborations</b>. If found, they will be added to the collaboration list (see “Selected collaborations” below). If they are not yet registered, use <b>Add new collaboration</b>.
+          </p>
+        <div class="mb-3">
+          <label class="form-label"><strong>{{ form.collaboration_relation.label }}</strong></label>
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex">
+              {% for radio in form.collaboration_relation %}
+                <div class="form-check form-check-inline">
+                  {{ radio.tag }}
+                  <label class="form-check-label" for="{{ radio.id_for_label }}">
+                    {{ radio.choice_label }}
+                  </label>
+                </div>
+              {% endfor %}
+            </div>
           </div>
         </div>
-      </div>
-
-      <div id="js-collaborations-search-wrapper" class="d-none">
-        <div class="wjs-submission-form__search-input-text" id="collaboration-search-wrapper"
-             hx-get="{% url 'search-typeahead-collaboration' %}"
-             hx-trigger="load"
-             hx-swap="innerHTML"
-        >
-        </div>
-        <input type="hidden" name="collaboration_id" id="id_collaboration_id"
-               hx-post="{% url 'wjs_submission_4' article.pk %}"
-               hx-trigger="change"
+        {% url 'add-collaboration' article.pk as add_collaboration_url %}
+        <div id="js-collaborations-search-wrapper" class="d-none">
+          <div class="wjs-submission-form__search-input-text" id="collaboration-search-wrapper"
+               hx-get="{% url 'search-typeahead-collaboration' %}"
+               hx-trigger="load"
                hx-swap="innerHTML"
-               hx-target="#selected-collaborations-wrapper"
-        >
-        <div class="d-flex justify-content-end">
-          {% url 'add-collaboration' as add_collaboration_url %}
-          <button id="add-collab-btn" type="button"
-                  class="btn btn-primary"
-                  data-bs-toggle="modal"
-                  data-bs-target="#htmxModal"
-                  hx-get="{{ add_collaboration_url }}"
-                  hx-trigger="click"
-                  hx-target="#htmxModalContent"
-                  hx-include="[name='collaboration_relation']"
-                  hx-vals='{"article_id": "{{ article.pk }}"}'
-                  disabled="">
-            Add new collaboration
-          </button>
+          >
+          </div>
+          <input type="hidden" name="collaboration_id" id="id_collaboration_id"
+                 hx-post="{{ add_collaboration_url }}"
+                 hx-trigger="change"
+                 hx-swap="innerHTML"
+                 hx-target="#selected-collaborations-wrapper"
+          >
+          <div class="d-flex justify-content-end">
+            <button id="add-collab-btn" type="button"
+                    class="btn btn-primary"
+                    data-bs-toggle="modal"
+                    data-bs-target="#htmxModal"
+                    hx-get="{{ add_collaboration_url }}"
+                    hx-trigger="click"
+                    hx-target="#htmxModalContent"
+                    hx-include="[name='collaboration_relation']"
+                    disabled="">
+              Add new collaboration
+            </button>
+          </div>
         </div>
+
+        {% include "wjs_submission/step4/selected_collaborations.html" %}
+
       </div>
-
-      {% include "wjs_submission/step4/selected_collaborations.html" %}
-
     </div>
-  </div>
+  {% endif %}
 
   {% if form.authors_contributions %}
     <div id="authors-contributions-wrapper" style="display: {% if has_author_list_changed %}block{% else %}none{% endif %};">
@@ -123,7 +120,7 @@
         <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Authors’ contribution</h2>
         <div class="wjs-submission-form__section-content">
           <p class="wjs-submission-form__authors-intro-text">
-            Please state how each selected author/collaboration participated to the work.
+            Please state how each selected author participated to the work.
           </p>
           {% bootstrap_field form.authors_contributions show_help=False show_label=False placeholder="Sample text: John Smith: Conceptualization, Methodology.  Priya Singh.: Data curation, Writing- Original draft preparation. Wang Wu: Visualization, Investigation. Jan Jansen: Supervision.: Ajay Kumar: Validation.: Sun Qi: Writing." %}
         </div>
@@ -164,14 +161,14 @@
   <script src="{% static 'js/typeahead.bundle.js' %}"></script>
 
   <script>
-    document.addEventListener("DOMContentLoaded", function() {
+    document.addEventListener("DOMContentLoaded", function () {
       setupAuthorSelection();
       setupCollaborationsSelection();
     });
-    window.addEventListener("load", function() {
+    window.addEventListener("load", function () {
       // Close the HTMX modal when requested by the backend
-      document.body.addEventListener("close-active-modal", function() {
-        document.querySelector("#htmxModal").querySelector("[aria-label=Close]").click();
+      document.body.addEventListener("close-active-modal", function () {
+        document.querySelector("#htmxModal")?.querySelector("[aria-label=Close]")?.click();
       });
     });
 

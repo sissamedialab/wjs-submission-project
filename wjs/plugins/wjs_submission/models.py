@@ -1,8 +1,8 @@
-from core.models import Account, Country
+from core.models import Account, ControlledAffiliation
 from django.db import models
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
-from submission.models import Article, ArticleAuthorOrder, ArticleFunding
+from submission.models import Article, ArticleFunding, FrozenAuthor
 
 from .settings import ARXIV_BASE_DOI
 from .signals import *  # noqa
@@ -103,11 +103,11 @@ class ArticleSubmission(models.Model):
 
     cover_letter_file_allowed_extension = [".pdf", ".docx", ".doc", ".odt", ".rtf"]
 
-    affiliation_country = models.ForeignKey(
-        Country,
+    affiliation = models.ForeignKey(
+        ControlledAffiliation,
         null=True,
         blank=True,
-        verbose_name=_("Affiliation country"),
+        verbose_name=_("Affiliation"),
         on_delete=models.SET_NULL,
     )
 
@@ -152,8 +152,8 @@ class ArticleSubmission(models.Model):
                     access_mode=self.access_mode, journal=self.article.journal
                 )
                 if journal_access_mode_parameters.exists():
-                    self.article.licence = journal_access_mode_parameters.first().licence
-                    self.article.rigths = journal_access_mode_parameters.first().copyright
+                    self.article.license = journal_access_mode_parameters.first().licence
+                    self.article.rights = journal_access_mode_parameters.first().copyright
             except AccessModeJournal.DoesNotExist:
                 # ignoring configuration error to avoid breaking submission process
                 pass
@@ -387,7 +387,7 @@ class RevisionArticleCollaboration(models.Model):
 
 
 def next_author_sort(self, revision: bool = False, *args, **kwargs) -> int:
-    model = RevisionArticleAuthorOrder if revision else ArticleAuthorOrder
+    model = RevisionArticleAuthorOrder if revision else FrozenAuthor
     filters = {"revision_storage": RevisionStorage.objects.get(article=self)} if revision else {"article": self}
     current_orders = model.objects.filter(**filters).values_list("order", flat=True)
     return (max(current_orders) + 1) if current_orders else 0

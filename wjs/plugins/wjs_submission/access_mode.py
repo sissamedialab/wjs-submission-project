@@ -1,6 +1,6 @@
 from typing import NamedTuple
 
-from core.models import Account, Country
+from core.models import Account, ControlledAffiliation, Country
 from django.utils.module_loading import import_string
 from journal.models import Journal
 from submission.models import Article, Licence
@@ -118,7 +118,7 @@ def noop(user: Account, article: Article) -> AccessModeConfiguration | None:
         return None
 
 
-def get_affiliation_country(article: Article) -> Country:
+def get_affiliation_country(article: Article) -> Country | None:
     """
     Retrieve the country of affiliation for a given article.
 
@@ -129,20 +129,27 @@ def get_affiliation_country(article: Article) -> Country:
 
     :param article: The article instance containing information about the affiliation.
     :type article: Article
-    :return: The Country instance representing the country of affiliation.
-    :rtype: Country
+    :return: The Country instance representing the country of affiliation. It might be None if affiliation is not
+        complete
+    :rtype: Country | None
     :raises Country.DoesNotExist: If the Country object corresponding to the
         affiliation country in the revision storage does not exist.
     :raises RevisionStorage.DoesNotExist: If the RevisionStorage related to the
         article does not exist.
     """
     try:
-        country = article.revisionstorage.data.get("affiliation_country")
-        if country:
-            return Country.objects.get(pk=country)
-    except (Country.DoesNotExist, RevisionStorage.DoesNotExist):
-        pass
-    return article.submission_data.affiliation_country
+        try:
+            affiliation_pk = article.revisionstorage.data.get("affiliation_pk")
+            if affiliation_pk:
+                return ControlledAffiliation.objects.get(pk=affiliation_pk).organization.country
+        except (ControlledAffiliation.DoesNotExist, RevisionStorage.DoesNotExist):
+            pass
+        finally:
+            return article.submission_data.affiliation.organization.country  # noqa: B012
+    except (AttributeError, ValueError, TypeError):
+        # Even if affiliation exists, it might have null organization or country, which are not guaranteed by
+        # janeway's models. In this case we can only consider this value null
+        return None
 
 
 def get_oa_transformative_agreement(user: Account, article: Article) -> AccessModeConfiguration:
@@ -166,7 +173,7 @@ def get_oa_transformative_agreement(user: Account, article: Article) -> AccessMo
     oa = AccessMode.objects.get(code=OA_CODE_TA)
     countries = ACCESS_MODE_COUNTRIES.get(article.journal.code, ACCESS_MODE_COUNTRIES[None])
     affiliation_country = get_affiliation_country(article)
-    if affiliation_country.code in countries:
+    if affiliation_country and affiliation_country.code in countries:
         return get_configuration(oa, article.journal)
     return get_configuration(None, article.journal)
 
@@ -212,7 +219,9 @@ def get_cern_journals_access_mode(user: Account, article: Article) -> AccessMode
     oat = get_oa_cern(user, article)
     if oat.access_mode:
         return oat
-    access_mode = AccessMode.objects.get(code=OA_CODE, parameters__journal=article.journal)
+    access_mode = AccessMode.objects.filter(code=OA_CODE, parameters__journal=article.journal).first()
+    if not access_mode:
+        raise RuntimeError("Missing OA agreement for CERN collaborations")
     return get_configuration(access_mode, article.journal, user_selectable=False)
 
 

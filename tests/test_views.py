@@ -2,7 +2,7 @@ from collections.abc import Callable
 from unittest.mock import patch
 
 import pytest
-from core.models import Account, Country
+from core.models import Account
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.test import Client
@@ -19,7 +19,7 @@ from plugins.wjs_submission.views import SubmissionLastStepRedirectView
 from plugins.wjs_submission.workflow import STEPS
 from submission.models import (
     Article,
-    ArticleAuthorOrder,
+    FrozenAuthor,
     Keyword,
     KeywordArticle,
     KeywordGroup,
@@ -442,11 +442,12 @@ def test_free_text_keywords(client, article):
 
     g1 = KeywordGroup.objects.create(name="group1")
     g2 = KeywordGroup.objects.create(name="group2")
-    kw1 = Keyword.objects.create(word="kw1", journal=journal, group=g1)
-    kw2 = Keyword.objects.create(word="kw2", journal=journal, group=g2)
+    kw1 = Keyword.objects.create(word="kw1", group=g1)
+    kw2 = Keyword.objects.create(word="kw2", group=g2)
     journal.keywords.add(kw1, kw2)
 
-    free_keywords = [Keyword.objects.create(word=f"free{i}", journal=journal) for i in range(3)]
+    free_keywords = [Keyword.objects.create(word=f"free{i}") for i in range(3)]
+    journal.keywords.add(*free_keywords)
 
     post_data = {
         "keywords": [str(kw.pk) for kw in free_keywords],
@@ -480,14 +481,13 @@ def test_submission_step4_form_saves_country_and_authors(client, article, collab
     article.owner = _user("owner")
     article.save()
 
-    ArticleAuthorOrder.objects.create(article=article, author=author1, order=1)
-    ArticleAuthorOrder.objects.create(article=article, author=author2, order=2)
+    FrozenAuthor.objects.create(article=article, author=author1, order=1)
+    FrozenAuthor.objects.create(article=article, author=author2, order=2)
 
     article.correspondence_author = author1
     article.save()
-    country = Country.objects.create(code="ABC", name="ABCountry")
     post_data = {
-        "country": str(country.pk),
+        "affiliation": str(author1.primary_affiliation().pk),
         "correspondence_author": str(author1.pk),
         "collaboration_relation": collaboration_relation,
     }
@@ -507,10 +507,10 @@ def test_submission_step4_form_saves_country_and_authors(client, article, collab
     article.submission_data.refresh_from_db()
 
     assert article.correspondence_author == author1
-    assert Article.objects.get(pk=article.pk).submission_data.affiliation_country == country
+    assert Article.objects.get(pk=article.pk).submission_data.affiliation == author1.primary_affiliation()
 
-    ids_in_order = set(ArticleAuthorOrder.objects.filter(article=article).values_list("author_id", flat=True))
-    ids_on_article = set(article.authors.values_list("id", flat=True))
+    ids_in_order = set(FrozenAuthor.objects.filter(article=article).values_list("author_id", flat=True))
+    ids_on_article = set(article.author_accounts.values_list("id", flat=True))
     assert ids_in_order == ids_on_article
 
     if expect_clear:

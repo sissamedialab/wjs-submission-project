@@ -10,7 +10,6 @@ from django.utils.translation import gettext_lazy as _
 from events import logic as events_logic
 from plugins.wjs_submission.workflow import is_revision_confirm, is_revision_full
 from submission.models import Article, Field, FieldAnswer
-from utils.logic import get_current_request
 from utils.setting_handler import get_setting
 
 from .. import settings
@@ -35,10 +34,6 @@ class SubmissionStep1Form(forms.ModelForm):
     competing_interests = WjsMiniHTMLFormField(
         label=_("Competing interests"),
         height="15rem",
-        help_text=_(
-            "Please disclose any relevant financial or personal relationships that could be viewed as inappropriately "
-            "influencing your work or hindering transparency."
-        ),
         required=False,
     )
     cover_letter_file = forms.FileField(
@@ -80,6 +75,7 @@ class SubmissionStep1Form(forms.ModelForm):
         self.step = kwargs.pop("step")
         self.journal = kwargs.pop("journal")
         self.user = kwargs.pop("user")
+        self.request = kwargs.pop("request")
         self._additional_fields = Field.objects.filter(journal=self.journal, display=True).order_by("order")
         try:
             # As cover_letter_file is a Janeway core File, we can't just pass it to the form FileField, we must wrap it
@@ -95,10 +91,18 @@ class SubmissionStep1Form(forms.ModelForm):
             pass
         super().__init__(*args, **kwargs)
 
+        competing_interest_instructions_text = mark_safe(  # noqa: S308
+            get_setting(
+                "wjs_submission",
+                "competing_interest_instructions_text",
+                self.journal,
+            ).processed_value
+        )
+        self.fields["competing_interests"].help_text = competing_interest_instructions_text
         copyright_label = mark_safe(  # noqa S308
             get_setting(
                 "general",
-                "copyright_submission_label",
+                "copyright_notice",
                 self.journal,
             ).processed_value
         )
@@ -312,7 +316,7 @@ class SubmissionStep1Form(forms.ModelForm):
         """Raise Janeway's ON_ARTICLE_SUBMISSION_START event on initial submission step to trigger further actions."""
         events_logic.Events.raise_event(
             events_logic.Events.ON_ARTICLE_SUBMISSION_START,
-            request=get_current_request(),
+            request=self.request,
             article=self.instance,
         )
 

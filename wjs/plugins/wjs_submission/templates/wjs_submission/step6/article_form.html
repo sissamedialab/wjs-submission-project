@@ -34,20 +34,24 @@
       {% include "wjs_submission/step6/includes/files_table.html" with files_list=data button_name="trigger_data" file_type="data" %}
     </div>
   </div>
-  <div class="wjs-submission-form__section mb-5">
-    <div class="wjs-submission-form__section-content" id="step6-das-section">
-      <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Data Availability Statement</h2>
-      {% bootstrap_field form.das label_class="d-none" %}
-      {% bootstrap_field form.das_url label_class="d-none" wrapper_class="wjs-submission-form__form-label-wrapper d-none" %}
+  {% if not form.das.is_hidden %}
+    <div class="wjs-submission-form__section mb-5">
+      <div class="wjs-submission-form__section-content" id="step6-das-section">
+        <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Data Availability Statement {{ form.das.is_hidden }}</h2>
+        {% bootstrap_field form.das label_class="d-none" %}
+        {% bootstrap_field form.das_url label_class="d-none" wrapper_class="wjs-submission-form__form-label-wrapper d-none" %}
+      </div>
     </div>
-  </div>
-  <div class="wjs-submission-form__section mb-5">
-    <div class="wjs-submission-form__section-content" id="step6-cas-section">
-      <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Code Availability Statement</h2>
-      {% bootstrap_field form.cas label_class="d-none" %}
-      {% bootstrap_field form.cas_url label_class="d-none" wrapper_class="wjs-submission-form__form-label-wrapper d-none" %}
+  {% endif %}
+  {% if not form.cas.is_hidden %}
+    <div class="wjs-submission-form__section mb-5">
+      <div class="wjs-submission-form__section-content" id="step6-cas-section">
+        <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">Code Availability Statement</h2>
+        {% bootstrap_field form.cas label_class="d-none" %}
+        {% bootstrap_field form.cas_url label_class="d-none" wrapper_class="wjs-submission-form__form-label-wrapper d-none" %}
+      </div>
     </div>
-  </div>
+  {% endif %}
 {% endblock submission_flow %}
 
 {% block js %}
@@ -55,24 +59,28 @@
   <script src="{% static "js/cas_das.js" %}"></script>
   <script>
 
-    document.body.addEventListener("closeModal", function(evt) {
+    document.body.addEventListener("closeModal", function (evt) {
       const modal = bootstrap.Modal.getInstance(document.getElementById("htmxModal"));
       modal.hide();
     });
 
-    document.addEventListener("DOMContentLoaded", function() {
-      urlSelectedCheck("cas", document.querySelector("input[name=cas]:checked")?.value);
-      urlSelectedCheck("das", document.querySelector("input[name=das]:checked")?.value);
-      document.querySelectorAll("input[name=cas]").forEach((button) => {
-        button.addEventListener("change", function(event) {
-          urlSelectedCheck("cas", event.target.value);
+    document.addEventListener("DOMContentLoaded", function () {
+      {% if not form.cas.is_hidden %}
+        urlSelectedCheck("cas", document.querySelector("input[name=cas]:checked")?.value);
+        document.querySelectorAll("input[name=cas]").forEach((button) => {
+          button.addEventListener("change", function (event) {
+            urlSelectedCheck("cas", event.target.value);
+          });
         });
-      });
-      document.querySelectorAll("input[name=das]").forEach((button) => {
-        button.addEventListener("change", function(event) {
-          urlSelectedCheck("das", event.target.value);
+      {% endif %}
+      {% if not form.das.is_hidden %}
+        urlSelectedCheck("das", document.querySelector("input[name=das]:checked")?.value);
+        document.querySelectorAll("input[name=das]").forEach((button) => {
+          button.addEventListener("change", function (event) {
+            urlSelectedCheck("das", event.target.value);
+          });
         });
-      });
+      {% endif %}
     });
   </script>
 {% endblock js %}

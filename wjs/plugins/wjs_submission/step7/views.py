@@ -91,7 +91,23 @@ class SubmissionStep7View(AuthorFilteringView, StepCheckView, UpdateView):
         return context
 
 
-class AddFundingView(ModalRenderingMixin):
+class FundingTableRenderingMixin:
+    def get_context_data(self, **kwargs):
+        """Construct and returns the context data dictionary."""
+        context = super().get_context_data(**kwargs)
+        context["funding_pk"] = self.request.GET.get("funding_pk")
+        if self.is_revision:
+            context["articles_funding"] = self.model.objects.filter(revision_storage=self.revision_storage)
+            context["add_funding_url"] = reverse("add-funding-revision", kwargs={"article_id": self.article.pk})
+            context["delete_funding_url"] = reverse("delete-funding-revision", kwargs={"article_id": self.article.pk})
+        else:
+            context["articles_funding"] = self.model.objects.filter(article=self.article)
+            context["add_funding_url"] = reverse("add-funding", kwargs={"article_id": self.article.pk})
+            context["delete_funding_url"] = reverse("delete-funding", kwargs={"article_id": self.article.pk})
+        return context
+
+
+class AddFundingView(FundingTableRenderingMixin, ModalRenderingMixin):
     template_name = "wjs_submission/step7/add_funding_modal.html"
     object = None
     is_revision = False
@@ -126,19 +142,6 @@ class AddFundingView(ModalRenderingMixin):
         if self.render_table:
             return "wjs_submission/step7/selected_funding.html"
         return "wjs_submission/step7/add_funding_modal.html"
-
-    def get_context_data(self, **kwargs):
-        """Construct and returns the context data dictionary."""
-        context = super().get_context_data(**kwargs)
-        context["articles_funding"] = get_article_fundings(self.article)
-        context["funding_pk"] = self.request.GET.get("funding_pk")
-        if self.is_revision:
-            context["add_funding_url"] = reverse("add-funding-revision")
-            context["delete_funding_url"] = reverse("delete-funding-revision")
-        else:
-            context["add_funding_url"] = reverse("add-funding")
-            context["delete_funding_url"] = reverse("delete-funding")
-        return context
 
     def get_form_kwargs(self):
         """
@@ -219,22 +222,6 @@ class DeleteFundingView(HtmxMixin, TemplateView):
         :raises Article.DoesNotExist: If no Article is found with the given article_id
         """
         return Article.objects.get(pk=self.request.POST.get("article_id"))
-
-    def get_context_data(self, **kwargs):
-        """Construct and returns the context data dictionary."""
-        context = super().get_context_data(**kwargs)
-        context["is_htmx"] = self.htmx
-        context["article"] = self.article
-        context["funding_pk"] = self.request.GET.get("funding_pk")
-        if is_revision(self.article):
-            context["articles_funding"] = self.model.objects.filter(revision_storage__article=self.article)
-            context["add_funding_url"] = reverse("add-funding-revision")
-            context["delete_funding_url"] = reverse("delete-funding-revision")
-        else:
-            context["articles_funding"] = self.model.objects.filter(article=self.article)
-            context["add_funding_url"] = reverse("add-funding")
-            context["delete_funding_url"] = reverse("delete-funding")
-        return context
 
     def get_object(self, queryset=None):
         """

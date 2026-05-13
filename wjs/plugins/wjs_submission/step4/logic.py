@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
-from submission.models import ArticleAuthorOrder
+from submission.models import FrozenAuthor
 
 from ..models import RevisionArticleAuthorOrder, RevisionStorage
 
@@ -136,6 +136,6 @@ def has_author_list_changed(article):
     except RevisionStorage.DoesNotExist:
         revision_authors = set()
 
-    current_authors = set(ArticleAuthorOrder.objects.filter(article=article).values_list("author_id", flat=True))
+    current_authors = set(FrozenAuthor.objects.filter(article=article).values_list("author_id", flat=True))
 
     return revision_authors != current_authors

@@ -1,10 +1,11 @@
 import dataclasses
 
 from django.db.transaction import atomic
+from plugins.wjs_submission.access_mode import get_access_mode_configuration
 from submission.models import (
     STAGE_UNDER_REVISION,
     Article,
-    ArticleAuthorOrder,
+    FrozenAuthor,
 )
 
 from ..models import (
@@ -161,11 +162,11 @@ class PopulateStep4:
         ) or CollaborationRelation.NONE
         self.revision_storage.data["correspondence_author"] = self.revision_storage.article.correspondence_author.pk
         self.revision_storage.data["owner"] = self.revision_storage.article.owner.pk
-        self.revision_storage.data["affiliation_country"] = getattr(
-            getattr(self.revision_storage.article, "submission_data", None), "affiliation_country_id", None
+        self.revision_storage.data["affiliation"] = getattr(
+            getattr(self.revision_storage.article, "submission_data", None), "affiliation_id", None
         )
         self.revision_storage.data["article_authors"] = list(
-            self.revision_storage.article.authors.values_list("id", flat=True)
+            self.revision_storage.article.author_accounts.all().values_list("id", flat=True)
         )
         if commit:
             self.revision_storage.save()
@@ -188,21 +189,27 @@ class PopulateStep4AdditionalModels:
         :param commit: Save the updated models. Set to True if it's the last step to initialize RevisionStorage.
         :type commit: bool
         """
-        article_author = ArticleAuthorOrder.objects.filter(article=self.revision_storage.article)
-        for aa in article_author:
+        RevisionArticleAuthorOrder.objects.filter(revision_storage=self.revision_storage).delete()
+        RevisionArticleCollaboration.objects.filter(revision_storage=self.revision_storage).all().delete()
+        frozen_authors = FrozenAuthor.objects.filter(article=self.revision_storage.article)
+        # compatibility step from imported articles without FrozenAuthor set (because the old submission
+        # creates FrozenAuthor only after acceptance
+        if not frozen_authors.exists():
+            frozen_authors = self.revision_storage.article.articleauthororder_set.all()
+        for frozen_author in frozen_authors:
             RevisionArticleAuthorOrder.objects.get_or_create(
                 revision_storage=self.revision_storage,
-                author=aa.author,
-                order=aa.order,
+                author=frozen_author.author,
+                order=frozen_author.order,
             )
 
-        article_collaboration = ArticleCollaboration.objects.filter(article=self.revision_storage.article)
-        for ac in article_collaboration:
+        article_collaborations = ArticleCollaboration.objects.filter(article=self.revision_storage.article)
+        for article_collaboration in article_collaborations:
             RevisionArticleCollaboration.objects.get_or_create(
                 revision_storage=self.revision_storage,
-                collaboration=ac.collaboration,
-                relation=ac.relation,
-                order=ac.order,
+                collaboration=article_collaboration.collaboration,
+                relation=article_collaboration.relation,
+                order=article_collaboration.order,
             )
 
 
@@ -297,7 +304,14 @@ class PopulateStep7:
         :type commit: bool
         """
         if self.revision_storage.article.submission_data.access_mode:
-            self.revision_storage.data["access_mode"] = self.revision_storage.article.submission_data.access_mode.pk
+            access_mode = self.revision_storage.article.submission_data.access_mode
+        else:
+            configuration = get_access_mode_configuration(
+                self.revision_storage.article.correspondence_author, self.revision_storage.article
+            )
+            if configuration:
+                access_mode = configuration.access_mode
+        self.revision_storage.data["access_mode"] = access_mode.pk
         self.revision_storage.data["special_request"] = self.revision_storage.article.submission_data.special_request
 
         fundings = SubmissionArticleFunding.objects.filter(article=self.revision_storage.article)

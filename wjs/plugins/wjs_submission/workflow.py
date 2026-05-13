@@ -7,7 +7,7 @@ from django.urls import reverse
 from journal.models import Issue, Journal
 from submission.models import STAGE_UNSUBMITTED, Article
 
-from .models import AccessModeJournal, RevisionStorage
+from .models import RevisionStorage
 
 
 class StepState(NamedTuple):
@@ -143,7 +143,7 @@ class Step:
         :rtype: dict[int, StepState]
         """
         states = {}
-        offset = 1
+        offset = 0
         for step in STEPS.values():
             active = step.is_active(journal, article, user)
             if not active:
@@ -288,10 +288,6 @@ def step_check_access_funding(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
-    has_multiple_access_mode = AccessModeJournal.objects.filter(journal=journal).count() > 1
-    has_funding = journal.submissionconfiguration.funding
-    if not has_multiple_access_mode and not has_funding:
-        return False
     submission = is_submission(article)
     revision_confirm = is_revision_confirm(article)
     revision_metadata = is_revision_metadata(article)
