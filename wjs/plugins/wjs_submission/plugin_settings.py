@@ -12,9 +12,9 @@ PLUGIN_NAME = "WJS submission"
 DISPLAY_NAME = "WJS submission"
 DESCRIPTION = "A plugin to manage submissions for WJS"
 AUTHOR = "Nephila"
-VERSION = "0.1"
+VERSION = "2.0"
 SHORT_NAME = str(Path(__file__).parent.name)
-JANEWAY_VERSION = "1.7"
+JANEWAY_VERSION = "1.8"
 MANAGER_URL = f"{SHORT_NAME}_manager"
 
 # TODO: are we a "worflow" plugin?

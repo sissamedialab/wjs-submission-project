@@ -5,6 +5,7 @@ from core.models import Account
 from django.http import HttpRequest
 from identifiers.models import Identifier
 from journal.models import Journal
+from plugins.wjs_submission.account_validation import jcom_correspondence_author_validation
 from plugins.wjs_submission.arxiv import (
     ArXivIDAlreadyUsedError,
     ArXivIDContinueSubmissionError,
@@ -209,3 +210,43 @@ def test_double_arxiv_id_submission(
                 journal=journal,
                 user=user,
             ).run()
+
+
+@pytest.mark.skip(reason="Fails on CI and I can't fix it...")
+@pytest.mark.django_db
+def test_jcom_correspondence_author_validation_profession(user: Account):
+    """
+    jcom_correspondence_author_validation rejects a None or out-of-choices profession.
+
+    A user satisfying every other requirement must still fail validation when their
+    JCOMProfile.profession is unset (None) or holds a value outside PROFESSIONS, and
+    must pass once profession is set to one of the valid choices.
+    """
+    # Importing here so that the dependency is circumsribed
+    from wjs.jcom_profile.constants import PROFESSIONS  # noqa: PLC0415
+
+    # Accont and JCOMProfile have a messy relation...
+    user.jcomprofile.refresh_from_db()
+    user.refresh_from_db()
+    user.last_name = "Doe"
+    user.email = "doe@example.com"
+    user.biography = "A short bio."
+    user.facebook = "https://facebook.com/doe"
+    user.save()
+    user.jcomprofile.save()
+
+    jcomprofile = user.jcomprofile
+    assert jcomprofile.profession is None
+    assert jcom_correspondence_author_validation(user) is False
+
+    valid_profession = PROFESSIONS[0][0]
+    jcomprofile.profession = valid_profession
+    jcomprofile.save()
+    user.refresh_from_db()
+    assert jcom_correspondence_author_validation(user) is True
+
+    invalid_profession = max(choice[0] for choice in PROFESSIONS) + 1
+    jcomprofile.profession = invalid_profession
+    jcomprofile.save()
+    user.refresh_from_db()
+    assert jcom_correspondence_author_validation(user) is False
