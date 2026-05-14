@@ -6,6 +6,7 @@ from django.db.models import Q
 from django.utils import timezone
 from django.utils.module_loading import import_string
 from journal.models import Journal
+from wjs.jcom_profile.constants import PROFESSIONS
 
 from .models import WhitelistedCorrespondenceAuthors
 from .settings import (
@@ -96,8 +97,12 @@ def jcom_correspondence_author_validation(user: Account) -> bool:
     """
     jcomprofile = user.jcomprofile
     is_active = user.is_active
+    valid_professions = {choice[0] for choice in PROFESSIONS}
     personal_data = bool(
-        (user.last_name or user.first_name) and user.email and jcomprofile.profession and user.biography
+        (user.last_name or user.first_name)
+        and user.email
+        and jcomprofile.profession in valid_professions
+        and user.biography
     )
     professional_data = bool(
         jcomprofile.records_scix
