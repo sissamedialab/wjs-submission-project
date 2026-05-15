@@ -148,8 +148,8 @@ class AddAuthorForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         self.fields["first_name"].required = self.instance is None
-        self.fields["last_name"].required = self.instance is None
-        self.fields["email"].required = self.instance is None
+        self.fields["last_name"].required = True
+        self.fields["email"].required = True
         for field in self.fields:
             if self.fields[field].required:
                 self.fields[field].help_text = _("Required")
