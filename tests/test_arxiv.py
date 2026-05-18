@@ -323,7 +323,7 @@ def test_article_creation_and_endpoint(rf, author, journal, arxiv_fixtures, monk
     assert article.stage == STAGE_UNSUBMITTED
     assert article.owner == author
     assert article.correspondence_author == author
-    assert author in article.authors.all()
+    assert author in article.author_accounts.all()
 
 
 @pytest.mark.django_db
