@@ -79,7 +79,7 @@ class SubmissionLastStepRedirectView(AuthorFilteringView, RedirectView):
         :return: Next step URL.
         """
         article = Article.objects.get(pk=kwargs["article_id"])
-        step = STEPS.get(article.current_step)
+        step = STEPS.get(article.current_step, STEPS[1])
 
         return step.get_incomplete_step_url(article)
 
