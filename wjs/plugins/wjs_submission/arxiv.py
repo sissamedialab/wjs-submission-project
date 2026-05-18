@@ -14,7 +14,7 @@ from django.urls import reverse
 from django.utils.text import format_lazy
 from identifiers.models import Identifier
 from journal.models import Journal
-from submission.models import STAGE_UNSUBMITTED, Article, FrozenAuthor
+from submission.models import STAGE_UNSUBMITTED, Article
 from utils.setting_handler import get_setting
 
 from .conversion import start_source_conversion
@@ -466,12 +466,7 @@ class HandleArticleCreation:
             }
         )
         new_article = Article.objects.create(**base_data)
-        FrozenAuthor.objects.get_or_create(
-            article=new_article,
-            author=self.user,
-            defaults={"order": 0},
-        )
-        new_article.authors.add(self.user)
+        self.user.snapshot_as_author(new_article)
         return new_article
 
     def _set_arxiv_metadata(self):
