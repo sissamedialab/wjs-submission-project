@@ -15,7 +15,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db.models import QuerySet
 from journal.models import Journal
 from plugins.wjs_submission import settings
-from submission.models import Article, Field
+from submission.models import Article, Field, FieldAnswer
 
 
 class Command(BaseCommand):
@@ -47,7 +47,8 @@ class Command(BaseCommand):
         """
         Reset field answers related to the given article by changing the associated field to a new AI-related field.
 
-        Remove other answers if their linked field is not set.
+        Remove other answers if their linked field is not set, if use of ai field has already been set, the old value
+        is dropped.
 
         :param article: The Article instance whose field answers need to be reset.
         :type article: Article
@@ -58,9 +59,13 @@ class Command(BaseCommand):
             raise CommandError(
                 f"Field '{settings.USE_OF_AI_FIELD_LABEL}' not found for journal {article.journal.code}"
             )
-        for answer in article.fieldanswer_set.all():
-            if answer.answer == "on":
+        existing_ai_answer = FieldAnswer.objects.filter(field=new_ai_field, article=article).exists()
+        for answer in article.fieldanswer_set.filter(field__isnull=True):
+            # Fields with "on" value have been dropped from submission and we can safely delete them
+            # If the new AI field has already been populated (during the revision) we can safely delete the old value
+            if answer.answer == "on" or existing_ai_answer:
                 answer.delete()
+            # If the new AI field has not been populated the old value is copied to the new field
             else:
                 answer.field = new_ai_field
                 answer.save()
