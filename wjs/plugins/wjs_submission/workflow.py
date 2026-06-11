@@ -61,11 +61,11 @@ class Step:
         return self.label
 
     @staticmethod
-    def _get_incomplete_revision_step(article: Article) -> int:
+    def _get_incomplete_revision_step(article: Article) -> int | None:
         try:
             revision_storage = RevisionStorage.objects.get(article=article)
         except RevisionStorage.DoesNotExist:
-            return 0
+            return None
         else:
             return revision_storage.revision_step
 
@@ -83,12 +83,12 @@ class Step:
         :rtype: str
         """
         try:
-            if revision_step := self._get_incomplete_revision_step(article):
+            revision_step = self._get_incomplete_revision_step(article)
+            article_step = self._get_incomplete_article_step(article)
+            if revision_step is not None:
                 next_step = max(revision_step, self.step_number) + 1
-            elif article_step := self._get_incomplete_article_step(article):
-                next_step = max(article_step, self.step_number) + 1
             else:
-                next_step = self.step_number + 1
+                next_step = max(article_step, self.step_number) + 1
         except AttributeError:
             return reverse("wjs_submission_1")
         if next_step in STEPS:
@@ -201,6 +201,19 @@ def is_revision_full(article: Article) -> bool:
 
 def is_revision(article: Article) -> bool:
     return is_revision_confirm(article) or is_revision_metadata(article) or is_revision_full(article)
+
+
+def step_incomplete(
+    journal: Journal,
+    article: Article | None = None,
+    user: Account | None = None,
+) -> bool:
+    """
+    Skip the incomplete step from rendering.
+
+    We still use this to allow resume an incomplete submission.
+    """
+    return False
 
 
 def step_check_select_issue(
@@ -321,6 +334,13 @@ def step7_label(article: Article) -> str:
 
 
 STEPS = {
+    0: Step(
+        step_number=0,
+        label="Incomplete",
+        step_view_name="wjs_submission_1",
+        check_function=step_incomplete,
+        icon="bi-clipboard",
+    ),
     1: Step(
         step_number=1,
         label="Start",
