@@ -196,13 +196,15 @@ class SubmissionStep4View(
             return RevisionStep4Form
         return SubmissionStep4Form
 
-    def setup(self, request, *args, **kwargs):
-        """Initialize view and retrieve the article object."""
-        super().setup(request, *args, **kwargs)
+    def dispatch(self, request, *args, **kwargs):
+        """Retrieve the article object."""
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
         self.article = self.get_object()
         self.revision_storage = (
             RevisionStorage.objects.get(article=self.article) if is_revision(self.article) else None
         )
+        return super().dispatch(request, *args, **kwargs)
 
     def get_success_url(self):
         """
