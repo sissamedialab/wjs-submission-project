@@ -1,0 +1,450 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-05-28 08:05+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: constants.py:14 constants.py:15
+msgid "Director"
+msgstr ""
+
+#: constants.py:16 constants.py:17
+msgid "Editor"
+msgstr ""
+
+#: constants.py:18
+msgid "Author"
+msgstr ""
+
+#: constants.py:19
+msgid "Co-author"
+msgstr ""
+
+#: constants.py:20
+msgid "Reviewer"
+msgstr ""
+
+#: constants.py:21
+msgid "EO"
+msgstr ""
+
+#: constants.py:22
+msgid "Typesetter"
+msgstr ""
+
+#: models.py:13
+msgid "My article has no associated code or the code will not be deposited"
+msgstr ""
+
+#: models.py:14
+msgid "My article has code included as electronic supplementary material"
+msgstr ""
+
+#: models.py:15
+msgid "My article has associated code in a repository"
+msgstr ""
+
+#: models.py:28
+msgid "My article has no associated data or the data will not be deposited"
+msgstr ""
+
+#: models.py:29
+msgid "My article has data included as electronic supplementary material"
+msgstr ""
+
+#: models.py:30
+msgid "My article has associated data in a repository"
+msgstr ""
+
+#: models.py:43
+msgid "Auto"
+msgstr ""
+
+#: models.py:44
+msgid "Tex / LaTeX"
+msgstr ""
+
+#: models.py:45
+msgid "Documents (odt/docx/rtf)"
+msgstr ""
+
+#: models.py:57
+msgid "Tex"
+msgstr ""
+
+#: models.py:58
+msgid "LaTex"
+msgstr ""
+
+#: models.py:59
+msgid "PdflLaTex"
+msgstr ""
+
+#: models.py:60
+msgid "XeLaTex"
+msgstr ""
+
+#: models.py:73
+msgid "Article"
+msgstr ""
+
+#: models.py:77
+msgid "Arxiv category"
+msgstr ""
+
+#: models.py:88
+msgid "CAS declaration"
+msgstr ""
+
+#: models.py:92
+msgid "CAS URL"
+msgstr ""
+
+#: models.py:95
+msgid "DAS declaration"
+msgstr ""
+
+#: models.py:99
+msgid "DAS URL"
+msgstr ""
+
+#: models.py:101
+msgid "Special request"
+msgstr ""
+
+#: models.py:102
+msgid "Use of AI"
+msgstr ""
+
+#: models.py:110
+msgid "Affiliation"
+msgstr ""
+
+#: models.py:115
+msgid "Feedback UUID"
+msgstr ""
+
+#: models.py:118
+msgid "Unique identifier for websocket feedback channel"
+msgstr ""
+
+#: models.py:122
+msgid "Article submission"
+msgstr ""
+
+#: models.py:123
+msgid "Articles submission"
+msgstr ""
+
+#: models.py:189
+msgid "by a collaboration"
+msgstr ""
+
+#: models.py:190
+msgid "on behalf of a collaboration"
+msgstr ""
+
+#: models.py:191
+msgid "No collaboration involved"
+msgstr ""
+
+#: models.py:196
+msgid "If available"
+msgstr ""
+
+#: models.py:202
+msgid "Logo representing this collaboration"
+msgstr ""
+
+#: models.py:208
+msgid "Approved for public listing"
+msgstr ""
+
+#: models.py:209
+msgid "If set, this collaboration is visible in the selection list"
+msgstr ""
+
+#: models.py:216
+msgid "The account that created this collaboration"
+msgstr ""
+
+#: models.py:224
+msgid ""
+"The account automatically added to the authors list when a collaboration is "
+"added"
+msgstr ""
+
+#: models.py:228
+msgid "Collaboration"
+msgstr ""
+
+#: models.py:229
+msgid "Collaborations"
+msgstr ""
+
+#: models.py:257 models.py:375
+msgid ""
+"Indicates whether the article was written by or on behalf of the "
+"collaboration"
+msgstr ""
+
+#: models.py:261 models.py:378
+msgid "Order of this collaboration in the author/collaboration list"
+msgstr ""
+
+#: models.py:274
+msgid "Name"
+msgstr ""
+
+#: models.py:275
+msgid "Code"
+msgstr ""
+
+#: models.py:276
+msgid "User selectable"
+msgstr ""
+
+#: models.py:279
+msgid "Access mode"
+msgstr ""
+
+#: models.py:280
+msgid "Access modes"
+msgstr ""
+
+#: models.py:307 step7/forms.py:22
+msgid "Copyright declaration"
+msgstr ""
+
+#: models.py:310
+msgid "Journal / Access mode connection"
+msgstr ""
+
+#: models.py:311
+msgid "Journal / Access mode connections"
+msgstr ""
+
+#: models.py:326
+msgid "Confirmation of previous version"
+msgstr ""
+
+#: models.py:327
+msgid "Metadata change"
+msgstr ""
+
+#: models.py:328
+msgid "Revision submission"
+msgstr ""
+
+#: models.py:335
+msgid "Draft data"
+msgstr ""
+
+#: models.py:339
+msgid "Revision flow type"
+msgstr ""
+
+#: models.py:340
+msgid "Current revision step"
+msgstr ""
+
+#: models.py:343
+msgid "Draft article"
+msgstr ""
+
+#: models.py:344
+msgid "Draft articles"
+msgstr ""
+
+#: models.py:432
+msgid "Additional information regarding this funding entry"
+msgstr ""
+
+#: models.py:477
+msgid "Whitelisted correspondence author"
+msgstr ""
+
+#: models.py:478
+msgid "Whitelisted correspondence authors"
+msgstr ""
+
+#: settings.py:27
+msgid "English"
+msgstr ""
+
+#: step1/forms.py:24
+msgid "arXiv ID"
+msgstr ""
+
+#: step1/forms.py:29
+msgid "Cover letter"
+msgstr ""
+
+#: step1/forms.py:31 step4/forms.py:409
+msgid "missing help text"
+msgstr ""
+
+#: step1/forms.py:35
+msgid "Competing interests"
+msgstr ""
+
+#: step1/forms.py:116
+msgid "I confirm that the above points have been taken into account."
+msgstr ""
+
+#: step1/forms.py:172 step1/forms.py:174 step4/forms.py:75 step4/forms.py:155
+#: step4/forms.py:368 step4/forms.py:438 step5/forms.py:17 step5/forms.py:40
+#: step5/forms.py:43 step6/forms.py:23 step6/forms.py:29 step6/forms.py:150
+#: step7/forms.py:100
+msgid "Required"
+msgstr ""
+
+#: step1/forms.py:206 step1/forms.py:210
+msgid "You must enter a cover letter or upload a file to proceed."
+msgstr ""
+
+#: step1/forms.py:219 step1/forms.py:477
+#, python-format
+msgid "This field (“%(label)s”) is required."
+msgstr ""
+
+#: step2/forms.py:42
+msgid "Issue"
+msgstr ""
+
+#: step3/forms.py:45
+msgid "Hit Enter to add a new keyword."
+msgstr ""
+
+#: step4/forms.py:31
+msgid "This article is written"
+msgstr ""
+
+#: step4/forms.py:407
+msgid "Authors' contribution"
+msgstr ""
+
+#: step4/logic.py:46
+#, python-format
+msgid "Can't delete owner %s"
+msgstr ""
+
+#: step4/logic.py:48
+msgid "Can't delete correspondence author"
+msgstr ""
+
+#: step4/logic.py:113
+#, python-format
+msgid "Unsupported action: %s"
+msgstr ""
+
+#: step5/forms.py:15 step5/forms.py:18 step5/forms.py:34
+msgid "Title"
+msgstr ""
+
+#: step5/forms.py:31
+msgid "Article type"
+msgstr ""
+
+#: step5/forms.py:35
+msgid "Abstract"
+msgstr ""
+
+#: step6/forms.py:59 step6/forms.py:65
+msgid "Please insert complete URL"
+msgstr ""
+
+#: step6/forms.py:99
+msgid "File type"
+msgstr ""
+
+#: step6/forms.py:100
+msgid "Manuscript"
+msgstr ""
+
+#: step6/forms.py:100
+msgid "Data/Figure"
+msgstr ""
+
+#: step6/forms.py:103
+msgid "File label"
+msgstr ""
+
+#: step6/forms.py:104
+msgid "Source file"
+msgstr ""
+
+#: step6/forms.py:106 step6/forms.py:112
+msgid "Source format"
+msgstr ""
+
+#: step6/forms.py:109
+msgid ""
+"Manually set your sources format ( tex or odt ) if the system cannot "
+"determine it automatically"
+msgstr ""
+
+#: step6/forms.py:117
+msgid "TeX Master"
+msgstr ""
+
+#: step6/forms.py:118
+msgid "Only when more than one TeX file is present"
+msgstr ""
+
+#: step7/forms.py:18
+msgid "If you require a special copyright/licence, please write them here:"
+msgstr ""
+
+#: step7/forms.py:23
+msgid "Article license"
+msgstr ""
+
+#: step8/forms.py:34
+#, python-brace-format
+msgid "Article \"{title}\" submitted"
+msgstr ""
+
+#: templates/wjs_submission/elements/nav.html:20
+msgid "Blocked"
+msgstr ""
+
+#: templates/wjs_submission/step4/article_form.html:12
+msgid "Select co-authors"
+msgstr ""
+
+#: templates/wjs_submission/step6/includes/files_table.html:58
+msgid "No file provided"
+msgstr ""
+
+#: templates/wjs_submission/step6/includes/upload_file.html:3
+msgid "Upload file"
+msgstr ""
+
+#: templates/wjs_submission/step8/article_form.html:90
+#: templates/wjs_submission/step8/article_form.html:128
+msgid "Not provided"
+msgstr ""
+
+#: templates/wjs_submission/step8/article_form.html:176
+msgid "Free keywords"
+msgstr ""
+
+#: templates/wjs_submission/step8/article_form.html:178
+#: templates/wjs_submission/step8/article_form.html:183
+msgid "Weight"
+msgstr ""
