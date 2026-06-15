@@ -520,6 +520,24 @@ def test_submission_step4_form_saves_country_and_authors(client, article, collab
 
 
 @pytest.mark.django_db
+def test_submission_step4_anonymous_redirects_without_500(client, article):
+    """
+    Regression: an unauthenticated step-4 request must redirect to login, not raise.
+
+    ``SubmissionStep4View.setup()`` runs before ``UserPassesTestMixin`` performs its auth
+    check in ``dispatch()``. Previously ``setup()`` eagerly called ``get_object()``, whose
+    ``AuthorFilteringView.get_queryset()`` filtered ``owner``/``correspondence_author`` by
+    ``request.user``. For an anonymous user that is ``AnonymousUser``, which Django cannot
+    coerce to an FK id, raising ``TypeError: Field 'id' expected a number...`` (a 500).
+    """
+    url = reverse("wjs_submission_4", kwargs={"article_id": article.pk})
+    # No client.force_login(): the request is anonymous.
+    response = client.get(url)
+    assert response.status_code == 302
+    assert settings.LOGIN_URL in response.url
+
+
+@pytest.mark.django_db
 def test_submission_step6_load_value(fake_request, article):
     article.submission_data.das = ArticleSubmission.DasDeclaration.URL
     article.submission_data.das_url = "http://example.com"
