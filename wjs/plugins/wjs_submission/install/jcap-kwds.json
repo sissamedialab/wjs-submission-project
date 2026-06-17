@@ -1,0 +1,221 @@
+[
+  {"group": "Astrophysical plasma and magnetic fields",
+   "subgroups": {
+      "": [
+        "Astrophysical fluid dynamics",
+        "Cosmic magnetic fields theory",
+        "Extragalactic magnetic fields",
+        "Galactic magnetic fields",
+        "Magnetic fields",
+        "Magnetohydrodynamics",
+        "Millisecond pulsars",
+        "Pulsar magnetosphere",
+        "Radio pulsars",
+        "Solar physics",
+        "X-ray pulsar"
+      ]
+    }
+  },
+  {
+      "group": "Cosmic Microwave Background Radiation",
+      "subgroups": {
+        "": [
+        "CMBR detectors",
+        "CMBR experiments",
+        "CMBR polarisation",
+        "CMBR theory",
+        "Cosmological parameters from CMBR",
+        "Gravitational waves and CMBR polarization",
+        "Integrated Sachs-Wolfe effect",
+        "Non-gaussianity",
+        "Reionization",
+        "Sunyaev-Zeldovich effect"
+      ]
+    }
+  },
+    {
+      "group": "Dark matter and dark energy",
+      "subgroups": {
+      "": [
+        "Cluster counts",
+        "Dark energy experiments",
+        "Dark energy theory",
+        "Dark matter detectors",
+        "Dark matter experiments",
+        "Dark matter simulations",
+        "Dark matter theory",
+        "Galaxy clustering",
+        "Rotation curves of galaxies",
+        "Supernova type Ia - standard candles",
+        "Weak gravitational lensing"
+      ]
+    }
+  },
+    {
+      "group": "Early Universe",
+      "subgroups": {
+      "": [
+        "Alternatives to inflation",
+        "Axions",
+        "Baryon asymmetry",
+        "Big bang nucleosynthesis",
+        "Cosmic singularity",
+        "Cosmic strings, domain walls, monopoles",
+        "Cosmological applications of theories with extra dimensions",
+        "Cosmological perturbation theory",
+        "Cosmological phase transitions",
+        "Cosmology of theories beyond the SM",
+        "Cosmology with extra dimensions",
+        "Extra dimensions",
+        "Inflation",
+        "Inflation and CMBR theory",
+        "Initial conditions and eternal universe",
+        "Leptogenesis",
+        "Particle physics - cosmology connection",
+        "Physics of the early universe",
+        "Primordial black holes",
+        "Primordial magnetic fields",
+        "Quantum cosmology",
+        "Quantum gravity phenomenology",
+        "Recombination",
+        "String theory and cosmology",
+        "Supersymmetry and cosmology",
+        "Transplanckian physics"
+      ]
+    }
+   },
+    {
+      "group": "Galaxies",
+      "subgroups": {
+      "": [
+        "Dwarfs galaxies",
+        "Feedback in galaxies",
+        "Galaxy dynamics",
+        "Galaxy evolution",
+        "Galaxy formation",
+        "Galaxy morphology",
+        "Galaxy surveys",
+        "High redshift galaxies",
+        "Hydrodynamical simulations",
+        "Massive black holes",
+        "Semi-analytic modeling"
+      ]
+    }
+  },
+    {
+      "group": "Gravity",
+      "subgroups": {
+      "": [
+        "Cosmological perturbation theory in GR and beyond",
+        "Equations of motion, and 2-body problem in GR and beyond",
+        "Exact solutions, black holes and black hole thermodynamics in GR and beyond",
+        "Gauss-Bonnet-Lovelock-Horndeski-Palatini etc gravity theories",
+        "GR black holes",
+        "Gravastars",
+        "Gravitational wave detectors",
+        "Gravitational waves / experiments",
+        "Gravitational waves / sources",
+        "Gravitational waves / theory",
+        "Gravitational waves in GR and beyond: theory",
+        "Gravity",
+        "Modified gravity",
+        "Primordial gravitational waves (theory)",
+        "Quantum black holes",
+        "Quantum field theory on curved space",
+        "Quantum fields in curved spacetimes",
+        "Wormholes"
+      ]
+    }
+  },
+    {
+      "group": "High energy astrophysics",
+      "subgroups": {
+       "": [
+        "Absorption and radiation processes",
+        "Accretion",
+        "Active galactic nuclei",
+        "Cosmic ray experiments",
+        "Cosmic ray theory",
+        "Cosmic rays detectors",
+        "Gamma ray burst experiments",
+        "Gamma ray bursts theory",
+        "Gamma ray detectors",
+        "Gamma ray experiments",
+        "Gamma ray theory",
+        "Particle acceleration",
+        "Ultra high energy cosmic rays",
+        "X-ray binaries",
+        "X-ray telescopes",
+        "X-rays"
+      ]
+    }
+  },
+    {
+      "group": "Large scale structure of the universe",
+      "subgroups": {
+      "": [
+        "Baryon acoustic oscillations",
+        "Cosmic flows",
+        "Cosmic web",
+        "Cosmological parameters from LSS",
+        "Cosmological simulations",
+        "Galaxy clusters",
+        "Gravitational lensing",
+        "Intergalactic media",
+        "Lyman alpha forest",
+        "Power spectrum",
+        "Redshift surveys",
+        "Superclusters"
+      ]
+    }
+  },
+    {
+      "group": "Methods for astroparticle physics and cosmology",
+      "subgroups": {
+      "": [
+        "Bayesian reasoning",
+        "Frequentist statistics",
+        "Machine learning",
+        "Statistical sampling techniques"
+      ]
+    }
+  },
+    {
+      "group": "Neutrinos",
+      "subgroups": {
+      "": [
+        "Cosmological neutrinos",
+        "Double beta decay",
+        "Neutrino astronomy",
+        "Neutrino detectors",
+        "Neutrino experiments",
+        "Neutrino masses from cosmology",
+        "Neutrino properties",
+        "Neutrino theory",
+        "Solar and atmospheric neutrinos",
+        "Supernova neutrinos",
+        "Ultra high energy photons and neutrinos"
+      ]
+    }
+  },
+    {
+      "group": "Stars",
+      "subgroups": {
+      "": [
+        "Astrophysical black holes",
+        "Core-collapse supernovae",
+        "First stars",
+        "Massive stars",
+        "Neutron stars",
+        "Star explosions",
+        "Star formation",
+        "Stars",
+        "Supernova dynamics",
+        "Supernova evolution",
+        "Supernova remnants",
+        "Supernovas",
+        "White and brown dwarfs"
+      ]
+    }
+  }
+]
