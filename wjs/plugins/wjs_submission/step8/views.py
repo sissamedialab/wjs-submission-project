@@ -1,5 +1,7 @@
 from core.models import Account, ControlledAffiliation
+from django.contrib import messages
 from django.urls import reverse_lazy
+from django.utils.translation import gettext_lazy as _
 from django.views.generic import UpdateView
 from repository.models import Author
 from submission.models import LANGUAGE_CHOICES, Article, FrozenAuthor, Section
@@ -25,7 +27,7 @@ from ..workflow import (
     step_check_access_funding,
     step_check_select_issue,
 )
-from .forms import RevisionForm, SubmissionStep8Form
+from .forms import SubmissionStep8Form
 
 
 def get_article_authors(article) -> list[Author]:
@@ -46,6 +48,7 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
     model = Article
     step = 8
     template_name = "wjs_submission/step8/article_form.html"
+    form_class = SubmissionStep8Form
 
     def get_success_url(self):
         """
@@ -55,11 +58,49 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
         """
         return reverse_lazy("wjs_submission_0", kwargs={"article_id": self.object.pk})
 
-    def get_form_class(self):
-        """Return the revision-form."""
+    @property
+    def message_text(self):
+        """
+        Get a textual message indicating the submission status of an article.
+
+        This property returns a formatted message string that includes the title of the
+        article for which the action occurred. The message format differs depending on
+        whether the article is a revision or a new submission.
+
+        :return: A formatted message string describing the article submission status.
+        :rtype: str
+        """
         if is_revision(self.object):
-            return RevisionForm
-        return SubmissionStep8Form
+            return (
+                _('Revision for article "{title}" submitted').format(
+                    title=self.object.title,
+                ),
+            )
+        return (
+            _('Article "{title}" submitted').format(
+                title=self.object.title,
+            ),
+        )
+
+    def form_valid(self, form):
+        """
+        Process the submitted form and sends a success message upon successful validation.
+
+        The form_valid method is triggered upon successful validation of the form and
+        adds a success message to the request, indicating that submission of the
+        article was successful. It then returns the result of the superclass
+        implementation of the `form_valid` method.
+
+        :param form: The submitted form to be validated.
+        :return: HTTP response object returned after processing the form.
+        """
+        response = super().form_valid(form)
+        messages.add_message(
+            self.request,
+            messages.SUCCESS,
+            self.message_text,
+        )
+        return response
 
     def _step7_skipped(self) -> bool:
         """
@@ -97,6 +138,7 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
         kwargs = super().get_form_kwargs()
         kwargs["request"] = self.request
         kwargs["step"] = self.step
+        kwargs["revision"] = is_revision(self.object)
         self._process_step7()
         return kwargs
 
