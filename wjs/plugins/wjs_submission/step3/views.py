@@ -36,7 +36,7 @@ class SubmissionStep3View(AuthorFilteringView, StepCheckView, UpdateView):
         arxiv_category = getattr(getattr(self.get_object(), "submission_data", None), "arxiv_category", None)
 
         filter_path = submission_settings.KEYWORD_FILTERS.get(
-            self.request.journal, submission_settings.KEYWORD_FILTERS.get(None)
+            self.request.journal.code, submission_settings.KEYWORD_FILTERS.get(None)
         )
         filter_fn = import_string(filter_path)
         context["keywords_list"] = filter_fn(self.request.journal, arxiv_category)
