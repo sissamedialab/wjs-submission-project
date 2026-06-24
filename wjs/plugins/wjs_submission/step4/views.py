@@ -427,6 +427,7 @@ class SaveCorrespondingAuthorView(AuthorsTableRenderingMixin, AuthorFilteringVie
         """Handle POST requests for reordering authors."""
         self.article = self.get_object()
         if is_revision(self.article):
+            self.revision_storage = RevisionStorage.objects.get(article=self.article)
             self.revision_storage.data["correspondence_author"] = request.POST.get("correspondence_author")
             self.revision_storage.save()
         else:
