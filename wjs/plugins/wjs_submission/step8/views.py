@@ -71,15 +71,11 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
         :rtype: str
         """
         if is_revision(self.object):
-            return (
-                _('Revision for article "{title}" submitted').format(
-                    title=self.object.title,
-                ),
-            )
-        return (
-            _('Article "{title}" submitted').format(
+            return _('Revision for article "{title}" submitted').format(
                 title=self.object.title,
-            ),
+            )
+        return _('Article "{title}" submitted').format(
+            title=self.object.title,
         )
 
     def form_valid(self, form):
