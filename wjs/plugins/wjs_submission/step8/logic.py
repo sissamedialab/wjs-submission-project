@@ -35,6 +35,7 @@ class CompleteSubmission:
             if self.first_submission:
                 self.article.date_submitted = now()
                 self.article.stage = STAGE_UNASSIGNED
+                self.article.save()
                 event_logic.Events.raise_event(
                     event_logic.Events.ON_WORKFLOW_ELEMENT_COMPLETE,
                     handshake_url="submit_review",
@@ -60,6 +61,5 @@ class CompleteSubmission:
                 article=self.article,
                 submission_data=self.article.submission_data,
             )
-            self.article.save()
             self.article.refresh_from_db()
             return self.article
