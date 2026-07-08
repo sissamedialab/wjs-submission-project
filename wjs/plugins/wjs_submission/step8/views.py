@@ -20,6 +20,7 @@ from ..models import (
 from ..step6.views import get_conversion_status, get_files
 from ..step7.views import get_article_fundings
 from ..workflow import (
+    is_correction,
     is_revision,
     is_revision_confirm,
     is_revision_full,
@@ -69,6 +70,16 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
         :return: A formatted message string describing the article submission status.
         :rtype: str
         """
+        if is_correction(self.object):
+            # Determine if it's an erratum or addendum from the section name.
+            section_name = self.object.section.name if self.object.section else "Correction"
+            kind = section_name.lower()
+            return (
+                _('{kind} for article "{title}" submitted').format(
+                    kind=kind.capitalize(),
+                    title=self.object.title,
+                ),
+            )
         if is_revision(self.object):
             return _('Revision for article "{title}" submitted').format(
                 title=self.object.title,

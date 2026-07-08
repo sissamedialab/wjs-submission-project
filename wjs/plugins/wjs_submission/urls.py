@@ -1,5 +1,6 @@
 from django.urls import path
 
+from .correction.views import CorrectionStartView
 from .plugin_settings import MANAGER_URL
 from .revision import (
     RevisionStartConfirmView,
@@ -158,5 +159,10 @@ urlpatterns = [
         "submission/<int:article_id>/revision/",
         RevisionStartFullView.as_view(),
         name="wjs_submission_revision_full",
+    ),
+    path(
+        "correction/<int:article_id>/<str:relationship>/start/",
+        CorrectionStartView.as_view(),
+        name="wjs_correction_start",
     ),
 ]

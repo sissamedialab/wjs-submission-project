@@ -272,3 +272,22 @@ class RevisionStep7Form(SubmissionStep7Form):
             revision_storage.save()
 
         return self.instance
+
+
+class CorrectionStep7Form(SubmissionStep7Form):
+    """
+    Form for step 7 of a correction (erratum/addendum) submission.
+
+    Only ``special_request`` is editable; ``access_mode``, ``rights``, and
+    ``license`` are pre-set during setup and must not be changed.
+    """
+
+    def __init__(self, *args, **kwargs):
+        """Initialize the correction step 7 form, disabling pre-set fields."""
+        super().__init__(*args, **kwargs)
+        # Disable access_mode, rights, and license fields for corrections.
+        # These were pre-set during SetupCorrectionStorage._populate_metadata().
+        for field_name in ["access_mode", "rights", "license"]:
+            if field_name in self.fields:
+                self.fields[field_name].disabled = True
+                self.fields[field_name].widget.attrs["readonly"] = True

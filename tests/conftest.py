@@ -28,7 +28,7 @@ from plugins.wjs_submission.models import AccessMode
 from plugins.wjs_submission.settings import OA_CODE_TA
 from press.models import Press
 from submission import models as submission_models
-from submission.models import Article, Licence
+from submission.models import STAGE_PUBLISHED, Article, Licence
 from utils.install import (
     update_emails,
     update_issue_types,
@@ -291,6 +291,22 @@ def coauthor(journal: Journal, roles) -> Account:
 @pytest.fixture
 def article(author, coauthor, journal, sections) -> Article:
     return _article(author, coauthor, journal, sections)
+
+
+@pytest.fixture
+def published_article(author, coauthor, journal, sections) -> Article:
+    """Create a published article (stage=Published) for correction tests."""
+    article = _article(author, coauthor, journal, sections, submitted=True)
+    article.stage = STAGE_PUBLISHED
+    article.date_published = now()
+    article.save()
+    return article
+
+
+@pytest.fixture
+def request_user(author) -> Account:
+    """Alias for the author fixture, used as request.user in correction tests."""
+    return author
 
 
 @pytest.fixture
