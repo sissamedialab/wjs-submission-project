@@ -6,12 +6,19 @@ from submission.models import Article
 
 from ..mixins import AuthorFilteringView, StepCheckView
 from ..workflow import (
+    is_correction,
     is_revision,
     is_revision_confirm,
     is_revision_full,
     is_revision_metadata,
 )
-from .forms import RevisionConfirmForm, RevisionFullForm, RevisionMetadataForm, SubmissionStep1Form
+from .forms import (
+    CorrectionStep1Form,
+    RevisionConfirmForm,
+    RevisionFullForm,
+    RevisionMetadataForm,
+    SubmissionStep1Form,
+)
 
 
 class SubmissionStep1RedirectView(AuthorFilteringView, RedirectView):
@@ -43,6 +50,8 @@ class SubmissionStep1View(AuthorFilteringView, StepCheckView, CreateView):
             return RevisionMetadataForm
         if is_revision_full(self.object):
             return RevisionFullForm
+        if is_correction(self.object):
+            return CorrectionStep1Form
 
         return SubmissionStep1Form
 

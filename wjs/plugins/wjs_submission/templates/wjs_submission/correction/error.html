@@ -1,0 +1,26 @@
+{% extends "admin/core/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Error" %}{% endblock title %}
+
+{% block body %}
+<div class="row">
+  <div class="large-12 columns">
+    <div class="box">
+      <div class="title-area">
+        <h2>{% trans "Cannot start correction" %}</h2>
+      </div>
+      <div class="content">
+        <p>{{ error }}</p>
+        {% if article_id %}
+        <p>
+          <a href="{% url 'wjs_article_details_from_id' article_id %}" class="button">
+            {% trans "Back to article" %}
+          </a>
+        </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock body %}

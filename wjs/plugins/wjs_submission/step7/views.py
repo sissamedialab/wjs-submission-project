@@ -13,9 +13,10 @@ from ..models import (
     SubmissionArticleFunding,
 )
 from ..step4 import ModalRenderingMixin
-from ..workflow import is_revision, is_revision_confirm, is_revision_full, is_revision_metadata
+from ..workflow import is_correction, is_revision, is_revision_confirm, is_revision_full, is_revision_metadata
 from .forms import (
     AddFundingForm,
+    CorrectionStep7Form,
     RevisionAddFundingForm,
     RevisionStep7Form,
     SubmissionStep7Form,
@@ -50,6 +51,8 @@ class SubmissionStep7View(AuthorFilteringView, StepCheckView, UpdateView):
         """
         if is_revision(self.object):
             return RevisionStep7Form
+        if is_correction(self.object):
+            return CorrectionStep7Form
         return SubmissionStep7Form
 
     def get_success_url(self):

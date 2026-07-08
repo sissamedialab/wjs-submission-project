@@ -208,6 +208,21 @@ def is_revision(article: Article) -> bool:
     return is_revision_confirm(article) or is_revision_metadata(article) or is_revision_full(article)
 
 
+def is_correction(article: Article) -> bool:
+    """Tell if the given article is an erratum or addendum submission."""
+    if not article:
+        return False
+    if not hasattr(article, "ancestors"):
+        return False
+    # Genealogy is used for other parent/child relationships too (e.g. commentary),
+    # so we also require the section to be Erratum or Addendum.
+    from .correction.logic import CORRECTION_SECTION_NAMES  # noqa: PLC0415
+
+    if not article.section or article.section.name not in CORRECTION_SECTION_NAMES:
+        return False
+    return article.ancestors.exists()
+
+
 def step_incomplete(
     journal: Journal,
     article: Article | None = None,
@@ -234,6 +249,8 @@ def step_check_select_issue(
     - open_for_submission() -> uses date_open and date_close to filter out outdated or future issues
     - current_journal() -> only returns issues for the current journal
     """
+    if is_correction(article):
+        return False
     submission = is_submission(article)
     revision_confirm = is_revision_confirm(article)
     revision_metadata = is_revision_metadata(article)
@@ -250,6 +267,8 @@ def step_check_keywords(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
+    if is_correction(article):
+        return False
     submission = is_submission(article)
     revision_confirm = is_revision_confirm(article)
     revision_metadata = is_revision_metadata(article)
@@ -264,6 +283,8 @@ def step_check_authors(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
+    if is_correction(article):
+        return False
     submission = is_submission(article)
     revision_confirm = is_revision_confirm(article)
     revision_metadata = is_revision_metadata(article)
@@ -278,6 +299,8 @@ def step_check_metadata(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
+    if is_correction(article):
+        return False
     submission = is_submission(article)
     revision_confirm = is_revision_confirm(article)
     revision_metadata = is_revision_metadata(article)
@@ -292,6 +315,8 @@ def step_check_files(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
+    if is_correction(article):
+        return True
     submission = is_submission(article)
     revision_confirm = is_revision_confirm(article)
     revision_metadata = is_revision_metadata(article)
@@ -306,6 +331,8 @@ def step_check_access_funding(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
+    if is_correction(article):
+        return True
     submission = is_submission(article)
     revision_confirm = is_revision_confirm(article)
     revision_metadata = is_revision_metadata(article)

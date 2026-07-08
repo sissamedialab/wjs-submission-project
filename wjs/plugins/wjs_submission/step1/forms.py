@@ -486,3 +486,27 @@ class RevisionFullForm(RevisionConfirmForm):
 
     All data is kept in the temporary storage RevisionStorage.
     """
+
+
+class CorrectionStep1Form(SubmissionStep1Form):
+    """
+    Form for the first step of a correction (erratum/addendum) submission.
+
+    Similar to :class:`SubmissionStep1Form`, but:
+    - The arXiv ID is pre-filled and read-only (like revision).
+    - The cover letter help text is changed to collect metadata-only changes.
+    """
+
+    def __init__(self, *args, **kwargs):
+        """Initialize the correction form with read-only arXiv ID and modified help text."""
+        super().__init__(*args, **kwargs)
+        # Make arxiv_id field read-only (same as revision).
+        if "arxiv_id" in self.fields:
+            self.fields["arxiv_id"].disabled = True
+            self.fields["arxiv_id"].widget.attrs["readonly"] = True
+        # Change cover letter help text for corrections.
+        if "comments_editor" in self.fields:
+            self.fields["comments_editor"].help_text = _(
+                "If you need to change metadata (title/authors/...), please state it here. "
+                "It will be taken care of during typesetting/production."
+            )
