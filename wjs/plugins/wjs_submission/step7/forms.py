@@ -109,6 +109,7 @@ class SubmissionStep7Form(forms.ModelForm):
         self.instance.current_step = max(self.instance.current_step, self.step)
         instance = super().save(commit=commit)
         instance.submission_data.access_mode = self.cleaned_data["access_mode"]
+        instance.submission_data.special_request_updated = "special_request" in self.changed_data
         instance.submission_data.special_request = self.cleaned_data["special_request"]
         instance.submission_data.save()
         return instance
