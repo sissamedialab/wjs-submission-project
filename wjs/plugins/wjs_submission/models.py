@@ -103,6 +103,16 @@ class ArticleSubmission(models.Model):
         verbose_name=_("Special request has been updated on revision"), default=False
     )
     use_of_ai_flag = models.BooleanField(verbose_name=_("Use of AI"), default=False)
+    license_override = models.BooleanField(
+        verbose_name=_("License override"),
+        default=False,
+        help_text=_("If set, the article license is not auto-overwritten from the access mode configuration."),
+    )
+    rights_override = models.BooleanField(
+        verbose_name=_("Copyright override"),
+        default=False,
+        help_text=_("If set, the article copyright is not auto-overwritten from the access mode configuration."),
+    )
 
     cover_letter_file_allowed_extension = [".pdf", ".docx", ".doc", ".odt", ".rtf"]
 
@@ -150,16 +160,27 @@ class ArticleSubmission(models.Model):
         """
         super().save(force_insert=force_insert, force_update=force_update, using=using, update_fields=update_fields)
         if self.access_mode:
-            try:
-                journal_access_mode_parameters = AccessModeJournal.objects.filter(
-                    access_mode=self.access_mode, journal=self.article.journal
-                )
-                if journal_access_mode_parameters.exists():
-                    self.article.license = journal_access_mode_parameters.first().licence
-                    self.article.rights = journal_access_mode_parameters.first().copyright
-            except AccessModeJournal.DoesNotExist:
-                # ignoring configuration error to avoid breaking submission process
-                pass
+            self._sync_access_mode_parameters()
+
+    def _sync_access_mode_parameters(self):
+        """Sync license and rights from AccessModeJournal unless override flags are set."""
+        try:
+            access_mode_journal = AccessModeJournal.objects.get(
+                access_mode=self.access_mode, journal=self.article.journal
+            )
+        except AccessModeJournal.DoesNotExist:
+            # ignoring configuration error to avoid breaking submission process
+            pass
+        else:
+            self._apply_access_mode_to_article(access_mode_journal)
+
+    def _apply_access_mode_to_article(self, access_mode_journal):
+        """Apply the access mode journal's license and copyright to the article, respecting override flags."""
+        if not self.license_override:
+            self.article.license = access_mode_journal.licence
+        if not self.rights_override:
+            self.article.rights = access_mode_journal.copyright
+        self.article.save()
 
     def get_arxiv_id(self) -> str:
         """

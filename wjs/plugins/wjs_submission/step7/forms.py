@@ -111,6 +111,13 @@ class SubmissionStep7Form(forms.ModelForm):
         instance.submission_data.access_mode = self.cleaned_data["access_mode"]
         instance.submission_data.special_request_updated = "special_request" in self.changed_data
         instance.submission_data.special_request = self.cleaned_data["special_request"]
+        # When the user can select the access mode, preserve their custom license/rights
+        # only when they differ from the access mode's default configuration.
+        if self.configuration and self.configuration.user_can_select_access_mode:
+            if self.cleaned_data.get("license") and self.cleaned_data["license"] != self.configuration.license:
+                instance.submission_data.license_override = True
+            if self.cleaned_data.get("rights") and self.cleaned_data["rights"] != self.configuration.copyright_text:
+                instance.submission_data.rights_override = True
         instance.submission_data.save()
         return instance
 

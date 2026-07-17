@@ -4,8 +4,9 @@ from django.shortcuts import redirect, render, reverse
 from django.urls import path
 from wjs.advanced_admin.admin import advanced_admin_site
 
+from .. import settings as wjs_settings
 from ..models import ArticleCollaboration, ArticleSubmission, Collaboration
-from .forms import CollaborationMergeForm
+from .forms import ArticleSubmissionAdminForm, CollaborationMergeForm
 
 
 class ArticleCollaborationInline(admin.TabularInline):
@@ -99,8 +100,19 @@ class CollaborationAdmin(admin.ModelAdmin):
 
 @admin.register(ArticleSubmission, site=advanced_admin_site)
 class ArticleSubmissionAdmin(admin.ModelAdmin):
-    fields = ("cover_letter_file",)
+    form = ArticleSubmissionAdminForm
+
+    fields = (
+        "cover_letter_file",
+        "access_mode",
+        "license_override",
+        "article_license",
+        "rights_override",
+        "article_rights",
+        "special_request",
+    )
     autocomplete_fields = ("cover_letter_file",)
+    readonly_fields = ("special_request",)
 
     list_display = ["article_title", "pubid", "article_journal", "state"]
     list_filter = ["article__journal"]
@@ -127,6 +139,19 @@ class ArticleSubmissionAdmin(admin.ModelAdmin):
         :rtype: bool
         """
         return False
+
+    def get_readonly_fields(self, request, obj=None):
+        """
+        Make access_mode read-only for non-IoP journals.
+
+        Per the specification, changing access mode is only needed for IoP journals.
+        The field remains visible (so the EO can see the current value) but is not
+        editable for non-IoP journals.
+        """
+        readonly_fields = list(super().get_readonly_fields(request, obj))
+        if obj and obj.article.journal.code not in wjs_settings.IOP_JOURNALS:
+            readonly_fields.append("access_mode")
+        return readonly_fields
 
     def state(self, obj: ArticleSubmission) -> str:  # noqa: PLR6301
         """
