@@ -7,7 +7,7 @@ from submission.models import STAGE_REJECTED, STAGE_UNSUBMITTED, Article
 from .plugin_settings import UNIQUENESS_CHECK
 
 
-def get_article_matching_signature(response_content: dict, journal: Journal = None) -> QuerySet:
+def get_articles_matching_signature(response_content: dict, journal: Journal = None) -> QuerySet:
     """
     Retrieve article candidates based on the provided response content.
 
@@ -40,9 +40,7 @@ def get_article_matching_signature(response_content: dict, journal: Journal = No
     return filtered_articles
 
 
-def check_article_uniqueness_by_submission_status(
-    response_content: dict, journal: Journal, arxiv_article_id: int
-) -> bool:
+def check_article_uniqueness_by_submission_status(response_content: dict, journal: Journal, article_id: int) -> bool:
     """
     Check that Article is unique by submission status and Journal.
 
@@ -55,12 +53,12 @@ def check_article_uniqueness_by_submission_status(
     :type response_content: dict
     :param journal: The Journal instance to filter candidates by.
     :type journal: Journal
-    :param arxiv_article_id: The ArXiv article id to filter candidates by.
-    :type arxiv_article_id: int
+    :param article_id: The Article id to filter candidates by.
+    :type article_id: int
     :return: A boolean
     :rtype: bool
     """
-    filtered_articles = get_article_matching_signature(response_content=response_content, journal=journal)
+    filtered_articles = get_articles_matching_signature(response_content=response_content, journal=journal)
 
     filtered_articles = filtered_articles.exclude(
         # Unsubmitted / rejected articles can be re-submitted under new ID
@@ -70,12 +68,12 @@ def check_article_uniqueness_by_submission_status(
         Q(current_step=0)
         |
         # current article being submitted (this is an edit of an existing incomplete submission)
-        Q(pk=arxiv_article_id)
+        Q(pk=article_id)
     )
     return not filtered_articles.exists()
 
 
-def check_article_unique(response_content: dict, journal: Journal, arxiv_article_id: int) -> bool:
+def check_article_unique(response_content: dict, journal: Journal, article_id: int) -> bool:
     """
     Get correct function to check that Article is unique.
 
@@ -84,13 +82,11 @@ def check_article_unique(response_content: dict, journal: Journal, arxiv_article
     :type response_content: dict
     :param journal: The Journal instance to filter candidates by.
     :type journal: Journal
-    :param arxiv_article_id: The ArXiv article id to filter candidates by.
-    :type arxiv_article_id: int
+    :param article_id: The Article id to filter candidates by.
+    :type article_id: int
     :return: A boolean
     :rtype: bool
     """
     check_article_unique_function_name = UNIQUENESS_CHECK.get(journal.code, UNIQUENESS_CHECK[None])
     check_article_unique_function = import_string(check_article_unique_function_name)
-    return check_article_unique_function(
-        response_content=response_content, journal=journal, arxiv_article_id=arxiv_article_id
-    )
+    return check_article_unique_function(response_content=response_content, journal=journal, article_id=article_id)

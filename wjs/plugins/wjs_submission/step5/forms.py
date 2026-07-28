@@ -1,11 +1,15 @@
+from typing import Any
+
 from django import forms
 from django.utils.translation import gettext_lazy as _
+from plugins.wjs_submission.arxiv import ArticleAlreadySubmittedError
 from submission.forms import ArticleInfo
 from submission.models import KeywordArticle
 
 from ..fields import WjsSimpleBleach
 from ..models import RevisionStorage
 from ..settings_helpers import get_article_language_choices
+from ..unique_check import check_article_unique
 
 
 class SubmissionStep5Form(ArticleInfo):
@@ -42,10 +46,50 @@ class SubmissionStep5Form(ArticleInfo):
                     self.fields[field].widget.attrs["required"] = True
                     self.fields[field].help_text = _("Required")
 
+    def _validate_metadata(self, cleaned_data: dict[str, Any] | None):
+        """
+        Validate the metadata of the given cleaned data.
+
+        Check whether the combination of title and abstract is unique for the specific
+        arXiv ID , journal, and article ID.
+
+        :param cleaned_data: Dictionary representing the metadata to validate. May
+            include keys such as "title" and "abstract". Can be None.
+        :raises ArXivIDAlreadyUsedError: If the provided metadata is not unique for
+            the given context.
+        """
+        title = cleaned_data.get("title")
+        abstract = cleaned_data.get("abstract")
+        if title and abstract:
+            response_content = {
+                "arxiv_id": self.instance.arxiv_id,
+                "title": title,
+                "abstract": abstract,
+            }
+            return check_article_unique(
+                response_content=response_content,
+                journal=self.instance.journal,
+                article_id=self.instance.pk,
+            )
+        return True
+
+    def clean(self):
+        """
+        Reject the submission if it duplicates an article already submitted to the journal.
+
+        Runs the configured uniqueness check on the submitted title/abstract.
+        """
+        cleaned_data = super().clean()
+        # if the paper has an arXiv id (and since we are past step 1), we know that the check has already been done
+        if self.instance.arxiv_id:
+            return cleaned_data
+        if not self._validate_metadata(cleaned_data):
+            raise ArticleAlreadySubmittedError
+
+        return cleaned_data
+
     def save(self, commit=True, request=None):
-        """
-        Set article current step to the form step.
-        """
+        """Set article current step to the form step."""
         # Workaround to store keywords after form save because utils.forms.KeywordModelForm.save clears the existing
         # keywords. We must use utils.forms.KeywordModelForm (through ArticleInfo) because we need the logic to
         # handle optional fields and this workaround is slightly better than reimplementing the optional fields logic.

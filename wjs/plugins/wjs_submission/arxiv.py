@@ -5,6 +5,7 @@ import defusedxml
 import requests
 from core import files as core_files
 from core.models import Account
+from django import forms
 from django.conf import settings
 from django.core.files import File
 from django.core.files.base import ContentFile
@@ -18,7 +19,7 @@ from submission.models import STAGE_UNSUBMITTED, Article
 from utils.setting_handler import get_setting
 
 from .conversion import start_source_conversion
-from .unique_check import check_article_unique, get_article_matching_signature
+from .unique_check import check_article_unique, get_articles_matching_signature
 
 ARXIV_API_URL = "https://export.arxiv.org/api/query?id_list={}"
 
@@ -40,7 +41,7 @@ class ArXivQueryError(Exception):
         self.message = message
 
 
-class ArXivIDAlreadyUsedError(ArXivQueryError):
+class ArticleAlreadySubmittedError(forms.ValidationError):
     """Raised when and Article with the same arXiv ID or with the same metadata already exists."""
 
     def __init__(
@@ -229,8 +230,8 @@ def fetch_arxiv_metadata(
         else:
             msg = f"Connection to arXiv could not be established: {e!s}"
         raise ArXivConnectionError(msg) from e
-    except ArXivQueryError:
-        # If exception is already a ArXivQueryError no need to wrap it around ArXivQueryError again
+    except (ArXivQueryError, forms.ValidationError):
+        # If exception is already a ArXivQueryError or ValidationError no need to wrap it around ArXivQueryError again
         raise
     except Exception as e:
         raise GenericArxivError from e
@@ -292,7 +293,7 @@ class ArXivToArticle:
         :raises KeyError: If required keys like "title", "abstract", "arxiv_id", or "category_term" are missing from
             the `response_content`.
         """
-        candidates = get_article_matching_signature(response_content=response_content, journal=self.journal)
+        candidates = get_articles_matching_signature(response_content=response_content, journal=self.journal)
         in_submission = candidates.filter(stage__in={STAGE_UNSUBMITTED}, owner=self.user)
         existing_matching_article = in_submission.first()
         # this check verifies if the recovered article is the current one which we let continue, or the
@@ -385,9 +386,9 @@ class ArXivToArticle:
                 raise GenericArxivError(msg) from e
 
             if not check_article_unique(
-                response_content=result, journal=self.journal, arxiv_article_id=self.arxiv_article_id
+                response_content=result, journal=self.journal, article_id=self.arxiv_article_id
             ):
-                raise ArXivIDAlreadyUsedError
+                raise ArticleAlreadySubmittedError
 
             article = self._get_or_create_article(result)
 
