@@ -7,7 +7,7 @@ from identifiers.models import Identifier
 from journal.models import Journal
 from plugins.wjs_submission.account_validation import jcom_correspondence_author_validation
 from plugins.wjs_submission.arxiv import (
-    ArXivIDAlreadyUsedError,
+    ArticleAlreadySubmittedError,
     ArXivIDContinueSubmissionError,
     ArXivToArticle,
     HandleArticleCreation,
@@ -187,7 +187,7 @@ def test_double_arxiv_id_submission(
         article.stage = STAGE_UNASSIGNED
     article.save()
     if submission_step == 8:
-        with pytest.raises(ArXivIDAlreadyUsedError):
+        with pytest.raises(ArticleAlreadySubmittedError):
             ArXivToArticle(
                 arxiv_id="2504.10562v1",
                 journal=journal,
