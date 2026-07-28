@@ -83,7 +83,7 @@ run-tests:
 
 
 
-pre-commit:
+Pre-commit:
   # Always run linting, except for tags
   except:
     - tags
@@ -91,78 +91,115 @@ pre-commit:
     - .run-pre-commit
 
 
-
-
-upload-package:
+Upload package:
   only:
     - tags
   extends:
     - .upload-package
 
 
-
-
-deploy-to-pre-production:
-  extends:
-    - .deploy
+Deploy to pre-production:
   environment: pre-production
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      when: never
-    - if: $CI_COMMIT_REF_NAME == "wjs-production"
-      when: on_success
-    - when: manual
-  allow_failure: true
-  variables:
-    SERVER_IP: "$TEST_SERVER_IP"
-    SERVER_USER: "$TEST_SERVER_USER"
-    DEPLOY_CMD: "deploy-pp-wjs-submission"
-
-
-deploy-to-test:
-  # Deploy the current commit to test instance
-  # Warning! Be sure not to disrupt other peoples work 🙂
   extends:
     - .deploy
-  environment: test
+  # Deploying to pp means installing the last released (uploaded) package,
+  # so the job only makes sense in tag pipelines, after "Upload package".
+  needs:
+    - Upload package
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      when: never
-    - when: manual
+    # Manual because we don't want to risk resetting some on-going translation:
+    - if: $CI_COMMIT_TAG
+      when: manual
+  # Do not block the pipeline waiting for the manual job
+  # (with `rules`, manual jobs default to allow_failure: false)
   allow_failure: true
   variables:
     SERVER_IP: "$TEST_SERVER_IP"
     SERVER_USER: "$TEST_SERVER_USER"
-    DEPLOY_CMD: "deploy-test-wjs-submission:${CI_COMMIT_SHA}"
+    DEPLOY_CMD: "deploy-pp-submission"
 
 
-deploy-to-dev:
+Deploy to production:
+  extends:
+    - .deploy
+  # Deploying to prod means installing the last released (uploaded) package,
+  # so the job only makes sense in tag pipelines, after "Upload package".
+  needs:
+    - Upload package
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: manual
+  allow_failure: true
+  environment: production
+  variables:
+    SERVER_IP: "$PROD_SERVER_IP"
+    SERVER_USER: "$PROD_SERVER_USER"
+    DEPLOY_CMD: "deploy-prod-submission"
+
+
+Deploy to dev:
   extends:
     - .deploy
   environment: dev
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: never
+    # The dev instance only deploys wjs-develop, so the job exists
+    # only in pipelines for that branch (no rule matches elsewhere).
     - if: $CI_COMMIT_REF_NAME == "wjs-develop"
       when: on_success
-    - when: manual
   allow_failure: true
   variables:
     SERVER_IP: "$TEST_SERVER_IP"
     SERVER_USER: "$TEST_SERVER_USER"
-    DEPLOY_CMD: "deploy-dev-wjs-submission:${CI_COMMIT_SHA}"
+    # The dev instance always deploys the wjs-develop branch (no ref accepted)
+    DEPLOY_CMD: "deploy-dev-submission"
 
 
-deploy-to-production:
+# ======================
+# Deploy to T1-T5
+# ======================
+.deploy-to-test-template:
   extends:
     - .deploy
-  environment: production
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      when: never
-    - when: manual
-  allow_failure: true
+  when: manual
   variables:
-    SERVER_IP: "$PROD_SERVER_IP"
-    SERVER_USER: "$PROD_SERVER_USER"
-    DEPLOY_CMD: "deploy-prod-wjs-submission"
+    SERVER_IP: "$TEST_SERVER_IP"
+    SERVER_USER: "$TEST_SERVER_USER"
+    TEST_INSTANCE: "t1"
+    DEPLOY_CMD: "deploy-${TEST_INSTANCE}-submission:${CI_COMMIT_SHA}"
+
+Deploy to T1:
+  environment: T1
+  extends:
+    - .deploy-to-test-template
+  variables:
+    TEST_INSTANCE: "t1"
+
+Deploy to T2:
+  environment: T2
+  extends:
+    - .deploy-to-test-template
+  variables:
+    TEST_INSTANCE: "t2"
+
+Deploy to T3:
+  environment: T3
+  extends:
+    - .deploy-to-test-template
+  variables:
+    TEST_INSTANCE: "t3"
+
+Deploy to T4:
+  environment: T4
+  extends:
+    - .deploy-to-test-template
+  variables:
+    TEST_INSTANCE: "t4"
+
+Deploy to T5:
+  environment: T5
+  extends:
+    - .deploy-to-test-template
+  variables:
+    TEST_INSTANCE: "t5"
