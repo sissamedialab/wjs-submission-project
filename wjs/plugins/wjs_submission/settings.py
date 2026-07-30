@@ -3,6 +3,7 @@ from django.utils.translation import gettext_lazy as _
 
 DEFAULT_KEYWORDS_INTERVAL_PER_JOURNAL = {
     None: (1, 3),
+    "JCAP": (2, 4),
     "JQuant": (2, 4),
     "JHEP": (1, 4),
 }
@@ -34,6 +35,7 @@ DEFAULT_ACCESS_MODE_CONTROL_FUNCTION = {
     "JINST": "plugins.wjs_submission.access_mode.get_cern_oata_fallback_access_mode",
     "JQuant": "plugins.wjs_submission.access_mode.get_cern_journals_access_mode",
     "JHEP": "plugins.wjs_submission.access_mode.get_cern_journals_access_mode",
+    "JCAP": "plugins.wjs_submission.access_mode.get_oa_transformative_agreement",
 }
 
 

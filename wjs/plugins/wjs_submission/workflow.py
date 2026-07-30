@@ -133,6 +133,10 @@ class Step:
         """
         Return a dictionary with the active/available steps for the given journal / article.
 
+        Active steps are those whose Step.check_function returns True.
+        Available steps are those whose Step.step_number is less than or equal to the current step of the article or
+            the first active step after the last completed one.
+
         :param journal: Journal instance
         :type journal: Journal
         :param article: Article instance, defaults to None
@@ -143,15 +147,16 @@ class Step:
         :rtype: dict[int, StepState]
         """
         states = {}
-        offset = 0
+        next_selected = False
         for step in STEPS.values():
+            # active state depends on the check_function and journal configuration
             active = step.is_active(journal, article, user)
-            if not active:
-                # Non active states does not count towards the availability
-                available = False
-                offset += 1
-            else:
-                available = step.step_number <= article.current_step + offset if article else False
+            # submitted steps are available
+            available = active and article and step.step_number <= article.current_step
+            # the first active step after the last completed one is also available
+            if not available and not next_selected and active:
+                next_selected = True
+                available = True
             states[step.step_number] = StepState(
                 step=step,
                 state=active,

@@ -273,14 +273,21 @@ def test_step_state_mapping(
     """
     article.current_step = step_number
     states = Step.get_steps_states(article.journal, article)
-    offset = 0
+    next_granted = False
     for state in states.values():
         if not state.state:
+            # Inactive steps are never available.
             assert state.available is False
-            offset += 1
+        elif state.step.step_number <= step_number:
+            # Completed active steps are available.
+            assert state.available is True
+        elif not next_granted:
+            # The single next active step (look-ahead) is available.
+            assert state.available is True
+            next_granted = True
         else:
-            expected_available = state.step.step_number <= step_number + offset
-            assert state.available == expected_available
+            # Any active step beyond the next one is blocked.
+            assert state.available is False
 
 
 @pytest.mark.parametrize(
@@ -324,3 +331,46 @@ def test_step_7(
         AccessModeJournal.objects.all().delete()
     step = STEPS[7]
     assert step.is_active(journal=article.journal, article=article) == active
+
+
+@pytest.mark.parametrize(
+    ("current_step", "expected_available"),
+    [
+        # Author still on step 1: step 2 skipped, step 3 is the next reachable step.
+        (1, {1: True, 2: False, 3: True, 4: False, 5: False, 6: False, 7: False, 8: False}),
+        # Author completed step 3 (current_step jumped 1 -> 3 over the inactive step 2).
+        # Only steps 1 and 3 are done and step 4 is the single next step; step 5+ must be blocked.
+        # Regression: the previous offset logic double-counted the skipped step 2 and wrongly
+        # marked step 5 as available here.
+        (3, {1: True, 2: False, 3: True, 4: True, 5: False, 6: False, 7: False, 8: False}),
+        # Deeper in the wizard the off-by-one must not reappear either.
+        (4, {1: True, 2: False, 3: True, 4: True, 5: True, 6: False, 7: False, 8: False}),
+    ],
+)
+@pytest.mark.django_db
+def test_step_state_mapping_skipped_step_no_lookahead_drift(
+    article: Article,
+    install_plugins: Callable,
+    current_step: int,
+    expected_available: dict[int, bool],
+):
+    """
+    When an inactive step precedes ``current_step`` availability must not drift by one.
+
+    Scenario: step 2 ("Select Issue") is inactive (no special issue). Since inactive steps are
+    skipped without being saved, ``current_step`` jumps over their numbers. Only the completed
+    active steps plus the single next active step may be available.
+    """
+    article.current_step = current_step
+    step2 = STEPS[2]
+    with patch.object(step2, "check_function", return_value=False):
+        states = Step.get_steps_states(article.journal, article)
+
+    # Step 2 is inactive: not rendered and never available.
+    assert states[2].state is False
+    assert states[2].available is False
+
+    for number, expected in expected_available.items():
+        assert states[number].available is expected, (
+            f"step {number}: expected available={expected}, got {states[number].available}"
+        )

@@ -112,9 +112,9 @@ def noop(user: Account, article: Article) -> AccessModeConfiguration | None:
     try:
         access_mode = AccessMode.objects.get(code=OA_CODE, parameters__journal=article.journal)
         return get_configuration(access_mode, article.journal, user_selectable=False)
-    except AccessModeJournal.MultipleObjectsReturned:
+    except AccessMode.MultipleObjectsReturned:
         return get_configuration(None, article.journal, user_selectable=True)
-    except AccessModeJournal.DoesNotExist:
+    except AccessMode.DoesNotExist:
         return None
 
 
