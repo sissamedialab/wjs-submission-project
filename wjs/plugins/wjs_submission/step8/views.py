@@ -1,6 +1,7 @@
 from core.models import Account, ControlledAffiliation
 from django.contrib import messages
-from django.urls import reverse_lazy
+from django.http.response import HttpResponseRedirect
+from django.urls import reverse, reverse_lazy
 from django.utils.translation import gettext_lazy as _
 from django.views.generic import UpdateView
 from repository.models import Author
@@ -49,6 +50,29 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
     step = 8
     template_name = "wjs_submission/step8/article_form.html"
     form_class = SubmissionStep8Form
+
+    def get(self, request, *args, **kwargs):
+        """
+        Handle HTTP GET requests for the specific view.
+
+        Validate the state of step 7 and ensure that the access mode selection
+        is properly configured. If the validation fails, redirects the user to
+        the relevant URL with a warning message. Otherwise, delegates the handling
+        to the parent class.
+
+        :param request: The HTTP request object.
+        :type request: HttpRequest
+        :param args: Additional positional arguments.
+        :param kwargs: Additional keyword arguments.
+        :rparam: HTTP response that either redirects to another page or proceeds
+                 with the parent class's behavior.
+        :rtype: HttpResponse
+        """
+        self.object = self.get_object()
+        if not self._validate_step7():
+            messages.warning(request, _("Please verify access mode selection."))
+            return HttpResponseRedirect(reverse("wjs_submission_7", kwargs={"article_id": self.object.pk}))
+        return super().get(request, *args, **kwargs)
 
     def get_success_url(self):
         """
@@ -122,6 +146,18 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
             revision_storage = RevisionStorage.objects.get(article=self.object)
             revision_storage.data["access_mode"] = configuration.access_mode.pk
             revision_storage.save()
+
+    def _validate_step7(self):
+        """
+        Validate the access mode of the submission data.
+
+        Check whether the access mode within the submission data of the object
+        is valid and converts it to a boolean to determine its validity.
+
+        :return: Boolean indicating the validity of the access mode.
+        :rtype: bool
+        """
+        return bool(self.object.submission_data.access_mode) or self._step7_skipped()
 
     def get_form_kwargs(self):
         """
