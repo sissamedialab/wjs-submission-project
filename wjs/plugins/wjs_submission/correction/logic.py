@@ -21,7 +21,6 @@ from submission.models import (
     FrozenAuthor,
     Section,
 )
-from wjs.jcom_profile.models import Genealogy
 
 from ..models import (
     AccessMode,
@@ -55,7 +54,7 @@ class SetupCorrectionStorage:
 
     - Retrieves the published ``from_article``.
     - Creates or resumes a new ``to_article`` (the correction).
-    - Links them via :func:`get_or_create_linked_article` (Genealogy).
+    - Links them via :func:`get_or_create_linked_article`.
     - Pre-populates the correction article with metadata from ``from_article``.
     """
 
@@ -152,15 +151,7 @@ class SetupCorrectionStorage:
 
     def _find_existing_correction(self, section: Section) -> Article | None:
         """Find an existing in-progress correction of the same type for the from_article."""
-        if not hasattr(self.from_article, "genealogy"):
-            return None
-        try:
-            genealogy = self.from_article.genealogy
-        except type(self.from_article).genealogy.RelatedObjectDoesNotExist:
-            return None
-        for child in genealogy.children.filter(section=section, stage=STAGE_UNSUBMITTED):
-            return child
-        return None
+        return find_existing_correction(self.from_article, section)
 
     def _link_articles(self):
         """Link from_article and to_article via the Genealogy model."""
@@ -250,6 +241,34 @@ class SetupCorrectionStorage:
         return self.to_article
 
 
+def find_existing_correction(from_article: Article, section: Section) -> Article | None:
+    """
+    Find a related correction article for a given section.
+
+    Search for an existing correction article related to the provided article and
+    specific section. The function checks if the given article has any children
+    in its genealogy that satisfy the provided section and stage filter. If none
+    exists, it returns None.
+
+    :param from_article: The article for which to find a related correction.
+    :type from_article: Article
+    :param section: The section used to filter the related corrections.
+    :type section: Section
+    :return: A related correction article matching the section and stage filter,
+        or None if no such article is found.
+    :rtype: Article | None
+    """
+    if not hasattr(from_article, "genealogy"):
+        return None
+    try:
+        genealogy = from_article.genealogy
+    except type(from_article).genealogy.RelatedObjectDoesNotExist:
+        return None
+    for child in genealogy.children.filter(section=section.name, stage=STAGE_UNSUBMITTED):
+        return child
+    return None
+
+
 def get_correction_title(from_article: Article, relationship: str) -> str:
     """
     Build the title for a correction article.
@@ -279,19 +298,15 @@ def get_or_create_linked_article(from_article: Article, to_article: Article, rel
     """
     Link two articles via the Genealogy model.
 
-    This function isolates the Hydra integration. Currently uses the
-    :class:`Genealogy` model directly. When issue #2879 is complete, this
-    will be swapped to use the Hydra ``LinkedArticle`` model.
+    This function is currrently a stub waiting for the Hydra integration.
+    """
+    from hydra.models import LinkedArticle  # noqa
 
-    Future implementation using Hydra's LinkedArticle model:
+    # TODO: Implement hydra relationship
+    return None
 
-    from hydra.models import LinkedArticle  # or wherever it lives
     return LinkedArticle.objects.create(
         from_article=from_article,
         to_article=to_article,
         relationship=relationship,  # "erratum" or "addendum"
     )
-    """
-    genealogy, _ = Genealogy.objects.get_or_create(parent=from_article)
-    genealogy.children.add(to_article)
-    return genealogy
