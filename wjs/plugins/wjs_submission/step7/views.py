@@ -1,3 +1,5 @@
+from typing import Any
+
 from django.urls import reverse, reverse_lazy
 from django.utils.functional import cached_property
 from django.views.generic import TemplateView, UpdateView
@@ -6,6 +8,7 @@ from submission.models import Article
 from ..access_mode import AccessModeConfiguration, get_access_mode_configuration
 from ..mixins import AuthorFilteringView, HtmxMixin, StepCheckView
 from ..models import (
+    RevisionStorage,
     RevisionSubmissionArticleFunding,
     SubmissionArticleFunding,
 )
@@ -164,10 +167,12 @@ class AddFundingView(FundingTableRenderingMixin, ModalRenderingMixin):
         kwargs["instance"] = self.object
         return kwargs
 
-    def get(self, *args, **kwargs):
+    def get(self, request, *args, **kwargs):
         """
         Handle GET request and add custom trigger to trigger opening of the modal.
 
+        :param request: HttpRequest object containing metadata about the request.
+        :type request: HttpRequest
         :param args: Positional arguments passed to the parent `get` method
         :type args: tuple
         :param kwargs: Keyword arguments passed to the parent `get` method
@@ -175,7 +180,7 @@ class AddFundingView(FundingTableRenderingMixin, ModalRenderingMixin):
         :return: Response object with the added HX-Trigger header
         :rtype: dict
         """
-        response = super().get(*args, **kwargs)
+        response = super().get(request, *args, **kwargs)
         response["HX-Trigger"] = "open-active-modal"
         return response
 
@@ -194,7 +199,7 @@ class AddFundingView(FundingTableRenderingMixin, ModalRenderingMixin):
         return response
 
 
-class DeleteFundingView(HtmxMixin, TemplateView):
+class DeleteFundingView(HtmxMixin, FundingTableRenderingMixin, TemplateView):
     template_name = "wjs_submission/step7/selected_funding.html"
     is_revision = False
 
@@ -221,7 +226,18 @@ class DeleteFundingView(HtmxMixin, TemplateView):
         :rtype: Article
         :raises Article.DoesNotExist: If no Article is found with the given article_id
         """
-        return Article.objects.get(pk=self.request.POST.get("article_id"))
+        return Article.objects.get(pk=self.kwargs["article_id"])
+
+    @cached_property
+    def revision_storage(self) -> RevisionStorage | None:
+        """
+        Retrieve the RevisionStorage object based on the article_id provided in the POST request.
+
+        :return: The RevisionStorage object corresponding to the provided article_id
+        :rtype: RevisionStorage
+        :raises RevisionStorage.DoesNotExist: If no Article is found with the given article_id
+        """
+        return RevisionStorage.objects.get(article=self.article) if is_revision(self.article) else None
 
     def get_object(self, queryset=None):
         """
@@ -234,6 +250,23 @@ class DeleteFundingView(HtmxMixin, TemplateView):
         :raises SubmissionArticleFunding.DoesNotExist: If no object with specified primary key exists in the queryset.
         """
         return self.model.objects.get(pk=self.request.POST.get("funding_pk"))
+
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        """
+        Generate and return the context data for the view.
+
+        This method extends the base context data by including additional
+        information about article funding. Use this method to retrieve the
+        context dictionary with all the necessary data to be rendered.
+
+        :param kwargs: Additional keyword arguments passed to the view.
+        :type kwargs: Any
+        :return: Updated context dictionary including articles_funding.
+        :rtype: dict[str, Any]
+        """
+        context = super().get_context_data(**kwargs)
+        context["articles_funding"] = get_article_fundings(self.article)
+        return context
 
     def post(self, request, *args, **kwargs):
         """
