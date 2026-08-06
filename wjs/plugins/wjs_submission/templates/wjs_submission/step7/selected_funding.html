@@ -41,7 +41,7 @@
                       hx-post="{{ delete_funding_url }}"
                       hx-target="#selected-funding-wrapper"
                       hx-vals='{"funding_pk": "{{ funding.pk }}"}'
-                      hx-swap="innerHTML">
+                      hx-swap="outerHTML">
                 <i class="bi bi-trash3"></i>
               </button>
             </td>
