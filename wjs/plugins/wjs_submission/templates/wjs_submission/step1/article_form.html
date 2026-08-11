@@ -27,16 +27,20 @@
 
   {% if form.arxiv_id %}
     <div class="wjs-submission-form__section mb-5" id="arxiv_id-section">
-      <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">ArXiv</h2>
+      <h2 class="wjs-submission-form__form-label-title wjs-submission-form__form-label wjs-submission-form__form-label--required">
+        <span class="visually-hidden">archive ID</span>
+        <span aria-hidden="true">arXiv ID</span>
+      </h2>
       <div class="wjs-submission-form__section-content">
         {% if not is_revision %}
           <div class="mb-4">
-            Enter your preprint’s arXiv ID and validate it. The title, abstract, and manuscript will be imported
+            Enter your preprint’s <span class="visually-hidden">archive</span><span aria-hidden="true">arXiv</span> ID and validate it. The title, abstract, and manuscript will be imported
             automatically and can be reviewed in the next steps.
           </div>
         {% endif %}
         <div class="wjs-submission-form__arxiv-validation-wrapper">
-          {% bootstrap_field form.arxiv_id show_help=False show_label=False wrapper_class="" %}
+          <label class="visually-hidden" for="id_arxiv_id">archive ID</label>
+          {% bootstrap_field form.arxiv_id show_help=False show_label="skip" wrapper_class="" %}
           {{ form.arxiv_article_id }}
 
           {% if not is_revision %}
@@ -47,10 +51,10 @@
               hx-include="#id_arxiv_id"
               hx-target="#js-arxiv-validation-result"
               disabled
-              aria-label="Validate ArXiv ID"
+              aria-label="Validate archive ID"
               type="button"
             >
-              Validate ArXiv ID
+            Validate <span class="visually-hidden">archive</span><span aria-hidden="true">ArXiv</span> ID
             </button>
           {% endif %}
         </div>
@@ -59,7 +63,7 @@
             <div id="js-arxiv-validation-result" class="wjs-submission-form__arxiv-validation-result d-none" role="alert"
                  aria-live="assertive"></div>
             <p id="js-arxiv-validation-suggestion" class="wjs-submission-form__arxiv-validation-suggestion d-none errormessage" role="alert" aria-live="assertive">
-              ArXiv ID must be in the following format: nnnn.nnnnn
+              <span class="visually-hidden">archive</span><span aria-hidden="true">arXiv</span> ID must be in the following format: nnnn.nnnnn
             </p>
           </div>
           <div id="js-arxiv-validation-loader" class="wjs-submission-form__arxiv-validation-loader d-none" role="status"

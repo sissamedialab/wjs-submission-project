@@ -155,10 +155,6 @@ function updateRequiredChecklist() {
       }
     } else {
       fieldStatusItem.classList.remove("wjs-submission-form__label--filled");
-      const srOnlyFilledElement = fieldStatusItem.querySelector(".visually-hidden");
-      if (srOnlyFilledElement) {
-        fieldStatusItem.removeChild(srOnlyFilledElement);
-      }
       allSectionsFilled = false;
     }
   });
@@ -259,7 +255,7 @@ function populateRequiredChecklist(fieldsStatusList) {
 
   getRequiredFields(form).forEach(field => {
     const section = getSectionHeading(field);
-    const sectionTitle = section.textContent.trim();
+    const sectionTitle = section.innerHTML.trim();
     // if the section is invisible, we skip it as the field is not visible and user can't interact with it
     // if it's required and hidden, it's either populated programmatically or it will get a default at render time
     if (!section.parentElement.checkVisibility()) {
@@ -284,7 +280,7 @@ function populateRequiredChecklist(fieldsStatusList) {
   // required fields list
   sectionMap.forEach((fields, section) => {
     const fieldsStatusListItem = document.createElement("li");
-    fieldsStatusListItem.textContent = section;
+    fieldsStatusListItem.innerHTML = section;
     fieldsStatusListItem.dataset.section = section;
     fieldsStatusListItem.dataset.fields = JSON.stringify(fields.map(field => field.id));
     fieldsStatusList.appendChild(fieldsStatusListItem);

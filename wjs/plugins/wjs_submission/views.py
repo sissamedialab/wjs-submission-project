@@ -2,6 +2,7 @@ from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db.models import Q, QuerySet
 from django.http import HttpResponseBase, JsonResponse
 from django.urls import reverse
+from django.utils.safestring import mark_safe
 from django.views import View
 from django.views.generic import RedirectView, TemplateView
 from submission.models import Article, Keyword
@@ -108,7 +109,19 @@ class ArxivMicroservice(HtmxMixin, AuthorFilteringView, View):
                 }
             )
         except Exception as e:  # noqa: BLE001
-            return JsonResponse({"status": "error", "message": f"Error: {e}"}, status=500)
+            error_msg = str(e)
+            # horrible trick to ensure arXiv string is correctly read by the screen reader
+            replacements = {
+                "arxiv.org": (
+                    '<span class="visually-hidden">archive.org</span><span aria-hidden="true">arxiv.org</span>'
+                ),
+                "arXiv": '<span class="visually-hidden">archive</span><span aria-hidden="true">arXiv</span>',
+                "arXiv ID": '<span class="visually-hidden">archive ID</span><span aria-hidden="true">arXiv ID</span>',
+            }
+            for key, value in replacements.items():
+                error_msg = error_msg.replace(key, value)
+            error_msg = mark_safe(error_msg)  # noqa: S308
+            return JsonResponse({"status": "error", "message": f"Error: {error_msg}"}, status=500)
 
 
 class FreeKeywordAutocomplete(KeywordAutocomplete):

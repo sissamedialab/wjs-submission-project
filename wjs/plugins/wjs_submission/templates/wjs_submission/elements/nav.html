@@ -13,9 +13,9 @@
           {% if step_state.step == step %}aria-current="page"{% endif %}>
           <div class="wjs-submission-navigation-step__circle"><i class="bi {{ step_state.step.icon }}"></i></div>
           {% if article %}
-            <div class="wjs-submission-navigation-step__label"><span class="visually-hidden">Step {{ step_state.step.step_number }}</span>{{ step_state.step|step_title:article }}</div>
+            <div class="wjs-submission-navigation-step__label">{{ step_state.step|step_title:article }}</div>
           {% else %}
-            <div class="wjs-submission-navigation-step__label"><span class="visually-hidden">Step {{ step_state.step.step_number }}</span>{{ step_state.step|step_title:None }}</div>
+            <div class="wjs-submission-navigation-step__label">{{ step_state.step|step_title:None }}</div>
           {% endif %}
           <span class="visually-hidden">{% if not step_state.available %}{% translate "Blocked" %}{% endif %}</span>
         </a>

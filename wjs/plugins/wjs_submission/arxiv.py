@@ -303,7 +303,7 @@ class ArXivToArticle:
             if existing_matching_article.current_step > 0:
                 url = reverse("wjs_submission_continue", kwargs={"article_id": existing_matching_article.pk})
                 msg = format_lazy(
-                    'A submission for the current ArXiv ID has already been started, please <a class="text-white" '
+                    'A submission for the current arXiv ID has already been started, please <a class="text-white" '
                     'href="{url}">complete the existing submission</a>',
                     url=url,
                 )
