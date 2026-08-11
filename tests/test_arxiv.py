@@ -397,7 +397,10 @@ def test_connection_error_bubbles_up_on_requests_timeout(rf, author, journal, ar
 
     data = json.loads(response.content.decode())
     assert data["status"] == "error"
-    assert "connection to arxiv could not be established" in data["message"].lower()
+    assert (
+        'error: connection to <span class="visually-hidden">archive</span>'
+        '<span aria-hidden="true">arxiv</span> could not be established.'
+    ) in data["message"].lower()
 
 
 @pytest.mark.django_db
@@ -414,4 +417,7 @@ def test_blank_arxiv_id_still_invokes_fetch_and_import(rf, author, journal, arxi
     body = response.content.decode()
 
     assert response.status_code == 500
-    assert "cannot be found on arxiv.org" in body
+    assert (
+        'cannot be found on <span class=\\"visually-hidden\\">archive.org</span>'
+        '<span aria-hidden=\\"true\\">arxiv.org</span>'
+    ) in body

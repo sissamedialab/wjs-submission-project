@@ -55,7 +55,7 @@
     <div class="wjs-submission-form__section mb-5">
       <div class="wjs-submission-form__form-label-title-container">
         <h2 class="wjs-submission-form__form-label-title">
-          ArXiv ID
+          <span class="visually-hidden">archive</span><span aria-hidden="true">ArXiv</span> ID
         </h2>
         {% if not is_revision %}
           <a href="{% url 'wjs_submission_1' article_id=article.pk %}#arxiv_id-section" class="wjs-submission-navigation-step__link">
@@ -487,7 +487,7 @@
       </div>
     {% else %}
       <div class="mx-2 my-1">
-        <h3 class="wjs-submission-form__footer-label">Required fields</h3>
+        <h2 class="wjs-submission-form__footer-label fs-4">Required fields</h2>
         Fill in the following fields in the corresponding step and go back to "Review & submit" to confirm the revision:
       </div>
       <ul>

@@ -62,7 +62,7 @@
   </table>
   <div>
     {% if show_conversion %}
-      <div id="js-conversion-message" class="wjs-submission-form__alert-message-box wjs-submission-form__alert-message-box--warning {% if not conversion_log %}d-none{% endif %} d-flex flex-column">
+      <div id="js-conversion-message" class="wjs-submission-form__alert-message-box wjs-submission-form__alert-message-box--warning mt-2 {% if not conversion_log %}d-none{% endif %} d-flex flex-column">
         <i class="bi bi-exclamation-triangle"></i>
         {% if show_detailed_log %}
           <div id="conversion-message">{{ conversion_log|linebreaksbr }}</div>

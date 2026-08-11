@@ -22,7 +22,7 @@ class SubmissionStep1Form(forms.ModelForm):
     arxiv_article_id = forms.IntegerField(widget=forms.HiddenInput(), required=False)
     arxiv_id = forms.CharField(
         label=_("arXiv ID"),
-        widget=forms.TextInput(attrs={"placeholder": "Enter arXiv ID"}),
+        widget=forms.TextInput(attrs={"placeholder": "", "aria-label": _("Enter archive ID")}),
         required=False,
     )
     comments_editor = WjsMiniHTMLFormField(

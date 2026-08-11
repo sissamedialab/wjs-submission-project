@@ -113,7 +113,7 @@
       {% if correspondence_author_error %}
         {% url 'wjs_submission_4' article.pk as step_url %}
         <div
-          class="wjs-submission-form__alert-message-box{% if correspondence_author in disabled_accounts %} wjs-submission-form__alert-message-box--error{% else %} wjs-submission-form__alert-message-box--warning{% endif %}">
+          class="wjs-submission-form__alert-message-box{% if correspondence_author in disabled_accounts %} wjs-submission-form__alert-message-box--error{% else %} wjs-submission-form__alert-message-box--warning{% endif %} mt-2">
           <i class="bi bi-exclamation-triangle"></i>
           {% if correspondence_author_error == "incomplete_account" %}
             {# fake field to block submission in case of error condition #}
