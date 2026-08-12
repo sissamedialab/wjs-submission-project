@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from datetime import timedelta
 from itertools import product
 from unittest.mock import patch
 
@@ -7,16 +8,20 @@ from core.models import Account, Country
 from django import forms
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpRequest, QueryDict
-from journal.models import Journal
+from django.utils.timezone import now
+from events import logic as event_logic
+from journal.models import ArticleOrdering, Issue, IssueType, Journal
 from plugins.wjs_submission import settings
 from plugins.wjs_submission.access_mode import AccessModeConfiguration, get_access_mode_configuration
 from plugins.wjs_submission.models import AccessMode, ArticleSubmission
 from plugins.wjs_submission.settings import OA_CODE
 from plugins.wjs_submission.step1.forms import SubmissionStep1Form
+from plugins.wjs_submission.step2.forms import SubmissionStep2Form
 from plugins.wjs_submission.step3.forms import SubmissionStep3Form
 from plugins.wjs_submission.step5.forms import SubmissionStep5Form
 from plugins.wjs_submission.step6.forms import SubmissionStep6Form
 from plugins.wjs_submission.step7.forms import SubmissionStep7Form
+from plugins.wjs_submission.step8.forms import SubmissionStep8Form
 from pytest_django.asserts import assertQuerysetEqual
 from submission.models import Article, Field, Keyword, KeywordGroup, Licence
 
@@ -579,3 +584,64 @@ def test_preserve_keywords_metadata_form5(
     form_5.save()
     article.refresh_from_db()
     assert article.keywords.count() == 2
+
+
+@pytest.mark.django_db
+def test_projected_issue_is_assigned_at_the_end_of_the_submission(
+    journal: Journal,
+    install_plugins: Callable,
+    author: Account,
+    article: Article,
+    fake_request: HttpRequest,
+):
+    """
+    The issue selected in step 2 becomes the article primary issue and is linked to the article.
+
+    The link to Issue.articles is created only at the end of step 8, because it triggers janeway's
+    "issue_articles_change" signal, which creates an ArticleOrdering whose section cannot be null, and the
+    article section is chosen in step 5.
+
+    :param journal: The journal of the submission.
+    :param install_plugins: Fixture setting up the plugins for the journal.
+    :param author: The author of the article, i.e. the user doing the submission.
+    :param article: The article being submitted.
+    :param fake_request: A request suitable for the submission views / forms.
+    """
+    fake_request.user = author
+    issue = Issue.objects.create(
+        journal=journal,
+        issue_type=IssueType.objects.get(journal=journal, code="collection"),
+        issue_title="Special issue",
+        date_open=now() - timedelta(days=1),
+        date_close=now() + timedelta(days=1),
+    )
+
+    form_2 = SubmissionStep2Form(
+        data={"projected_issue": issue.pk},
+        instance=article,
+        journal=journal,
+        user=author,
+        request=fake_request,
+        step=2,
+    )
+    assert form_2.is_valid()
+    form_2.save()
+
+    article.refresh_from_db()
+    assert article.projected_issue == issue
+    assert article.primary_issue == issue
+    # The article is linked to the issue only at the end of the submission
+    assert not article.issues.exists()
+    assert not ArticleOrdering.objects.filter(article=article).exists()
+
+    form_8 = SubmissionStep8Form(data={}, instance=article, request=fake_request, revision=False, step=8)
+    assert form_8.is_valid()
+    # The events raised at the end of the submission are subscribed to by other plugins (wjs_review), which are not
+    # necessarily installed: they are irrelevant here and would drag in their own setup requirements.
+    with patch.object(event_logic.Events, "raise_event"):
+        form_8.save()
+
+    article.refresh_from_db()
+    assert article.primary_issue == issue
+    assert list(article.issues.all()) == [issue]
+    assert ArticleOrdering.objects.filter(article=article, issue=issue, section=article.section).exists()
