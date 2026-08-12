@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.13] - 2026-08-12
+
+- [wjs-profile-project#204: As developer I want to investigate why pytest 8.4 breaks our tests setup](https://gitlab.sissamedialab.it/wjs/wjs-profile-project/-/work_items/204) — chore(deps): bump pytest to 9.x, keep pytest-django capped below 4.13 (!139)
+- [specs#3017: Ensure that step 2 (issue selection) fills primary_issue slot also](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3017) — Actually assign the projected issue to the article (!141)
+- [wjs-help#201: JCOMAL_4314 - wrong issue assignation](https://gitlab.sissamedialab.it/wjs/wjs-help/-/work_items/201) — Actually assign the projected issue to the article (!141)
+- [wjs-submission-project#30: Verify that wjs-submission does not depend from wjs-profile](https://gitlab.sissamedialab.it/wjs/wjs-submission-project/-/work_items/30) — Actually assign the projected issue to the article (!141)
+- [specs#3033: Verify that wjs-submission does not depend from wjs-profile](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3033) — Actually assign the projected issue to the article (!141)
+- No linked issue — bugfix: fix das_display (!143)
+- No linked issue — feat(a11y): add a11y review fixes (!110)
+- No linked issue — docs: onboard Claude Code and align MR conventions with GitLab workflow (!140)
+
 ## [2.0.12] - 2026-08-06
 
 - [wjs-profile-project#204: As developer I want to investigate why pytest 8.4 breaks our tests setup](https://gitlab.sissamedialab.it/wjs/wjs-profile-project/-/work_items/204) — chore: pin pytest / pytest-django (!136)
