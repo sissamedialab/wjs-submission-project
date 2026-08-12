@@ -34,7 +34,7 @@
           <div class="accordion wjs-submission-form__keywords-accordion" id="groupAccordion">
             {% for group in keywords_list %}
               <div class="accordion-item {% if not group.keywordgroup_set.exists %}accordion-item wjs-submission-form__subaccordion{% endif %}">
-                <h2 class="accordion-header" id="headingGroup{{ forloop.counter }}">
+                <h3 class="accordion-header" id="headingGroup{{ forloop.counter }}">
                   <button
                     class="accordion-button collapsed"
                     type="button"
@@ -45,7 +45,7 @@
                   >
                     {{ group }}
                   </button>
-                </h2>
+                </h3>
                 <div
                   id="collapseGroup{{ forloop.counter }}"
                   class="accordion-collapse collapse"
@@ -59,7 +59,7 @@
                       {% if group.keywordgroup_set.exists %}
                         {% for subgroup in group.keywordgroup_set.all %}
                           <div class="accordion-item wjs-submission-form__subaccordion">
-                            <h2
+                            <h3
                               class="accordion-header"
                               id="headingSubGroup{{ forloop.parentloop.counter }}_{{ forloop.counter }}"
                             >
@@ -73,7 +73,7 @@
                               >
                                 {{ subgroup }}
                               </button>
-                            </h2>
+                            </h3>
                             <div
                               id="collapseSubGroup{{ forloop.parentloop.counter }}_{{ forloop.counter }}"
                               class="accordion-collapse collapse"

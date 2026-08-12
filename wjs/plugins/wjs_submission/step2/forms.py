@@ -74,6 +74,11 @@ class SubmissionStep2Form(forms.ModelForm):
         This method assigns the selected projected issue to the article, clears related links
         if no issue is selected, and advances the current step.
 
+        The article is *not* added to Issue.articles here: that link is created at the end of the
+        submission by step8.logic.CompleteSubmission, because Janeway's "issue_articles_change" signal
+        creates an ArticleOrdering, whose section cannot be null, and the article section is only
+        chosen in step 5.
+
         :raises ValidationError: Raised when the article creation fails validation.
         :param commit: A boolean indicating whether to commit the article instance to the
             database or leave it unsaved. Defaults to True.
@@ -83,14 +88,17 @@ class SubmissionStep2Form(forms.ModelForm):
         """
         self.instance.current_step = max(self.instance.current_step, self.step)
         obj = super().save(commit=commit)
-        # Reset all links to any previously selected issue and clear the article primary issue
-        # Note that in the submit_info view, after this form is saved, handle_assign_issue() is called,
-        # which adds the article to it's (projected-)Issue.articles list,
-        # which, in turn, triggers a signal (see below) that sets the ordering and the article.primary_issue.
-        # The following line also activates the signal "issue_articles_change"
-        Issue.articles.through.objects.filter(article=obj).delete()
+        if not commit:
+            return obj
+        # Reset all links to any previously selected issue and clear the article primary issue.
+        # Removal goes through the m2m manager (and not through a queryset delete on Issue.articles.through)
+        # because Django only sends "m2m_changed" - and thus only triggers Janeway's "issue_articles_change" -
+        # when the related manager is used. The signal takes care of dropping the ArticleOrdering /
+        # SectionOrdering of the removed issues.
+        if linked_issues := list(obj.issues.all()):
+            obj.issues.remove(*linked_issues)
+        # Leftovers of any previously selected issue (e.g. orderings created outside of the signal).
         ArticleOrdering.objects.filter(article=obj).delete()
-        obj.primary_issue = None
-        if self.cleaned_data["projected_issue"]:
-            obj.primary_issue = self.cleaned_data["projected_issue"]
+        obj.primary_issue = self.cleaned_data["projected_issue"] or None
+        obj.save(update_fields=["primary_issue"])
         return obj
