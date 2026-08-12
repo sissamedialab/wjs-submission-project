@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.0.14] - 2026-08-12
+
+- [specs#2784: Revisione accessibilità](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2784) — Bump dependencies (!144)
+
 ## [2.0.13] - 2026-08-12
 
 - [wjs-profile-project#204: As developer I want to investigate why pytest 8.4 breaks our tests setup](https://gitlab.sissamedialab.it/wjs/wjs-profile-project/-/work_items/204) — chore(deps): bump pytest to 9.x, keep pytest-django capped below 4.13 (!139)
