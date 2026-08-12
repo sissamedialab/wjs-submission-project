@@ -211,7 +211,7 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                 context["files_data"].update(
                     {
                         "das": self.object.revisionstorage.data["das"],
-                        "das_display": self.object.submission_data.CasDeclaration.as_dict()[
+                        "das_display": self.object.submission_data.DasDeclaration.as_dict()[
                             self.object.revisionstorage.data["das"]
                         ],
                         "das_url": self.object.revisionstorage.data["das_url"],
