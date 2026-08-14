@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.0.15] - 2026-08-14
+
+- [specs#2879: Integrate hydra in wjs](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2879) — Relax dependencies (!145)
+
 ## [2.0.14] - 2026-08-12
 
 - [specs#2784: Revisione accessibilità](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2784) — Bump dependencies (!144)
