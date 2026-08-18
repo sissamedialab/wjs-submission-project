@@ -199,7 +199,7 @@
             "type": "rich-text"
         },
         "value": {
-            "default": "<p>If accepted, your paper may be published {{ view.access_mode_configuration.access_mode }}, copyright \"{{ view.access_mode_configuration.copyright_text }}\", licence {{ view.access_mode_configuration.license.short_name }}. Confirmation will be given after acceptance for publication.</p>"
+            "default": "<p>If accepted, your paper may be published {{ view.access_mode_configuration.access_mode }}, copyright \"{{ view.access_mode_configuration.copyright_text }}\", licence {{ view.access_mode_configuration.license.name }}. Confirmation will be given after acceptance for publication.</p>"
         }
     },
     {
