@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.urls import reverse_lazy
 from django.utils.module_loading import import_string
 from django.views.generic import UpdateView
@@ -55,3 +56,15 @@ class SubmissionStep3View(AuthorFilteringView, StepCheckView, UpdateView):
         kwargs["instance"] = self.get_object()
         kwargs["step"] = self.step
         return kwargs
+
+    def form_valid(self, form):
+        """
+        Catch a ValidationError raised by the form's business logic and re-render the form as invalid.
+
+        :param form: The submitted, already-validated form instance.
+        :return: HTTP response returned by the parent implementation.
+        """
+        try:
+            return super().form_valid(form)
+        except ValidationError:
+            return super().form_invalid(form)
