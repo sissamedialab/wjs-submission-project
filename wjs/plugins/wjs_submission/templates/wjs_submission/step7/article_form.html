@@ -110,5 +110,6 @@
   <script src="{% static 'js/typeahead.bundle.js' %}"></script>
   <script>
     const accessModeSelector = document.getElementById("id_access_mode");
+    const accessModesWithDisclaimer = [{% for access_mode in access_modes_with_disclaimer %}"{{ access_mode.pk }}"{% if not forloop.last %},{% endif %}{% endfor %}];
   </script>
 {% endblock js %}

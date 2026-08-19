@@ -146,6 +146,12 @@ OA_CODE_TA = getattr(settings, "SUBMISSION_OA_CODE_TA", "oa-transformative-agree
 OA_CERN_CODE = getattr(settings, "SUBMISSION_OA_CERN_CODE", "oa-cern")
 OA_CODE = getattr(settings, "SUBMISSION_OA_CODE", "open-access")
 
+DEFAULT_OA_MESSAGE_CODES = {
+    "JCAP": ["open-access-paid"],
+    None: ["open-access-paid"],
+}
+OA_MESSAGE_CODES = getattr(settings, "SUBMISSION_OA_MESSAGE_CODES", DEFAULT_OA_MESSAGE_CODES)
+
 CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION = getattr(
     settings, "SUBMISSION_CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION", DEFAULT_CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION
 )
