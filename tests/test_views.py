@@ -4,7 +4,6 @@ from unittest.mock import patch
 import pytest
 from core.models import Account
 from django.conf import settings
-from django.core.exceptions import ValidationError
 from django.test import Client
 from django.urls import reverse
 from journal.models import Journal
@@ -337,10 +336,13 @@ def test_keyword_handling(client, article, post_data, expected_keywords, expect_
     url = reverse("wjs_submission_3", kwargs={"article_id": article.pk})
 
     if expect_error:
-        with pytest.raises(ValidationError) as excinfo:
-            client.post(url, {**post_data})
-        exc_message = str(excinfo.value)
-        assert any(msg in exc_message for msg in ["Corrupted weight data", "Invalid keyword weight data"])
+        response = client.post(url, {**post_data})
+        assert response.status_code == 200
+        assert not response.context_data["form"].is_valid()
+        assert any(
+            msg in response.context_data["form"].errors["__all__"][0]
+            for msg in ["Corrupted weight data", "Invalid keyword weight data"]
+        )
         assert not KeywordArticle.objects.filter(article=article).exists()
     else:
         response = client.post(url, {**post_data})

@@ -1,5 +1,6 @@
 from django import forms
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.utils.translation import gettext_lazy as _
 from submission.models import Article, KeywordArticle
 from utils.forms import KeywordModelForm
@@ -65,13 +66,14 @@ class SubmissionStep3Form(KeywordModelForm):
         :rtype: object
         """
         self.instance.current_step = max(self.instance.current_step, self.step)
-        # This also takes care of clearing the existing relations
-        KeywordModelForm.save(self, commit=commit)
-        try:
-            service = self.get_logic_instance()
-            service.run()
-        except ValidationError as e:
-            self.add_error(None, e)
-            raise
+        with transaction.atomic():
+            # This also takes care of clearing the existing relations
+            KeywordModelForm.save(self, commit=commit)
+            try:
+                service = self.get_logic_instance()
+                service.run()
+            except ValidationError as e:
+                self.add_error(None, e)
+                raise
         self.instance.refresh_from_db()
         return self.instance

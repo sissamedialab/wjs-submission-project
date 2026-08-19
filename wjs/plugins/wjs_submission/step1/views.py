@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, RedirectView
 from django.views.generic.edit import ProcessFormView
@@ -129,6 +130,18 @@ class SubmissionStep1View(AuthorFilteringView, StepCheckView, CreateView):
         kwargs["step"] = self.step
         kwargs["request"] = self.request
         return kwargs
+
+    def form_valid(self, form):
+        """
+        Catch a ValidationError raised by the form's business logic and re-render the form as invalid.
+
+        :param form: The submitted, already-validated form instance.
+        :return: HTTP response returned by the parent implementation.
+        """
+        try:
+            return super().form_valid(form)
+        except ValidationError:
+            return super().form_invalid(form)
 
     def get_initial(self):
         """

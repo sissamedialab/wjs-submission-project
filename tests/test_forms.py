@@ -8,6 +8,7 @@ from core.models import Account, Country
 from django import forms
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpRequest, QueryDict
+from django.urls import reverse
 from django.utils.timezone import now
 from events import logic as event_logic
 from journal.models import ArticleOrdering, Issue, IssueType, Journal
@@ -23,7 +24,7 @@ from plugins.wjs_submission.step6.forms import SubmissionStep6Form
 from plugins.wjs_submission.step7.forms import SubmissionStep7Form
 from plugins.wjs_submission.step8.forms import SubmissionStep8Form
 from pytest_django.asserts import assertQuerysetEqual
-from submission.models import Article, Field, Keyword, KeywordGroup, Licence
+from submission.models import Article, Field, Keyword, KeywordArticle, KeywordGroup, Licence
 
 
 @pytest.mark.parametrize(
@@ -645,3 +646,25 @@ def test_projected_issue_is_assigned_at_the_end_of_the_submission(
     assert article.primary_issue == issue
     assert list(article.issues.all()) == [issue]
     assert ArticleOrdering.objects.filter(article=article, issue=issue, section=article.section).exists()
+
+
+@pytest.mark.django_db
+def test_keyword_handling_rollback(client, article):
+    """
+    A rejected keyword selection leaves the article's existing keywords untouched.
+
+    Saving the form clears the existing keyword relations before the new weights are validated, so the whole save
+    must be rolled back when validation fails.
+    """
+    keyword = Keyword.objects.create(word="keyword1", journal=article.journal)
+    KeywordArticle.objects.create(article=article, keyword=keyword, weight=50, order=1)
+
+    client.force_login(article.owner)
+    url = reverse("wjs_submission_3", kwargs={"article_id": article.pk})
+
+    response = client.post(url, {f"keyword_{keyword.pk}_weight": ["abc"]})
+
+    assert response.status_code == 200
+    assert not response.context_data["form"].is_valid()
+    weights = {ka.keyword_id: ka.weight for ka in KeywordArticle.objects.filter(article=article)}
+    assert weights == {keyword.pk: 50}
