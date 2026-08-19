@@ -13,7 +13,7 @@ function updateFundingFieldsStatus() {
  * @return {void}
  */
 function checkAccessMode(value) {
-  if (value === "1") {
+  if (accessModesWithDisclaimer.includes(value)) {
     document.getElementById("js-access-mode-message").classList.remove("d-none");
   } else {
     document.getElementById("js-access-mode-message").classList.add("d-none");

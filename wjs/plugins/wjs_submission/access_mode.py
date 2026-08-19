@@ -1,6 +1,7 @@
 from typing import NamedTuple
 
 from core.models import Account, ControlledAffiliation, Country
+from django.db.models import QuerySet
 from django.utils.module_loading import import_string
 from journal.models import Journal
 from submission.models import Article, Licence
@@ -13,6 +14,7 @@ from .settings import (
     OA_CERN_CODE,
     OA_CODE,
     OA_CODE_TA,
+    OA_MESSAGE_CODES,
 )
 
 
@@ -244,3 +246,16 @@ def get_cern_oata_fallback_access_mode(user: Account, article: Article) -> Acces
     if oat.access_mode:
         return oat
     return get_oa_transformative_agreement(user, article)
+
+
+def get_access_modes_with_disclaimer(article: Article) -> QuerySet[AccessMode]:
+    """
+    Return list of access modes that require a disclaimer for the given article.
+
+    :param article: The article object for which access modes are retrieved.
+    :type article: Article
+    :return: A querySet of access modes that require a disclaimer.
+    :rtype: QuerySet[AccessMode]
+    """
+    codes = OA_MESSAGE_CODES.get(article.journal.code, OA_MESSAGE_CODES[None])
+    return AccessMode.objects.filter(code__in=codes, parameters__journal=article.journal)
