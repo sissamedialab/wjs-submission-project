@@ -110,7 +110,19 @@ DEFAULT_ACCESS_MODE_COUNTRIES = {
 CERN_AFFILIATIONS = ["alice", "lhcb", "lhcf", "atlas", "cms"]
 
 DEFAULT_SUBMISSION_FILE_TYPES = {
-    None: ("text/x-tex", "application/zip", "application/gzip"),
+    None: (
+        # .tex files
+        "text/x-tex",
+        "application/x-tex",  # alternative variant sometimes sent by Windows/other clients
+        "text/plain",  # some Windows browsers send .tex as plain text
+        # .zip files
+        "application/zip",
+        "application/x-zip-compressed",  # Windows
+        "application/x-zip",  # less common variant (Windows/other systems)
+        # .gz / .tar.gz files
+        "application/gzip",
+        "application/x-gzip",  # legacy variant, still used by some systems
+    ),
     "JCOM": (
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "application/vnd.oasis.opendocument.text",
