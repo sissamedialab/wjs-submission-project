@@ -5,7 +5,7 @@ from django.utils.functional import cached_property
 from django.views.generic import TemplateView, UpdateView
 from submission.models import Article
 
-from ..access_mode import AccessModeConfiguration, get_access_mode_configuration
+from ..access_mode import AccessModeConfiguration, get_access_mode_configuration, get_access_modes_with_disclaimer
 from ..mixins import AuthorFilteringView, HtmxMixin, StepCheckView
 from ..models import (
     RevisionStorage,
@@ -91,6 +91,7 @@ class SubmissionStep7View(AuthorFilteringView, StepCheckView, UpdateView):
         context = super().get_context_data(**kwargs)
         context["articles_funding"] = get_article_fundings(self.object)
         context["is_revision"] = is_revision(self.object)
+        context["access_modes_with_disclaimer"] = get_access_modes_with_disclaimer(self.object)
         return context
 
 

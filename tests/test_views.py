@@ -4,17 +4,18 @@ from unittest.mock import patch
 import pytest
 from core.models import Account
 from django.conf import settings
-from django.core.exceptions import ValidationError
 from django.test import Client
 from django.urls import reverse
 from journal.models import Journal
 from plugins.wjs_submission.models import (
+    AccessMode,
     ArticleCollaboration,
     ArticleSubmission,
     Collaboration,
 )
 from plugins.wjs_submission.step1 import SubmissionStep1View
 from plugins.wjs_submission.step6 import SubmissionStep6View
+from plugins.wjs_submission.step8 import SubmissionStep8View
 from plugins.wjs_submission.views import SubmissionLastStepRedirectView
 from plugins.wjs_submission.workflow import STEPS
 from submission.models import (
@@ -337,10 +338,13 @@ def test_keyword_handling(client, article, post_data, expected_keywords, expect_
     url = reverse("wjs_submission_3", kwargs={"article_id": article.pk})
 
     if expect_error:
-        with pytest.raises(ValidationError) as excinfo:
-            client.post(url, {**post_data})
-        exc_message = str(excinfo.value)
-        assert any(msg in exc_message for msg in ["Corrupted weight data", "Invalid keyword weight data"])
+        response = client.post(url, {**post_data})
+        assert response.status_code == 200
+        assert not response.context_data["form"].is_valid()
+        assert any(
+            msg in response.context_data["form"].errors["__all__"][0]
+            for msg in ["Corrupted weight data", "Invalid keyword weight data"]
+        )
         assert not KeywordArticle.objects.filter(article=article).exists()
     else:
         response = client.post(url, {**post_data})
@@ -553,3 +557,35 @@ def test_submission_step6_load_value(fake_request, article):
     assert form.initial["das_url"] == "http://example.com"
     assert form.initial["cas"] == ArticleSubmission.CasDeclaration.URL
     assert form.initial["cas_url"] == "http://example.com"
+
+
+@pytest.mark.django_db
+def test_submission_step8_access_mode_verify(fake_request, article):
+    """
+    Access mode verification in the eighth step of submission.
+
+    This test function ensures that the access mode verification step during
+    the eighth submission step behaves according to defined requirements. When
+    the article's access mode has not been set, the response should redirect
+    to the previous step. If the access mode is set properly, the response
+    should return a successful status.
+
+    :param fake_request: The mock HTTP request object used to simulate user
+        interactions during the test.
+    :param article: The mock article object associated with the submission
+        process.
+    :return: None
+    """
+    fake_request.user = article.owner
+    view_obj = SubmissionStep8View()
+    view_obj.kwargs = {"article_id": article.pk}
+    view_obj.object = article
+    view_obj.request = fake_request
+    assert article.submission_data.access_mode is None
+    response = view_obj.get(fake_request)
+    assert response.status_code == 302
+    assert response.headers["Location"] == reverse("wjs_submission_7", kwargs={"article_id": article.pk})
+    article.submission_data.access_mode = AccessMode.objects.filter(parameters__journal=article.journal).first()
+    article.submission_data.save()
+    response = view_obj.get(fake_request)
+    assert response.status_code == 200
