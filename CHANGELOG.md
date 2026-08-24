@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.0.16] - 2026-08-24
+
+- [specs#2846: Investigate missing access mode in step-8](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2846) — fix: ensure missing step 7 does not break step8 (!133)
+- [specs#2979: 31 Jul feedback - Test JCAP whole review flow](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2979) — fix: ensure missing step 7 does not break step8 (!133)
+- [specs#2042: JCAP / JHEP Submissions tests](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2042) — fix: ensure disclaimer for access modes can be selected per journal (!132)
+- [specs#2979: 31 Jul feedback - Test JCAP whole review flow](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2979) — fix: ensure disclaimer for access modes can be selected per journal (!132)
+- No linked issue — Fix: improve error reporting for keyword / arxiv errors (!135)
+- [specs#2042: JCAP / JHEP Submissions tests](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2042) — fix: fix typo (!130)
+
 ## [2.0.15] - 2026-08-14
 
 - [specs#2879: Integrate hydra in wjs](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2879) — Relax dependencies (!145)

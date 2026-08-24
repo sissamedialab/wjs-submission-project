@@ -163,7 +163,19 @@ class UploadArticleForm(forms.Form):
         """Validate file mime according to journal and file type form."""
         cleaned_data = super().clean()
         if self.file_type == "manuscript" and cleaned_data["file"].content_type not in self.supported_file_types:
+            logger.debug(
+                f"File type not allowed: journal={self.instance.journal.code} "
+                f"filename={cleaned_data['file'].name!r} "
+                f"content_type={cleaned_data['file'].content_type!r} "
+                f"supported_file_types={self.supported_file_types}"
+            )
             raise forms.ValidationError("File type not allowed.")
+        logger.debug(
+            f"File type allowed: journal={self.instance.journal.code} "
+            f"filename={cleaned_data['file'].name!r} "
+            f"content_type={cleaned_data['file'].content_type!r} "
+            f"supported_file_types={self.supported_file_types}"
+        )
         return cleaned_data["file"]
 
     def clean(self):
