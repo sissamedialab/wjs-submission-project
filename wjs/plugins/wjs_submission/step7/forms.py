@@ -1,7 +1,9 @@
 from copy import copy
+from typing import Any
 
 from django import forms
 from django.utils.translation import gettext_lazy as _
+from plugins.wjs_submission.workflow import is_revision_full
 from submission.models import Article, Licence
 
 from ..models import (
@@ -47,8 +49,12 @@ class SubmissionStep7Form(forms.ModelForm):
         if not self.configuration:
             return kwargs
         if kwargs.get("instance") and kwargs.get("instance").pk:
-            kwargs["initial"]["access_mode"] = kwargs.get("instance").submission_data.access_mode
-            kwargs["initial"]["special_request"] = kwargs.get("instance").submission_data.special_request
+            kwargs["initial"]["access_mode"] = self._get_submission_data_fields(kwargs.get("instance")).get(
+                "access_mode"
+            )
+            kwargs["initial"]["special_request"] = self._get_submission_data_fields(kwargs.get("instance")).get(
+                "special_request"
+            )
         for field in (
             (self.configuration.license, "license"),
             (self.configuration.copyright_text, "rights"),
@@ -67,6 +73,27 @@ class SubmissionStep7Form(forms.ModelForm):
                 tmp[field[1]] = field[0]
                 kwargs["initial"] = tmp
         return kwargs
+
+    @staticmethod
+    def _get_submission_data_fields(article: Article) -> dict[str, Any]:
+        """
+        Extract submission data fields from an article.
+
+        Checks if the article has a full revision and either returns the
+        revision storage data or constructs a dictionary with submission data
+        fields for incomplete revisions.
+
+        :param article: The article instance to extract submission data from.
+        :type article: Article
+        :return: A dictionary containing the submission data fields.
+        :rtype: dict[str, Any]
+        """
+        if is_revision_full(article):
+            return article.revisionstorage.data
+        return {
+            "access_mode": article.submission_data.access_mode_id,
+            "special_request": article.submission_data.special_request,
+        }
 
     def _setup_fields(self):
         """
