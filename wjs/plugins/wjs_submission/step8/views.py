@@ -1,4 +1,5 @@
 from core.models import Account, ControlledAffiliation
+from core.models import File as CoreFile
 from django.contrib import messages
 from django.http.response import HttpResponseRedirect
 from django.urls import reverse, reverse_lazy
@@ -157,6 +158,8 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
         :return: Boolean indicating the validity of the access mode.
         :rtype: bool
         """
+        if is_revision_full(self.object):
+            return bool(self.object.revisionstorage.data["access_mode"]) or self._step7_skipped()
         return bool(self.object.submission_data.access_mode) or self._step7_skipped()
 
     def get_form_kwargs(self):
@@ -269,6 +272,11 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                 )
             context["validate_revision_data"] = self._validate_revision_data(self.object)
             context["authors_contributions"] = self.object.revisionstorage.data.get("authors_contributions")
+            context["article_data"]["special_request"] = self.object.revisionstorage.data.get("special_request", "")
+            context["article_data"]["comments_editor"] = self.object.revisionstorage.data.get("comments_editor", "")
+            cover_file = self.object.revisionstorage.data.get("cover_letter_file", "")
+            if cover_file:
+                context["article_data"]["cover_letter_file"] = CoreFile.objects.get(pk=cover_file)
         else:
             context["article_data"] = self.object
             if enable_cas:
@@ -307,9 +315,9 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                     context["article_data"].section = Section.objects.get(pk=section)
                 context["article_data"].special_request = self.object.revisionstorage.data.get("special_request", "")
                 context["article_data"].comments_editor = self.object.revisionstorage.data.get("comments_editor", "")
-                context["article_data"].cover_letter_file = self.object.revisionstorage.data.get(
-                    "cover_letter_file", ""
-                )
+                cover_file = self.object.revisionstorage.data.get("cover_letter_file", "")
+                if cover_file:
+                    context["article_data"]["cover_letter_file"] = CoreFile.objects.get(pk=cover_file)
                 context["article_data"].competing_interests = self.object.revisionstorage.data.get(
                     "competing_interests", ""
                 )
