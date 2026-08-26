@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.17] - 2026-08-26
+
+- [wjs-help#205: JCOM_3682 - revision submission problem (step 7 - access)](https://gitlab.sissamedialab.it/wjs/wjs-help/-/work_items/205) — fix: fix inconsistencies in step 8 (!149)
+- [specs#2042: JCAP / JHEP Submissions tests](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2042) — fix: fix inconsistencies in step 8 (!149)
+- [specs#2979: 31 Jul feedback - Test JCAP whole review flow](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2979) — fix: fix inconsistencies in step 8 (!149)
+- [specs#2977: 31 Jul feedback: JCAP settings and reminders for go-live](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2977) — fix: fix inconsistencies in step 8 (!149)
+- [wjs-submission-project#31: Always add "article_data" to the context as a dictionary or as an instance in submission step-8](https://gitlab.sissamedialab.it/wjs/wjs-submission-project/-/work_items/31) — fix: fix inconsistencies in step 8 (!149)
+
 ## [2.0.16] - 2026-08-24
 
 - [specs#2846: Investigate missing access mode in step-8](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2846) — fix: ensure missing step 7 does not break step8 (!133)
