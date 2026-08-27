@@ -3,11 +3,7 @@ Logic for the correction (erratum/addendum) submission workflow.
 
 This module contains the :class:`SetupCorrectionStorage` dataclass that creates
 and pre-populates a new correction article linked to a published article via the
-:class:`Genealogy` model.
-
-The Hydra integration (issue #2879) is not yet complete, so the linking logic is
-isolated behind :func:`get_or_create_linked_article`. When #2879 is complete,
-this function will be swapped to use the Hydra ``LinkedArticle`` model.
+Hydra ``LinkedArticle`` model.
 """
 
 import dataclasses
@@ -29,7 +25,14 @@ from ..models import (
     ArticleSubmission,
 )
 
-# Relationship labels (matching Hydra plugin terminology).
+# Hydra LinkedArticle is used for all article-to-article relationships.
+# The plugin may not be installed; in that case correction submission is a no-op.
+try:
+    from plugins.hydra.models import LinkedArticle
+except ImportError:
+    LinkedArticle = None  # type: ignore[assignment]
+
+# Relationship labels (matching Hydra LinkType values).
 ERRATUM = "erratum"
 ADDENDUM = "addendum"
 CORRECTION_RELATIONSHIPS = (ERRATUM, ADDENDUM)
@@ -54,7 +57,7 @@ class SetupCorrectionStorage:
 
     - Retrieves the published ``from_article``.
     - Creates or resumes a new ``to_article`` (the correction).
-    - Links them via :func:`get_or_create_linked_article`.
+    - Links them via Hydra ``LinkedArticle``.
     - Pre-populates the correction article with metadata from ``from_article``.
     """
 
@@ -100,8 +103,8 @@ class SetupCorrectionStorage:
         """
         Create or resume the correction article linked to from_article.
 
-        - If a Genealogy(from_article=...) already exists with a child in the
-          Erratum/Addendum section and stage UNSUBMITTED:
+        - If a Hydra ``LinkedArticle`` with the same relationship already exists
+          and its ``to_article`` is in-progress (stage UNSUBMITTED):
           - if the existing correction's owner != request.user -> raise ValueError
           - if the existing correction's owner == request.user -> return it (resume)
         - Otherwise create a new Article (to_article):
@@ -114,7 +117,7 @@ class SetupCorrectionStorage:
         section = self._get_section()
 
         # Check if a correction of the same type already exists and is in-progress.
-        existing = self._find_existing_correction(section)
+        existing = self._find_existing_correction()
         if existing is not None:
             user = getattr(self.request, "user", None)
             if existing.owner != user:
@@ -149,12 +152,12 @@ class SetupCorrectionStorage:
 
         return to_article
 
-    def _find_existing_correction(self, section: Section) -> Article | None:
+    def _find_existing_correction(self) -> Article | None:
         """Find an existing in-progress correction of the same type for the from_article."""
-        return find_existing_correction(self.from_article, section)
+        return find_existing_correction(self.from_article, self.relationship)
 
     def _link_articles(self):
-        """Link from_article and to_article via the Genealogy model."""
+        """Link from_article and to_article via the Hydra LinkedArticle model."""
         get_or_create_linked_article(self.from_article, self.to_article, self.relationship)
 
     def _populate_metadata(self):
@@ -241,32 +244,33 @@ class SetupCorrectionStorage:
         return self.to_article
 
 
-def find_existing_correction(from_article: Article, section: Section) -> Article | None:
+def find_existing_correction(from_article: Article, relationship: str) -> Article | None:
     """
-    Find a related correction article for a given section.
+    Find a related correction article for a given relationship type.
 
-    Search for an existing correction article related to the provided article and
-    specific section. The function checks if the given article has any children
-    in its genealogy that satisfy the provided section and stage filter. If none
-    exists, it returns None.
+    Search for an existing correction article related to the provided article via
+    Hydra ``LinkedArticle``. Only in-progress corrections (stage UNSUBMITTED) are
+    considered.
 
     :param from_article: The article for which to find a related correction.
     :type from_article: Article
-    :param section: The section used to filter the related corrections.
-    :type section: Section
-    :return: A related correction article matching the section and stage filter,
+    :param relationship: The correction type ("erratum" or "addendum").
+    :type relationship: str
+    :return: A related correction article matching the relationship and stage filter,
         or None if no such article is found.
     :rtype: Article | None
     """
-    if not hasattr(from_article, "genealogy"):
+    if LinkedArticle is None:
         return None
-    try:
-        genealogy = from_article.genealogy
-    except type(from_article).genealogy.RelatedObjectDoesNotExist:
-        return None
-    for child in genealogy.children.filter(section=section.name, stage=STAGE_UNSUBMITTED):
-        return child
-    return None
+
+    return (
+        from_article.linked_from.filter(
+            relationship=relationship,
+            to_article__stage=STAGE_UNSUBMITTED,
+        )
+        .select_related("to_article")
+        .first()
+    )
 
 
 def get_correction_title(from_article: Article, relationship: str) -> str:
@@ -277,18 +281,12 @@ def get_correction_title(from_article: Article, relationship: str) -> str:
     For addendum: ``ADDENDUM: original.title`` or ``ADDENDUM2: ...`` etc.
 
     The count is based on how many corrections of the same type are already
-    linked to ``from_article`` via Genealogy, regardless of their stage.
+    linked to ``from_article`` via Hydra ``LinkedArticle``, regardless of their stage.
     """
     prefix = relationship.upper()
     count = 0
-    if hasattr(from_article, "genealogy"):
-        try:
-            genealogy = from_article.genealogy
-        except type(from_article).genealogy.RelatedObjectDoesNotExist:
-            genealogy = None
-        if genealogy is not None:
-            section_name = SECTION_NAME_BY_RELATIONSHIP[relationship]
-            count = genealogy.children.filter(section__name=section_name).count()
+    if LinkedArticle is not None:
+        count = from_article.linked_from.filter(relationship=relationship).count()
     if count > 0:
         prefix = f"{prefix}{count + 1}"
     return f"{prefix}: {from_article.title}"
@@ -296,17 +294,29 @@ def get_correction_title(from_article: Article, relationship: str) -> str:
 
 def get_or_create_linked_article(from_article: Article, to_article: Article, relationship: str):
     """
-    Link two articles via the Genealogy model.
+    Link two articles via the Hydra ``LinkedArticle`` model.
 
-    This function is currrently a stub waiting for the Hydra integration.
+    Creates (or retrieves) a ``LinkedArticle`` row so that::
+
+        to_article is a <relationship> of from_article
+
+    For example, an erratum article is a "erratum" of the published paper.
+
+    :param from_article: The original article being corrected.
+    :type from_article: Article
+    :param to_article: The correction (erratum/addendum) article.
+    :type to_article: Article
+    :param relationship: The LinkType value ("erratum" or "addendum").
+    :type relationship: str
+    :return: The ``LinkedArticle`` instance (created or existing).
+    :rtype: LinkedArticle
     """
-    from hydra.models import LinkedArticle  # noqa
+    if LinkedArticle is None:
+        return None
 
-    # TODO: Implement hydra relationship
-    return None
-
-    return LinkedArticle.objects.create(
+    link, _created = LinkedArticle.objects.get_or_create(
         from_article=from_article,
         to_article=to_article,
-        relationship=relationship,  # "erratum" or "addendum"
+        relationship=relationship,
     )
+    return link
