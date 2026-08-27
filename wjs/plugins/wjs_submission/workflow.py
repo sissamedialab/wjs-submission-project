@@ -212,15 +212,19 @@ def is_correction(article: Article) -> bool:
     """Tell if the given article is an erratum or addendum submission."""
     if not article:
         return False
-    if not hasattr(article, "ancestors"):
+    # Hydra's LinkedArticle is used for all article-to-article relationships.
+    # We require a CROSSREF_UPDATES-type link AND the section to be Erratum/Addendum.
+    # The hydra plugin may not be installed; in that case no article is a correction.
+    try:
+        from plugins.hydra.models import LinkedArticle  # noqa: F401,PLC0415
+    except ImportError:
         return False
-    # Genealogy is used for other parent/child relationships too (e.g. commentary),
-    # so we also require the section to be Erratum or Addendum.
+
     from .correction.logic import CORRECTION_SECTION_NAMES  # noqa: PLC0415
 
     if not article.section or article.section.name not in CORRECTION_SECTION_NAMES:
         return False
-    return article.ancestors.exists()
+    return article.linked_to.exists()
 
 
 def step_incomplete(

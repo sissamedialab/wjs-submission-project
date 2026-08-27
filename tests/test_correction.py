@@ -5,16 +5,27 @@ from unittest.mock import MagicMock
 
 import pytest
 from core.models import Account
-from plugins.wjs_submission.correction.logic import (
+from submission.models import (
+    Article,
+    FrozenAuthor,
+    Section,
+)
+
+# The correction workflow writes links through the hydra plugin. Skip this whole
+# module when the plugin is not installed in the current test environment.
+hydra_models = pytest.importorskip("plugins.hydra.models", reason="hydra plugin not installed")
+
+from plugins.wjs_submission.correction.logic import (  # noqa: E402
     ADDENDUM,
     ERRATUM,
     SetupCorrectionStorage,
     get_correction_title,
 )
-from plugins.wjs_submission.workflow import is_correction
-from submission.models import Article, FrozenAuthor, Section
+from plugins.wjs_submission.workflow import is_correction  # noqa: E402
 
-from tests.conftest import _user
+from tests.conftest import _user  # noqa: E402
+
+LinkedArticle = hydra_models.LinkedArticle
 
 
 @pytest.fixture
@@ -57,43 +68,39 @@ def test_is_correction_false_for_none():
 
 @pytest.mark.django_db
 def test_is_correction_false_for_regular_article(article: Article):
-    """Return False for a regular article without ancestors or correction section."""
+    """Return False for a regular article without a hydra link or correction section."""
     assert is_correction(article) is False
 
 
 @pytest.mark.django_db
-def test_is_correction_false_for_article_with_ancestors_but_wrong_section(
+def test_is_correction_false_for_article_with_hydra_link_but_wrong_section(
     article: Article,
     published_article: Article,
 ):
-    """Return False when article has ancestors but section is not Erratum/Addendum."""
-    try:
-        from wjs.jcom_profile.models import Genealogy  # noqa: PLC0415
-    except ImportError:
-        pytest.skip("Genealogy model not available")
-
-    genealogy = Genealogy.objects.create(parent=published_article)
-    genealogy.children.add(article)
+    """Return False when article has a hydra link but section is not Erratum/Addendum."""
+    LinkedArticle.objects.create(
+        from_article=published_article,
+        to_article=article,
+        relationship="correction",
+    )
     # article's section is "section0", not Erratum/Addendum
     assert is_correction(article) is False
 
 
 @pytest.mark.django_db
-def test_is_correction_true_for_erratum_with_ancestors(
+def test_is_correction_true_for_erratum_with_hydra_link(
     article: Article,
     published_article: Article,
     erratum_section: Section,
 ):
-    """Return True when article has ancestors and section is Erratum."""
-    try:
-        from wjs.jcom_profile.models import Genealogy  # noqa: PLC0415
-    except ImportError:
-        pytest.skip("Genealogy model not available")
-
+    """Return True when article has a hydra link with relationship erratum and section is Erratum."""
     article.section = erratum_section
     article.save()
-    genealogy = Genealogy.objects.create(parent=published_article)
-    genealogy.children.add(article)
+    LinkedArticle.objects.create(
+        from_article=published_article,
+        to_article=article,
+        relationship="erratum",
+    )
     assert is_correction(article) is True
 
 
@@ -118,16 +125,14 @@ def test_second_erratum_title(
     erratum_section: Section,
 ):
     """Build the title for the second erratum: 'ERRATUM2: original.title'."""
-    try:
-        from wjs.jcom_profile.models import Genealogy  # noqa: PLC0415
-    except ImportError:
-        pytest.skip("Genealogy model not available")
-
     # The existing child must be in the Erratum section for the count to work.
     article.section = erratum_section
     article.save()
-    genealogy = Genealogy.objects.create(parent=published_article)
-    genealogy.children.add(article)
+    LinkedArticle.objects.create(
+        from_article=published_article,
+        to_article=article,
+        relationship="erratum",
+    )
     title = get_correction_title(published_article, ERRATUM)
     assert title == f"ERRATUM2: {published_article.title}"
 
@@ -224,6 +229,27 @@ def test_run_creates_correction_article(
 
 
 @pytest.mark.django_db
+def test_run_creates_hydra_link(
+    published_article_with_frozen_authors: Article,
+    request_user: Account,
+    erratum_section: Section,
+    install_plugins: Callable,
+):
+    """After run(), a LinkedArticle with the correct relationship is created."""
+    setup = SetupCorrectionStorage(
+        article_id=published_article_with_frozen_authors.id,
+        relationship=ERRATUM,
+        request=MagicMock(user=request_user),
+    )
+    to_article = setup.run()
+    link = LinkedArticle.objects.get(
+        from_article=published_article_with_frozen_authors,
+        to_article=to_article,
+    )
+    assert link.relationship == "erratum"
+
+
+@pytest.mark.django_db
 def test_run_twice_does_not_corrupt_article(
     published_article_with_frozen_authors: Article,
     request_user: Account,
@@ -233,7 +259,7 @@ def test_run_twice_does_not_corrupt_article(
     """Call setup.run() twice and verify the title and author count are not corrupted on resume."""
     request_mock = MagicMock(user=request_user)
 
-    # First run: creates the correction.
+    # First run: creates the correction and the hydra LinkedArticle.
     setup1 = SetupCorrectionStorage(
         article_id=published_article_with_frozen_authors.id,
         relationship=ERRATUM,
@@ -243,7 +269,14 @@ def test_run_twice_does_not_corrupt_article(
     original_title = to_article1.title
     original_author_count = FrozenAuthor.objects.filter(article=to_article1).count()
 
-    # Second run: resumes the existing correction.
+    # The first run() must have created the LinkedArticle for the resume to work.
+    assert LinkedArticle.objects.filter(
+        from_article=published_article_with_frozen_authors,
+        to_article=to_article1,
+        relationship=ERRATUM,
+    ).exists()
+
+    # Second run: resumes the existing correction found via the hydra link.
     setup2 = SetupCorrectionStorage(
         article_id=published_article_with_frozen_authors.id,
         relationship=ERRATUM,
