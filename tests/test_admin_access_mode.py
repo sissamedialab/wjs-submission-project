@@ -3,7 +3,6 @@
 import pytest
 from django.contrib import admin as django_admin
 from django.test import RequestFactory
-from plugins.wjs_submission import settings as wjs_settings
 from plugins.wjs_submission.advanced_admin.advanced_admin import ArticleSubmissionAdmin
 from plugins.wjs_submission.advanced_admin.forms import ArticleSubmissionAdminForm
 from plugins.wjs_submission.models import AccessMode, AccessModeJournal, ArticleSubmission
@@ -25,6 +24,24 @@ def access_mode_journal(journal):
         journal=journal,
         licence=licence,
         copyright="© Test copyright",
+    )
+
+
+@pytest.fixture
+def other_access_mode_journal(journal):
+    """Create a second AccessModeJournal for the same journal with a different licence and copyright."""
+    access_mode = AccessMode.objects.create(name="Test Subscription", code="test-sub", user_selectable=True)
+    licence = Licence.objects.create(
+        name="cc-by-nc-test",
+        short_name="CC BY-NC test",
+        url="http://example.com/cc-by-nc",
+        journal=journal,
+    )
+    return AccessModeJournal.objects.create(
+        access_mode=access_mode,
+        journal=journal,
+        licence=licence,
+        copyright="© Other copyright",
     )
 
 
@@ -250,23 +267,10 @@ class TestArticleSubmissionAdminForm:
 
 @pytest.mark.django_db
 class TestArticleSubmissionAdminReadOnly:
-    """Test that access_mode is read-only for non-IoP journals and editable for IoP journals."""
+    """Test that access_mode is editable for all journals (no journal-specific read-only gate)."""
 
-    def test_access_mode_readonly_for_non_iop_journal(self, article_submission):  # noqa: PLR6301
-        """For non-IoP journals, access_mode should be in readonly_fields."""
-        rf = RequestFactory()
-        request = rf.get("/")
-        admin_instance = ArticleSubmissionAdmin(
-            ArticleSubmission,
-            django_admin.site,
-        )
-        readonly_fields = admin_instance.get_readonly_fields(request, obj=article_submission)
-        assert "access_mode" in readonly_fields
-
-    def test_access_mode_editable_for_iop_journal(self, article_submission, monkeypatch):  # noqa: PLR6301
-        """For IoP journals, access_mode should not be in readonly_fields."""
-        monkeypatch.setattr(wjs_settings, "IOP_JOURNALS", [article_submission.article.journal.code])
-
+    def test_access_mode_editable_for_any_journal(self, article_submission):  # noqa: PLR6301
+        """access_mode should not be in readonly_fields regardless of the journal."""
         rf = RequestFactory()
         request = rf.get("/")
         admin_instance = ArticleSubmissionAdmin(
@@ -275,3 +279,91 @@ class TestArticleSubmissionAdminReadOnly:
         )
         readonly_fields = admin_instance.get_readonly_fields(request, obj=article_submission)
         assert "access_mode" not in readonly_fields
+
+
+@pytest.mark.django_db
+class TestAccessModeChange:
+    """Test that changing access_mode re-syncs license/copyright unless overridden."""
+
+    def test_change_access_mode_no_overrides_syncs_both(  # noqa: PLR6301
+        self, article_submission, access_mode_journal, other_access_mode_journal
+    ):
+        """Changing access mode with no overrides updates license and copyright from the new config."""
+        article = article_submission.article
+        article.refresh_from_db()
+        assert article.license == access_mode_journal.licence
+        assert article.rights == access_mode_journal.copyright
+
+        article_submission.access_mode = other_access_mode_journal.access_mode
+        article_submission.save()
+
+        article.refresh_from_db()
+        assert article.license == other_access_mode_journal.licence
+        assert article.rights == other_access_mode_journal.copyright
+
+    def test_change_access_mode_license_overridden_updates_only_rights(  # noqa: PLR6301
+        self, article_submission, access_mode_journal, other_access_mode_journal
+    ):
+        """When license is overridden, changing access mode updates only copyright."""
+        article = article_submission.article
+        custom_licence = Licence.objects.create(
+            name="cust-lic-change",
+            short_name="CustLicChange",
+            url="http://example.com/custom-change",
+            journal=article.journal,
+        )
+        article.license = custom_licence
+        article.save()
+        article_submission.license_override = True
+        article_submission.save()
+
+        article_submission.access_mode = other_access_mode_journal.access_mode
+        article_submission.save()
+
+        article.refresh_from_db()
+        assert article.license == custom_licence
+        assert article.rights == other_access_mode_journal.copyright
+
+    def test_change_access_mode_rights_overridden_updates_only_license(  # noqa: PLR6301
+        self, article_submission, access_mode_journal, other_access_mode_journal
+    ):
+        """When copyright is overridden, changing access mode updates only license."""
+        article = article_submission.article
+        custom_rights = "© Custom rights change"
+        article.rights = custom_rights
+        article.save()
+        article_submission.rights_override = True
+        article_submission.save()
+
+        article_submission.access_mode = other_access_mode_journal.access_mode
+        article_submission.save()
+
+        article.refresh_from_db()
+        assert article.license == other_access_mode_journal.licence
+        assert article.rights == custom_rights
+
+    def test_change_access_mode_both_overridden_updates_nothing(  # noqa: PLR6301
+        self, article_submission, access_mode_journal, other_access_mode_journal
+    ):
+        """When both are overridden, changing access mode updates neither license nor copyright."""
+        article = article_submission.article
+        custom_licence = Licence.objects.create(
+            name="cust-lic-both-chg",
+            short_name="CustLicBothChg",
+            url="http://example.com/custom-both-change",
+            journal=article.journal,
+        )
+        custom_rights = "© Custom rights both change"
+        article.license = custom_licence
+        article.rights = custom_rights
+        article.save()
+        article_submission.license_override = True
+        article_submission.rights_override = True
+        article_submission.save()
+
+        article_submission.access_mode = other_access_mode_journal.access_mode
+        article_submission.save()
+
+        article.refresh_from_db()
+        assert article.license == custom_licence
+        assert article.rights == custom_rights
