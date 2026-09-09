@@ -39,10 +39,11 @@ DEFAULT_ACCESS_MODE_CONTROL_FUNCTION = {
 }
 
 
+# JCOM/JCOMAL/JCAP validators moved to wjs.jcom_profile.account_validation (see
+# wjs-submission-project#30): wjs-submission must not depend on wjs.jcom_profile. Journals that
+# need JCOMProfile-aware validation get it via a SUBMISSION_CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION
+# override in the installing project's settings (e.g. wjs-profile-project's wjs/defaults/settings.py).
 DEFAULT_CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION = {
-    "JCAP": "plugins.wjs_submission.account_validation.jcap_correspondence_author_validation",
-    "JCOM": "plugins.wjs_submission.account_validation.jcom_correspondence_author_validation",
-    "JCOMAL": "plugins.wjs_submission.account_validation.jcom_correspondence_author_validation",
     None: "plugins.wjs_submission.account_validation.default_correspondence_author_validation",
 }
 

@@ -54,3 +54,6 @@ MANIFEST
 .conda*/
 .python-version
 .aider*
+
+# Git worktrees for isolated task work
+.worktrees/
