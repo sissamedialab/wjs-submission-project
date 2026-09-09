@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.0.18] - 2026-09-09
+
+- [specs#3054: Allow to modify access mode from advanced admin](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3054) — feat: allow editing access mode (!148)
+- [specs#2918: JCAP corresponding author's required information](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2918) — refactor(account_validation): move jcom/jcap validators to wjs.jcom_profile (!150)
+- [wjs-submission-project#30: Verify that wjs-submission does not depend from wjs-profile](https://gitlab.sissamedialab.it/wjs/wjs-submission-project/-/work_items/30) — refactor(account_validation): move jcom/jcap validators to wjs.jcom_profile (!150)
+
 ## [2.0.17] - 2026-08-26
 
 - [wjs-help#205: JCOM_3682 - revision submission problem (step 7 - access)](https://gitlab.sissamedialab.it/wjs/wjs-help/-/work_items/205) — fix: fix inconsistencies in step 8 (!149)
