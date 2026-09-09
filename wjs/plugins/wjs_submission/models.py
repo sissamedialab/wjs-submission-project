@@ -215,18 +215,131 @@ class CollaborationRelation(models.TextChoices):
     NONE = "none", _("No collaboration involved")
 
 
+class CollaborationQuerySet(models.QuerySet):
+    """Filters for :py:class:`Collaboration`."""
+
+    def by_name(self, name: str) -> "CollaborationQuerySet":
+        """
+        Select the collaborations whose full name matches the given one, ignoring case and surrounding spaces.
+
+        :param name: The full name to look for.
+        :type name: str
+        :return: The matching collaborations.
+        :rtype: CollaborationQuerySet
+        """
+        return self.filter(name__iexact=name.strip())
+
+
 class Collaboration(models.Model):
-    name = models.CharField(max_length=255)
-    institutional_email = models.EmailField(blank=True, help_text=_("If available"))
+    r"""
+    A collaboration (e.g. a consortium) that can author an article or be credited by one.
+
+    Besides the data collected from authors during submission, this model carries the
+    typesetting parameters that the WJS LaTeX styles (jsty2 / jsty3) need for the
+    collaboration's front page: `name`/`short_name`/`institutional_email` feed
+    `\collaboration{<name>}[<short>]{<email>}`, `logo`/`logo_name`/`logo_size` feed
+    `\logoAdd[<options>]{<file>}`, and `author_list_mode`/`collaboration_list_mode` feed
+    `\authorList{<mode>}` / `\collaborationList{<mode>}`.
+    """
+
+    class AuthorListMode(models.TextChoices):
+        r"""Modes of the LaTeX `\authorList{<mode>}` command: how the front-page author list is abbreviated."""
+
+        REGULAR = "regular", _("Show full author list on front page (default)")
+        CORRESPONDING = "corresponding", _("List corresponding authors followed by et al.")
+        TAGGED = "tagged", _("List tagged authors followed by et al.")
+        FIRST = "first", _("List first author followed by et al.")
+        EMPTY = "empty", _("Show no author list on front page")
+        CUSTOM = "custom", _("Use a custom author list text")
+
+    class CollaborationListMode(models.TextChoices):
+        r"""Modes of the LaTeX `\collaborationList{<mode>}` command: how a collaboration relates to the author list."""
+
+        REGULAR = "regular", _("Collaboration shown independently (default)")
+        FORTHE = "forthe", _("Authors listed for the collaboration")
+        BEHALF = "behalf", _("Authors listed on behalf of the collaboration")
+        AUTHOR = "author", _("Collaboration listed as additional author")
+        EMPTY = "empty", _("Hide collaboration from front page")
+
+    name = models.CharField(verbose_name=_("Name"), max_length=255, help_text=_("Full name, used in the metadata"))
+    short_name = models.CharField(
+        verbose_name=_("Short name"),
+        max_length=64,
+        blank=True,
+        default="",
+        help_text=_("Abbreviated name, used in the text (e.g. ATLAS). If available"),
+    )
+    institutional_email = models.EmailField(
+        verbose_name=_("Institutional email"), blank=True, help_text=_("If available")
+    )
+    # NB: we allow the author to upload a logo file, but this slot is for temporary storage only!
+    # The logo must be validated and processed by production staff,
+    # then the file should be transferred to the typesetting repo
+    # //production/ilmarinen/-/tree/master/tex/latex/local/medialab/collablogos
     logo = models.ForeignKey(
         "core.File",
+        verbose_name=_("Logo"),
         blank=True,
         null=True,
         on_delete=models.SET_NULL,
         help_text=_("Logo representing this collaboration"),
     )
-    address = models.TextField(blank=True)
-    notes = models.TextField(blank=True)
+    logo_name = models.CharField(
+        verbose_name=_("Logo name"),
+        max_length=128,
+        blank=True,
+        default="",
+        help_text=_("Base name of the logo image file in repo /production/ilmarinen (e.g. CMS-collaboration-logo)"),
+    )
+    logo_size = models.CharField(
+        verbose_name=_("Logo size"),
+        max_length=64,
+        blank=True,
+        default="",
+        help_text=_("Graphicx options used to typeset the logo (e.g. width=1.8cm). Leave empty for the default size"),
+    )
+    address = models.TextField(verbose_name=_("Address"), blank=True)
+    notes = models.TextField(
+        verbose_name=_("Notes"),
+        blank=True,
+        help_text=_("Internal notes about how this collaboration must be handled"),
+    )
+    moretex = models.TextField(
+        verbose_name=_("Additional LaTeX"),
+        blank=True,
+        default="",
+        help_text=_("Additional LaTeX code to add to the papers of this collaboration (e.g. a \\paperNote{...})"),
+    )
+    author_list_mode = models.CharField(
+        verbose_name=_("Author list mode"),
+        max_length=32,
+        blank=True,
+        default="",
+        choices=AuthorListMode.choices,
+        help_text=_("How the front-page author list is abbreviated. Leave empty for the journal's default"),
+    )
+    collaboration_list_mode = models.CharField(
+        verbose_name=_("Collaboration list mode"),
+        max_length=32,
+        blank=True,
+        default="",
+        choices=CollaborationListMode.choices,
+        help_text=_(
+            "How the collaboration name relates to the author list when typesetting. "
+            "Leave empty for the journal's default"
+        ),
+    )
+    cluster = models.BooleanField(
+        verbose_name=_("Cluster"),
+        default=False,
+        help_text=_("If set, this collaboration has clusters of affiliations"),
+    )
+    sample_papers = models.TextField(
+        verbose_name=_("Sample papers"),
+        blank=True,
+        default="",
+        help_text=_("Manuscript IDs of papers to use as a typesetting reference (e.g. JCAP_114P_0326)"),
+    )
     public_listing = models.BooleanField(
         default=False,
         verbose_name=_("Approved for public listing"),
@@ -234,6 +347,7 @@ class Collaboration(models.Model):
     )
     creator = models.ForeignKey(
         Account,
+        verbose_name=_("Creator"),
         on_delete=models.SET_NULL,
         null=True,
         related_name="created_collaborations",
@@ -241,12 +355,15 @@ class Collaboration(models.Model):
     )
     linked_account = models.ForeignKey(
         Account,
+        verbose_name=_("Linked account"),
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="linked_collaborations",
         help_text=_("The account automatically added to the authors list when a collaboration is added"),
     )
+
+    objects = CollaborationQuerySet.as_manager()
 
     class Meta:
         verbose_name = _("Collaboration")

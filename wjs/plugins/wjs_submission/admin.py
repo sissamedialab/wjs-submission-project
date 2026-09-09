@@ -19,9 +19,9 @@ class ArticleSubmissionAdmin(admin.ModelAdmin):
 
 @admin.register(Collaboration)
 class CollaborationAdmin(admin.ModelAdmin):
-    list_display = ("name", "institutional_email", "public_listing", "creator", "linked_account")
-    list_filter = ("public_listing",)
-    search_fields = ("name", "institutional_email", "address", "notes")
+    list_display = ("name", "short_name", "institutional_email", "public_listing", "creator", "linked_account")
+    list_filter = ("public_listing", "cluster", "author_list_mode", "collaboration_list_mode")
+    search_fields = ("name", "short_name", "institutional_email", "address", "notes", "logo_name")
     raw_id_fields = ("logo", "creator", "linked_account")
     ordering = ("name",)
 
