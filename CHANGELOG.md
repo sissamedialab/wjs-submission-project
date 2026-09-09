@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.0.19] - 2026-09-09
+
+- [specs#2971: Analyse how to sync collaboration between tex and db](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2971) — Adapt Collaboration to tabellone (!147)
+
 ## [2.0.18] - 2026-09-09
 
 - [specs#3054: Allow to modify access mode from advanced admin](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3054) — feat: allow editing access mode (!148)
