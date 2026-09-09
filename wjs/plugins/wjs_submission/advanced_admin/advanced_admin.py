@@ -20,14 +20,15 @@ class ArticleCollaborationInline(admin.TabularInline):
 class CollaborationAdmin(admin.ModelAdmin):
     list_display = (
         "name",
+        "short_name",
         "institutional_email",
         "public_listing",
         "creator",
         "linked_account",
         "article_list",
     )
-    list_filter = ("public_listing",)
-    search_fields = ("name", "institutional_email", "address", "notes", "articles__title")
+    list_filter = ("public_listing", "cluster", "author_list_mode", "collaboration_list_mode")
+    search_fields = ("name", "short_name", "institutional_email", "address", "notes", "logo_name", "articles__title")
     raw_id_fields = ("logo", "creator", "linked_account")
     ordering = ("name",)
     change_list_template = "admin/wjs_submission/collaboration/change_list.html"
