@@ -99,9 +99,6 @@ class ArticleSubmission(models.Model):
     das_url = models.URLField(verbose_name=_("DAS URL"), default="")
     access_mode = models.ForeignKey("AccessMode", on_delete=models.SET_NULL, null=True, blank=True)
     special_request = models.TextField(verbose_name=_("Special request"), blank=True, default="")
-    special_request_updated = models.BooleanField(
-        verbose_name=_("Special request has been updated on revision"), default=False
-    )
     use_of_ai_flag = models.BooleanField(verbose_name=_("Use of AI"), default=False)
     license_override = models.BooleanField(
         verbose_name=_("License override"),
