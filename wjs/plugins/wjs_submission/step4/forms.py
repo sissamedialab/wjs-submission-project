@@ -466,7 +466,10 @@ class RevisionStep4Form(SubmissionStep4Form):
         revision_storage = RevisionStorage.objects.get(article=self.instance)
         revision_storage.revision_step = max(revision_storage.revision_step, self.step)
 
-        revision_storage.data["affiliation_pk"] = self.cleaned_data.get("affiliation").pk
+        # Note that affiliation is not mandatory for some journals
+        if affiliation := self.cleaned_data.get("affiliation"):
+            revision_storage.data["affiliation_pk"] = affiliation.pk
+
         revision_storage.data["authors_contributions"] = self.cleaned_data.get("authors_contributions")
 
         author_ids = FrozenAuthor.objects.filter(article=self.instance).values_list("author_id", flat=True)
