@@ -74,11 +74,9 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
             # Determine if it's an erratum or addendum from the section name.
             section_name = self.object.section.name if self.object.section else "Correction"
             kind = section_name.lower()
-            return (
-                _('{kind} for article "{title}" submitted').format(
-                    kind=kind.capitalize(),
-                    title=self.object.title,
-                ),
+            return _('{kind} for article "{title}" submitted').format(
+                kind=kind.capitalize(),
+                title=self.object.title,
             )
         if is_revision(self.object):
             return _('Revision for article "{title}" submitted').format(
