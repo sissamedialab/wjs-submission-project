@@ -10,7 +10,7 @@
 {% block submission_flow %}
 
   <div class="wjs-submission-form__section mb-5">
-
+    {% bootstrap_form_errors form %}
     <div class="wjs-submission-form__form-label-title-container">
       <h2 class="wjs-submission-form__form-label-title">
         {% if is_revision %}Checklist and declarations{% else %}Submission checklist and declarations{% endif %}
@@ -259,7 +259,7 @@
   <div class="wjs-submission-form__section mb-5">
     <div class="wjs-submission-form__form-label-title-container">
       <h2 class="wjs-submission-form__form-label-title">
-        Affiliation
+        Affiliation (as written in your manuscript)
       </h2>
     </div>
     <div class="wjs-submission-form__section-content">
@@ -491,7 +491,7 @@
         Fill in the following fields in the corresponding step and go back to "Review & submit" to confirm the revision:
       </div>
       <ul>
-        {% if not validate_revision_data %}
+        {% if not validate_revision_data.submission_requirements %}
           <li>Revision checklist and declarations</li>
         {% endif %}
         {% if not validate_revision_data.cover_letter %}

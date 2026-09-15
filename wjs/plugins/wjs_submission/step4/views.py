@@ -25,7 +25,7 @@ from .forms import (
     RevisionStep4Form,
     SubmissionStep4Form,
 )
-from .logic import TableMoveDeleteHandler, has_author_list_changed
+from .logic import SaveCorrespondenceAuthor, TableMoveDeleteHandler, has_author_list_changed
 
 
 class AuthorsTableRenderingMixin(HtmxMixin):
@@ -88,11 +88,16 @@ class AuthorsTableRenderingMixin(HtmxMixin):
         disabled_accounts = self._get_disabled_accounts(self.article, authors_list)
         # The following error can be used by the view's template in order to
         # indicate required/desirable actions to the operator:
+        context["correspondence_author"] = (
+            Account.objects.get(pk=self.revision_storage.data["correspondence_author"])
+            if is_revision(self.article) and self.revision_storage
+            else self.article.correspondence_author
+        )
         context["correspondence_author_error"] = verify_profile_completion(
             journal=self.article.journal,
             disabled_users=disabled_accounts,
-            user=self.article.correspondence_author,
-            is_owner=self.article.correspondence_author == self.article.owner,
+            user=context["correspondence_author"],
+            is_owner=context["correspondence_author"] == self.article.owner,
         )
         context["disabled_accounts"] = disabled_accounts
         context["is_htmx"] = self.htmx
@@ -102,11 +107,6 @@ class AuthorsTableRenderingMixin(HtmxMixin):
         context["authors_order"] = (
             RevisionArticleAuthorOrder if is_revision(self.article) else FrozenAuthor
         ).objects.filter(**fk_field)
-        context["correspondence_author"] = (
-            Account.objects.get(pk=self.revision_storage.data["correspondence_author"])
-            if is_revision(self.article) and self.revision_storage
-            else self.article.correspondence_author
-        )
         context["has_author_list_changed"] = is_revision(self.article) and has_author_list_changed(self.article)
         context["step_form"] = (
             SubmissionStep4Form(instance=self.article)
@@ -223,24 +223,24 @@ class SubmissionStep4View(
         kwargs = super().get_form_kwargs()
         kwargs["step"] = self.step
         if is_revision(self.article):
-            kwargs["has_author_list_changed"] = is_revision(self.article) and has_author_list_changed(self.article)
+            kwargs["has_author_list_changed"] = self._get_revision_has_authors_list_changed(self.article)
         return kwargs
 
-    def get_initial(self):
+    @staticmethod
+    def _get_revision_has_authors_list_changed(instance: Article) -> bool:
         """
-        Inject authors_contributions / collaboration_relation data into the form.
+        Check if the revision has authors list changed.
 
-        :return: The initial data dictionary with optional values for authors' contributions
-                 and collaboration relation.
-        :rtype: dict
-        :raises Exception: If any issue occurs while accessing the revision storage or fetching
-                           editor revision requests.
+        Evaluate whether the given instance represents a revision and if
+        the author list of the revision has changed.
+
+        :param instance: The article instance to evaluate.
+        :type instance: Article
+        :return: True if the instance is a revision and the author list has changed,
+            otherwise False.
+        :rtype: bool
         """
-        initial = super().get_initial()
-        if self.revision_storage:
-            initial["authors_contributions"] = self.revision_storage.data.get("authors_contributions")
-            initial["collaboration_relation"] = self.revision_storage.data.get("collaboration_relation")
-        return initial
+        return is_revision(instance) and has_author_list_changed(instance)
 
     def get(self, request, *args, **kwargs):
         """
@@ -424,15 +424,13 @@ class SaveCorrespondingAuthorView(AuthorsTableRenderingMixin, AuthorFilteringVie
     context_object_name = "article"
 
     def post(self, request, *args, **kwargs):
-        """Handle POST requests for reordering authors."""
+        """Handle POST requests for saving the corresponding author."""
         self.article = self.get_object()
-        if is_revision(self.article):
-            self.revision_storage = RevisionStorage.objects.get(article=self.article)
-            self.revision_storage.data["correspondence_author"] = request.POST.get("correspondence_author")
-            self.revision_storage.save()
-        else:
-            self.article.correspondence_author = Account.objects.get(id=request.POST.get("correspondence_author"))
-            self.article.save()
+
+        self.revision_storage = SaveCorrespondenceAuthor(
+            article=self.article,
+            author=Account.objects.get(pk=request.POST.get("correspondence_author")),
+        ).run()
 
         return self.get(request, *args, **kwargs)
 

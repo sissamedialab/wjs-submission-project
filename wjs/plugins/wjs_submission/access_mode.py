@@ -16,6 +16,7 @@ from .settings import (
     OA_CODE_TA,
     OA_MESSAGE_CODES,
 )
+from .workflow import is_revision
 
 
 class AccessModeConfiguration(NamedTuple):
@@ -124,34 +125,34 @@ def get_affiliation_country(article: Article) -> Country | None:
     """
     Retrieve the country of affiliation for a given article.
 
-    Check the article's revision storage for the country of affiliation. If the
-    country is found, retrieve the corresponding Country object. If the country
-    is not found in the revision storage or the related Country object does not
-    exist, return the country specified in the submission data of the article.
+    While a revision is in progress the affiliation being edited is the one snapshotted in the
+    article's revision storage, as the submission data is only updated on submission: check it
+    first and fall back to the submission data one, which is also the affiliation used for
+    articles which are not being revised.
 
     :param article: The article instance containing information about the affiliation.
     :type article: Article
     :return: The Country instance representing the country of affiliation. It might be None if affiliation is not
         complete
     :rtype: Country | None
-    :raises Country.DoesNotExist: If the Country object corresponding to the
-        affiliation country in the revision storage does not exist.
-    :raises RevisionStorage.DoesNotExist: If the RevisionStorage related to the
-        article does not exist.
     """
     try:
-        try:
-            affiliation_pk = article.revisionstorage.data.get("affiliation_pk")
-            if affiliation_pk:
-                return ControlledAffiliation.objects.get(pk=affiliation_pk).organization.country
-        except (ControlledAffiliation.DoesNotExist, RevisionStorage.DoesNotExist):
-            pass
-        finally:
-            return article.submission_data.affiliation.organization.country  # noqa: B012
-    except (AttributeError, ValueError, TypeError):
+        if is_revision(article) and (affiliation_pk := article.revisionstorage.data.get("affiliation_pk")):
+            affiliation = ControlledAffiliation.objects.get(pk=affiliation_pk)
+        else:
+            affiliation = article.submission_data.affiliation
+        country = affiliation.organization.country
+    except (
+        ControlledAffiliation.DoesNotExist,
+        RevisionStorage.DoesNotExist,
+        AttributeError,
+        ValueError,
+        TypeError,
+    ):
         # Even if affiliation exists, it might have null organization or country, which are not guaranteed by
         # janeway's models. In this case we can only consider this value null
-        return None
+        country = None
+    return country
 
 
 def get_oa_transformative_agreement(user: Account, article: Article) -> AccessModeConfiguration:
