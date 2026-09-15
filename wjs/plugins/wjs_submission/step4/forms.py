@@ -44,18 +44,23 @@ class SubmissionStep4Form(forms.ModelForm):
         Accounts without neither institution nor department or last name are marked as disabled and can't be selected.
         Added errors in case metadata is missing from authors.
 
+        Initial values for correspondence_author and affiliation are computed from the instance (subclasses may
+        override where the data is read from, e.g. RevisionStep4Form reads from the revision storage), and
+        affiliation is then overridden with the primary affiliation of the correspondence author selected in
+        posted data, if it has changed from its initial value.
+
         :param args: Positional arguments passed to the parent form.
         :param kwargs: Keyword arguments; none mandatory;
         """
         self.step = kwargs.pop("step", None)
-        if "initial" not in kwargs:
-            kwargs["initial"] = {}
-        kwargs["initial"]["correspondence_author"] = kwargs["instance"].correspondence_author
-        if kwargs["initial"]["correspondence_author"]:
-            kwargs["initial"]["affiliation"] = kwargs["instance"].correspondence_author.primary_affiliation()
+        kwargs.setdefault("initial", {})
+        instance = kwargs["instance"]
+        data = args[0] if args else kwargs.get("data")
         kwargs["initial"]["collaboration_relation"] = (
-            ArticleCollaboration.objects.filter(article=kwargs["instance"]).values_list("relation", flat=True).first()
+            ArticleCollaboration.objects.filter(article=instance).values_list("relation", flat=True).first()
         ) or CollaborationRelation.NONE
+        kwargs["initial"]["correspondence_author"] = self._get_default_correspondence_author(instance)
+        kwargs["initial"]["affiliation"] = self._get_initial_affiliation(instance, data, kwargs["initial"])
         super().__init__(*args, **kwargs)
         enable_collaboration = get_setting(
             "wjs_submission", "enable_collaboration", self.instance.journal
@@ -68,14 +73,13 @@ class SubmissionStep4Form(forms.ModelForm):
 
         authors_list = self._get_correspondence_author_list(self.instance)
         self.fields["correspondence_author"].queryset = authors_list
-        if self.instance.correspondence_author:
-            self.fields["affiliation"].queryset = self.instance.correspondence_author.affiliations
+        if self.initial["correspondence_author"]:
+            self.fields["affiliation"].queryset = self.initial["correspondence_author"].affiliations
         for field in self.fields:
             if self.fields[field].required:
                 self.fields[field].help_text = _("Required")
 
-    @staticmethod
-    def _get_correspondence_author_list(article: Article) -> QuerySet:
+    def _get_correspondence_author_list(self, article: Article) -> QuerySet:  # noqa: PLR6301
         """
         Retrieve the list of correspondence authors associated with the given article.
 
@@ -88,6 +92,47 @@ class SubmissionStep4Form(forms.ModelForm):
         if not article.author_accounts.exists():
             return Account.objects.filter(pk=article.correspondence_author)
         return article.author_accounts.all()
+
+    def _get_default_correspondence_author(self, instance: Article) -> Account | None:  # noqa: PLR6301
+        """
+        Return the correspondence author to use as initial value for the correspondence_author field.
+
+        :param instance: The article instance.
+        :return: The correspondence author currently set on the article.
+        """
+        return instance.correspondence_author
+
+    def _get_default_affiliation(self, instance: Article) -> ControlledAffiliation | None:  # noqa: PLR6301
+        """
+        Return the affiliation to use as initial value for the affiliation field.
+
+        :param instance: The article instance.
+        :return: The affiliation currently stored for the article submission.
+        """
+        return instance.submission_data.affiliation
+
+    def _get_initial_affiliation(
+        self, instance: Article, data: dict | None, initial: dict
+    ) -> ControlledAffiliation | None:
+        """
+        Determine the initial value for the affiliation field based on journal settings and author details.
+
+        If the correspondence author selected in posted data differs from the initial correspondence author,
+        the primary affiliation of the newly selected author is used. Otherwise the default affiliation
+        (see :meth:`_get_default_affiliation`) is used.
+
+        :param instance: The article instance.
+        :param data: The posted form data, if any.
+        :param initial: The initial data dictionary, already populated with the initial correspondence_author.
+        :return: The affiliation to use as initial value, or None if there isn't any.
+        """
+        data = data or {}
+        initial_author = initial.get("correspondence_author")
+        data_author_pk = data.get("correspondence_author")
+        has_author_changed = initial_author and str(initial_author.pk) != data_author_pk
+        if has_author_changed and data_author_pk:
+            return Account.objects.get(pk=data_author_pk).primary_affiliation()
+        return self._get_default_affiliation(instance)
 
     def clean_affiliation(self):
         """
@@ -429,6 +474,7 @@ class RevisionStep4Form(SubmissionStep4Form):
         self.has_author_list_changed = kwargs.pop("has_author_list_changed", False)
         kwargs.setdefault("initial", {})
         kwargs["initial"]["collaboration_relation"] = self.revision_storage.data.get("collaboration_relation")
+        kwargs["initial"]["authors_contributions"] = self.revision_storage.data.get("authors_contributions")
         super().__init__(*args, **kwargs)
         self.fields["authors_contributions"].required = self.has_author_list_changed
         # Using a custom attribute to not trigger bootstrap validation as we use custom logic which checks tinymce
@@ -436,6 +482,27 @@ class RevisionStep4Form(SubmissionStep4Form):
         for field in self.fields:
             if self.fields[field].required:
                 self.fields[field].help_text = _("Required")
+
+    def _get_default_correspondence_author(self, instance: Article) -> Account | None:
+        """
+        Return the correspondence author stored in the revision, used as initial value.
+
+        :param instance: The article instance (unused here: the revision tracks its own correspondence author).
+        :return: The correspondence author stored in the revision data.
+        """
+        return Account.objects.get(pk=self.revision_storage.data.get("correspondence_author"))
+
+    def _get_default_affiliation(self, instance: Article) -> ControlledAffiliation | None:
+        """
+        Return the affiliation stored in the revision, used as initial value.
+
+        :param instance: The article instance (unused here: the revision tracks its own affiliation).
+        :return: The affiliation stored in the revision data, or None if not set.
+        """
+        affiliation_pk = self.revision_storage.data.get("affiliation_pk")
+        if affiliation_pk:
+            return ControlledAffiliation.objects.get(pk=affiliation_pk)
+        return None
 
     def _get_correspondence_author_list(self, article: Article) -> QuerySet:
         """

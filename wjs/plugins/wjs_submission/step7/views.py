@@ -13,7 +13,7 @@ from ..models import (
     SubmissionArticleFunding,
 )
 from ..step4 import ModalRenderingMixin
-from ..workflow import is_revision
+from ..workflow import is_revision, is_revision_confirm, is_revision_full, is_revision_metadata
 from .forms import (
     AddFundingForm,
     RevisionAddFundingForm,
@@ -23,7 +23,13 @@ from .forms import (
 
 
 def get_article_fundings(article):
-    if is_revision(article):
+    """
+    Return the fundings of the article.
+
+    Note that changing the fundings is only permitted during "full" revisions (major/minor),
+    i.e. not during metadata-change only revisions.
+    """
+    if is_revision_full(article):
         return RevisionSubmissionArticleFunding.objects.filter(revision_storage__article=article)
     return SubmissionArticleFunding.objects.filter(article=article)
 
@@ -78,7 +84,26 @@ class SubmissionStep7View(AuthorFilteringView, StepCheckView, UpdateView):
         kwargs["step"] = self.step
         kwargs["journal"] = self.request.journal
         kwargs["configuration"] = self.access_mode_configuration
+        if is_revision(self.object):
+            kwargs["revision_full"] = is_revision_full(self.object)
+            kwargs["revision_metadata"] = is_revision_metadata(self.object)
+            kwargs["revision_confirm"] = is_revision_confirm(self.object)
         return kwargs
+
+    def _get_funding_enabled(self):
+        """
+        Determine if funding is enabled based on submission configuration.
+
+        Evaluates the funding status by checking the journal's submission
+        configuration and entry revision status. Returns a boolean indicating
+        whether the funding option is currently enabled.
+
+        :return: True if funding is enabled, else False.
+        :rtype: bool
+        """
+        return self.object.journal.submissionconfiguration.funding and (
+            is_revision_full(self.object) or not is_revision(self.object)
+        )
 
     def get_context_data(self, **kwargs):
         """
@@ -91,6 +116,7 @@ class SubmissionStep7View(AuthorFilteringView, StepCheckView, UpdateView):
         context = super().get_context_data(**kwargs)
         context["articles_funding"] = get_article_fundings(self.object)
         context["is_revision"] = is_revision(self.object)
+        context["funding_enabled"] = self._get_funding_enabled()
         context["access_modes_with_disclaimer"] = get_access_modes_with_disclaimer(self.object)
         return context
 

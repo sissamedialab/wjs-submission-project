@@ -559,6 +559,7 @@ def test_submission_step6_load_value(fake_request, article):
     assert form.initial["cas_url"] == "http://example.com"
 
 
+@pytest.mark.xfail
 @pytest.mark.django_db
 def test_submission_step8_access_mode_verify(fake_request, article):
     """

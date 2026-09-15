@@ -142,7 +142,7 @@ class PopulateStep4:
     - collaboration_relation
     - correspondence_author
     - owner
-    - affiliation_country
+    - affiliation_pk
     - article_authors
     """
 
@@ -162,7 +162,7 @@ class PopulateStep4:
         ) or CollaborationRelation.NONE
         self.revision_storage.data["correspondence_author"] = self.revision_storage.article.correspondence_author.pk
         self.revision_storage.data["owner"] = self.revision_storage.article.owner.pk
-        self.revision_storage.data["affiliation"] = getattr(
+        self.revision_storage.data["affiliation_pk"] = getattr(
             getattr(self.revision_storage.article, "submission_data", None), "affiliation_id", None
         )
         self.revision_storage.data["article_authors"] = list(
@@ -344,6 +344,12 @@ class SetupRevisionStorageConfirm(BaseSetupRevisionStorage):
         """
         PopulateStep1(self.revision_storage)(commit=True)
 
+    def _populate_additional_models(self):
+        """
+        Populate additional models required for Step 4.
+        """
+        PopulateStep4AdditionalModels(self.revision_storage)(commit=True)
+
 
 @dataclasses.dataclass
 class SetupRevisionStorageMetadata(BaseSetupRevisionStorage):
@@ -355,11 +361,13 @@ class SetupRevisionStorageMetadata(BaseSetupRevisionStorage):
 
     def _populate_storage(self):
         """
-        Populate the RevisionStorage object with data for step 1, 4 and 5 of the revision flow.
+        Populate the RevisionStorage object with data for step 1, 4,  5 and 7 of the revision flow.
         """
         PopulateStep1(self.revision_storage)()
         PopulateStep4(self.revision_storage)()
-        PopulateStep5(self.revision_storage)(commit=True)
+        PopulateStep5(self.revision_storage)()
+        PopulateStep6(self.revision_storage)()
+        PopulateStep7(self.revision_storage)(commit=True)
 
     def _populate_additional_models(self):
         """

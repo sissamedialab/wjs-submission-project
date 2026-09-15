@@ -310,8 +310,8 @@ def step_check_access_funding(
     revision_confirm = is_revision_confirm(article)
     revision_metadata = is_revision_metadata(article)
     revision_revision = is_revision_full(article)
-    enabled_conditions = submission or revision_revision
-    disabled_conditions = revision_metadata or revision_confirm
+    enabled_conditions = submission or revision_revision or revision_metadata
+    disabled_conditions = revision_confirm
     return enabled_conditions and not disabled_conditions
 
 
