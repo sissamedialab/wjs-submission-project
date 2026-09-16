@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.1.0] - 2026-09-16
+
+- [specs#2595: Migrate to Django 5.2](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2595) — Django 5.2 migration (!151)
+- [specs#3155: Deploy to production](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3155) — Feature: change_article_license_rights management command (!142)
+- [specs#2892: Align JCOM/JCOMAL license/rights fields for article from old submission](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2892) — Feature: change_article_license_rights management command (!142)
+- [specs#3042: Drop key "affiliation" from revisionstorage.data and favor "affiliation_pk"](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3042) — fix: correspondence author, affiliation and access-mode consistency in submission/revision steps 4, 7 and 8 (!128)
+- [specs#3076: Submission - Revise metadata change specifications](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3076) — fix: correspondence author, affiliation and access-mode consistency in submission/revision steps 4, 7 and 8 (!128)
+- [specs#3083: 28.8 feedback - JCAP (and other journals) entire flow](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3083) — fix: correspondence author, affiliation and access-mode consistency in submission/revision steps 4, 7 and 8 (!128)
+- [wjs-help#190: revision submission errror (dev - 4220)](https://gitlab.sissamedialab.it/wjs/wjs-help/-/work_items/190) — fix: correspondence author, affiliation and access-mode consistency in submission/revision steps 4, 7 and 8 (!128)
+- [specs#2782: Check Open Access Mode behaviour](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2782) — fix: correspondence author, affiliation and access-mode consistency in submission/revision steps 4, 7 and 8 (!128)
+- [specs#3074: Investigate "submission_requirements NOT set"](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3074) — fix: correspondence author, affiliation and access-mode consistency in submission/revision steps 4, 7 and 8 (!128)
+- [specs#2729: Inconsistency in information update in step 8](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2729) — fix: correspondence author, affiliation and access-mode consistency in submission/revision steps 4, 7 and 8 (!128)
+- [specs#3097: Test Django 5.2](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3097) — fix: correspondence author, affiliation and access-mode consistency in submission/revision steps 4, 7 and 8 (!128)
+- [specs#3113: Verify that no Article has an "arXiv" DOI](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3113) — fix: correspondence author, affiliation and access-mode consistency in submission/revision steps 4, 7 and 8 (!128)
+- [specs#3119: Investigate missing "ControlledAffiliation" in step8](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3119) — fix: correspondence author, affiliation and access-mode consistency in submission/revision steps 4, 7 and 8 (!128)
+- [specs#3118: Investigate failed revision submission - step4 affiliation.pk](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3118) — fix: correspondence author, affiliation and access-mode consistency in submission/revision steps 4, 7 and 8 (!128)
+- [specs#2979: 31 Jul feedback - Test JCAP whole review flow](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2979) — fix: correspondence author, affiliation and access-mode consistency in submission/revision steps 4, 7 and 8 (!128)
+- [specs#3083: 28.8 feedback - JCAP (and other journals) entire flow](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3083) — fix: ensure special request updated it's not overwritten when editing step 7 (!153)
+- No linked issue — Convert submission navigation markup to semantic ol/li (!155)
+- [specs#3145: Ensure that corr.au without affiliation in JCOM can still submit/revision-submit](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3145) — Do not assume affiliation exists (!154)
+
 ## [2.0.19] - 2026-09-09
 
 - [specs#2971: Analyse how to sync collaboration between tex and db](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2971) — Adapt Collaboration to tabellone (!147)
