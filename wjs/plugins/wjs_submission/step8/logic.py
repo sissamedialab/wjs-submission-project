@@ -54,7 +54,9 @@ class CompleteSubmission:
         - ON_WORKFLOW_ELEMENT_COMPLETE: On article submission only
         - ON_ARTICLE_SUBMITTED: On article submission only
         - ON_REVISION_SUBMISSION_COMPLETED: On revision only
-        - ON_ACCESS_MODE_SELECTION: Always
+        - ON_ACCESS_MODE_SELECTION: On article submission only (on revision, it's raised by
+          wjs_review's PopulateRevisionStep7 instead, while the revision storage still exists;
+          raising it here too would fire it twice for every revision)
 
         :raises: RuntimeError if the article submission or workflow updates fail
         :return: Updated article instance after submission
@@ -79,6 +81,14 @@ class CompleteSubmission:
                     article=self.article,
                     request=self.request,
                 )
+                event_logic.Events.raise_event(
+                    SubmissionEvent.ON_ACCESS_MODE_SELECTION,
+                    article=self.article,
+                    submission_data=self.article.submission_data,
+                    # There is nothing to diff against on a first submission: report it to
+                    # EO whenever a special request is present at all.
+                    modified=bool(self.article.submission_data.special_request),
+                )
             else:
                 event_logic.Events.raise_event(
                     SubmissionEvent.ON_REVISION_SUBMISSION_COMPLETED,
@@ -86,10 +96,5 @@ class CompleteSubmission:
                     request=self.request,
                     commit=True,
                 )
-            event_logic.Events.raise_event(
-                SubmissionEvent.ON_ACCESS_MODE_SELECTION,
-                article=self.article,
-                submission_data=self.article.submission_data,
-            )
             self.article.refresh_from_db()
             return self.article

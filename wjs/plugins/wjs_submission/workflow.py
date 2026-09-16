@@ -173,7 +173,7 @@ def is_submission(article: Article) -> bool:
 
 def is_revision_confirm(article: Article) -> bool:
     """Tell if the given article is undergoing a confirm-previous-version revision submission."""
-    if not article:
+    if not article or not article.pk:
         return False
     try:
         revision_storage = RevisionStorage.objects.get(article=article)
@@ -184,7 +184,7 @@ def is_revision_confirm(article: Article) -> bool:
 
 def is_revision_metadata(article: Article) -> bool:
     """Tell if the given article is undergoing metadata-change revision submission."""
-    if not article:
+    if not article or not article.pk:
         return False
     try:
         revision_storage = RevisionStorage.objects.get(article=article)
@@ -195,7 +195,7 @@ def is_revision_metadata(article: Article) -> bool:
 
 def is_revision_full(article: Article) -> bool:
     """Tell if the given article is undergoing a full revision submission."""
-    if not article:
+    if not article or not article.pk:
         return False
     try:
         revision_storage = RevisionStorage.objects.get(article=article)
@@ -310,8 +310,8 @@ def step_check_access_funding(
     revision_confirm = is_revision_confirm(article)
     revision_metadata = is_revision_metadata(article)
     revision_revision = is_revision_full(article)
-    enabled_conditions = submission or revision_revision
-    disabled_conditions = revision_metadata or revision_confirm
+    enabled_conditions = submission or revision_revision or revision_metadata
+    disabled_conditions = revision_confirm
     return enabled_conditions and not disabled_conditions
 
 

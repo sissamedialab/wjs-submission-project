@@ -173,7 +173,7 @@ class SubmissionStep1Form(forms.ModelForm):
                     else:
                         self.fields[element.name].help_text = _("Required")
 
-                if self.instance:
+                if self.instance and self.instance.pk:
                     try:
                         check_for_answer = FieldAnswer.objects.get(field=element, article=self.instance)
                         self.fields[element.name].initial = check_for_answer.answer

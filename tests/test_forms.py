@@ -23,7 +23,7 @@ from plugins.wjs_submission.step5.forms import SubmissionStep5Form
 from plugins.wjs_submission.step6.forms import SubmissionStep6Form
 from plugins.wjs_submission.step7.forms import SubmissionStep7Form
 from plugins.wjs_submission.step8.forms import SubmissionStep8Form
-from pytest_django.asserts import assertQuerysetEqual
+from pytest_django.asserts import assertQuerySetEqual
 from submission.models import Article, Field, Keyword, KeywordArticle, KeywordGroup, Licence
 
 
@@ -259,6 +259,34 @@ def test_clean_comments_editor_requirements(
         assert form.errors == {}
 
 
+@pytest.mark.django_db
+def test_step1_form_unsaved_article_with_comments_to_the_editor_disabled(
+    journal: Journal, install_plugins: Callable, user: Account, fake_request: HttpRequest
+):
+    """
+    Regression test for Django 5.2: constructing the form must not raise on an unsaved Article.
+
+    ``comments_to_the_editor = False`` is required to reach the ``or`` branch at
+    step1/forms.py:129-133 that calls ``is_revision_full``/``is_revision_confirm`` on
+    ``self.instance`` — an unsaved ``Article()`` when no ``instance=`` is passed in, as happens on
+    step 1 of a first-time submission. On Django 5.x, ``is_revision_confirm``/``is_revision_full``
+    (and ``is_revision_metadata``) used to raise ``ValueError`` when looking up
+    ``RevisionStorage.objects.get(article=<unsaved instance>)`` because Django model instances are
+    always truthy, so their ``if not article:`` guard never caught the unsaved instance.
+    """
+    journal.submissionconfiguration.comments_to_the_editor = False
+    journal.submissionconfiguration.save()
+    data = {
+        "copyright_notice": True,
+        "comments_editor": "AAA",
+        "competing_interests": "AAA",
+        "submission_requirements": True,
+    }
+    form = SubmissionStep1Form(data=data, journal=journal, user=user, step=1, request=fake_request)
+    assert form.instance.pk is None, "This test only covers the unsaved-instance (new submission) code path."
+    assert form.is_valid(), f"Form should be valid, got errors: {form.errors}"
+
+
 @pytest.mark.parametrize(
     ("language", "section"),
     [
@@ -431,7 +459,7 @@ def test_access_mode_form(
             assert isinstance(form.fields["license"].widget, forms.HiddenInput)
             assert isinstance(form.fields["rights"].widget, forms.HiddenInput)
             assert isinstance(form.fields["access_mode"].widget, forms.HiddenInput)
-            assertQuerysetEqual(
+            assertQuerySetEqual(
                 form.fields["access_mode"].queryset,
                 AccessMode.objects.filter(parameters__journal=article.journal, user_selectable=False),
             )
@@ -441,7 +469,7 @@ def test_access_mode_form(
         else:
             assert configuration.user_can_select_access_mode
             assert isinstance(form.fields["rights"].widget, forms.HiddenInput)
-            assertQuerysetEqual(
+            assertQuerySetEqual(
                 form.fields["access_mode"].queryset,
                 AccessMode.objects.filter(parameters__journal=article.journal, user_selectable=True),
             )

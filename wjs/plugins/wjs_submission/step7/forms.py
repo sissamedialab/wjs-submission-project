@@ -2,6 +2,7 @@ from copy import copy
 from typing import Any
 
 from django import forms
+from django.db import transaction
 from django.utils.translation import gettext_lazy as _
 from plugins.wjs_submission.workflow import is_revision_full
 from submission.models import Article, Licence
@@ -136,7 +137,6 @@ class SubmissionStep7Form(forms.ModelForm):
         self.instance.current_step = max(self.instance.current_step, self.step)
         instance = super().save(commit=commit)
         instance.submission_data.access_mode = self.cleaned_data["access_mode"]
-        instance.submission_data.special_request_updated = "special_request" in self.changed_data
         instance.submission_data.special_request = self.cleaned_data["special_request"]
         # When the user can select the access mode, preserve their custom license/rights
         # only when they differ from the access mode's default configuration.
@@ -225,13 +225,35 @@ class RevisionStep7Form(SubmissionStep7Form):
             `instance`, which refers to an `Article` instance.
         :type kwargs: dict
         """
-        revision_storage = RevisionStorage.objects.get(article=kwargs["instance"])
+        self.revision_storage = RevisionStorage.objects.get(article=kwargs["instance"])
         kwargs.setdefault("initial", {})
-        for field, value in revision_storage.data.items():
-            if field == "confirm_previous_version":
-                continue
-            kwargs["initial"][field] = value
+        for field in self.base_fields:
+            kwargs["initial"][field] = self.revision_storage.data.get(field, None)
+        self.revision_full = kwargs.pop("revision_full", False)
+        self.revision_metadata = kwargs.pop("revision_metadata", False)
+        self.revision_confirm = kwargs.pop("revision_confirm", False)
         super().__init__(*args, **kwargs)
+        if not self._authors_can_be_changed:
+            self.fields["access_mode"].disabled = True
+
+    @property
+    def _authors_can_be_changed(self):
+        return self.revision_full or self.revision_metadata
+
+    def clean_access_mode(self) -> AccessMode | None:
+        """
+        Clean and return the appropriate access mode.
+
+        During a full revision the input data is used, otherwise the `access_mode` value stored in `revision_storage`
+        is taken, because the field is disabled.
+
+        :returns: The determined access mode, or None if not available.
+        :rtype: AccessMode | None
+        """
+        access_mode = self.cleaned_data.get("access_mode")
+        if self._authors_can_be_changed:
+            return access_mode
+        return self.instance.submission_data.access_mode
 
     def save(self, commit=True):
         """
@@ -240,12 +262,13 @@ class RevisionStep7Form(SubmissionStep7Form):
         :param commit: commit changes to database
         :return:
         """
-        revision_storage = RevisionStorage.objects.get(article=self.instance)
-        revision_storage.revision_step = max(revision_storage.revision_step, self.step)
+        with transaction.atomic():
+            revision_storage = RevisionStorage.objects.select_for_update().get(article=self.instance)
+            revision_storage.revision_step = max(revision_storage.revision_step, self.step)
 
-        revision_storage.data["access_mode"] = self.cleaned_data.get("access_mode").pk
-        revision_storage.data["special_request"] = self.cleaned_data.get("special_request")
+            revision_storage.data["access_mode"] = self.cleaned_data.get("access_mode").pk
+            revision_storage.data["special_request"] = self.cleaned_data.get("special_request")
 
-        revision_storage.save()
+            revision_storage.save()
 
         return self.instance

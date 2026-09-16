@@ -483,7 +483,7 @@ class HandleArticleCreation:
             Identifier.objects.get_or_create(
                 identifier=self.form_data["doi_link"],
                 article=self.article,
-                id_type="doi",
+                id_type="uri",
             )
         if self.form_data.get("category_term"):
             self.article.submission_data.arxiv_category = self.form_data["category_term"]

@@ -1,10 +1,13 @@
 from dataclasses import dataclass
 
+from core.models import Account, ControlledAffiliation
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.utils.translation import gettext_lazy as _
-from submission.models import FrozenAuthor
+from submission.models import Article, FrozenAuthor
 
 from ..models import RevisionArticleAuthorOrder, RevisionStorage
+from ..workflow import is_revision
 
 
 @dataclass
@@ -139,3 +142,63 @@ def has_author_list_changed(article):
     current_authors = set(FrozenAuthor.objects.filter(article=article).values_list("author_id", flat=True))
 
     return revision_authors != current_authors
+
+
+@dataclass
+class SaveCorrespondenceAuthor:
+    """
+    Set the correspondence author of an article, keeping the stored affiliation consistent with it.
+
+    The stored affiliation is one of the correspondence author affiliations, so when the author changes
+    the affiliation is reset to the primary affiliation of the new one: the previous value belongs to
+    somebody else and is not selectable any more.
+
+    During a revision both values are stored in the revision storage, because the article and its
+    submission data are left untouched until the revision is submitted.
+
+    Attributes:
+        article: The article whose correspondence author is being set.
+        author: The account to set as correspondence author.
+
+    """
+
+    article: Article
+    author: Account
+
+    def _get_revision_storage(self) -> RevisionStorage | None:
+        """Return the locked storage of the revision in progress, if the article is being revised."""
+        if not is_revision(self.article):
+            return None
+        return RevisionStorage.objects.select_for_update().get(article=self.article)
+
+    def _has_author_changed(self, revision_storage: RevisionStorage | None) -> bool:
+        """Tell if the given author is not the one currently set."""
+        if revision_storage:
+            return str(revision_storage.data.get("correspondence_author")) != str(self.author.pk)
+        return self.article.correspondence_author_id != self.author.pk
+
+    def _save_revision(self, revision_storage: RevisionStorage, affiliation: ControlledAffiliation | None):
+        """Store author and affiliation in the revision storage."""
+        revision_storage.data["correspondence_author"] = self.author.pk
+        revision_storage.data["affiliation_pk"] = affiliation.pk if affiliation else None
+        revision_storage.save()
+
+    def _save_article(self, affiliation: ControlledAffiliation | None):
+        """Store the author on the article and the affiliation in its submission data."""
+        self.article.correspondence_author = self.author
+        self.article.save()
+        self.article.submission_data.affiliation = affiliation
+        self.article.submission_data.save()
+
+    def run(self):
+        """Set the correspondence author, resetting the affiliation when the author changes."""
+        with transaction.atomic():
+            revision_storage = self._get_revision_storage()
+            if not self._has_author_changed(revision_storage):
+                return None
+            affiliation = self.author.primary_affiliation()
+            if revision_storage:
+                self._save_revision(revision_storage, affiliation)
+            else:
+                self._save_article(affiliation)
+            return revision_storage

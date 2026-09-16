@@ -1,15 +1,14 @@
 from core.models import Account, ControlledAffiliation
 from core.models import File as CoreFile
 from django.contrib import messages
-from django.http.response import HttpResponseRedirect
-from django.urls import reverse, reverse_lazy
+from django.core.exceptions import ValidationError
+from django.urls import reverse_lazy
 from django.utils.translation import gettext_lazy as _
 from django.views.generic import UpdateView
 from repository.models import Author
 from submission.models import LANGUAGE_CHOICES, Article, FrozenAuthor, Section
 from utils.setting_handler import get_setting
 
-from ..access_mode import get_access_mode_configuration
 from ..data import RevisionValidationData
 from ..mixins import AuthorFilteringView, StepCheckView
 from ..models import (
@@ -17,7 +16,6 @@ from ..models import (
     ArticleCollaboration,
     RevisionArticleAuthorOrder,
     RevisionArticleCollaboration,
-    RevisionStorage,
 )
 from ..step6.views import get_conversion_status, get_files
 from ..step7.views import get_article_fundings
@@ -26,7 +24,6 @@ from ..workflow import (
     is_revision_confirm,
     is_revision_full,
     is_revision_metadata,
-    step_check_access_funding,
     step_check_select_issue,
 )
 from .forms import SubmissionStep8Form
@@ -51,29 +48,6 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
     step = 8
     template_name = "wjs_submission/step8/article_form.html"
     form_class = SubmissionStep8Form
-
-    def get(self, request, *args, **kwargs):
-        """
-        Handle HTTP GET requests for the specific view.
-
-        Validate the state of step 7 and ensure that the access mode selection
-        is properly configured. If the validation fails, redirects the user to
-        the relevant URL with a warning message. Otherwise, delegates the handling
-        to the parent class.
-
-        :param request: The HTTP request object.
-        :type request: HttpRequest
-        :param args: Additional positional arguments.
-        :param kwargs: Additional keyword arguments.
-        :rparam: HTTP response that either redirects to another page or proceeds
-                 with the parent class's behavior.
-        :rtype: HttpResponse
-        """
-        self.object = self.get_object()
-        if not self._validate_step7():
-            messages.warning(request, _("Please verify access mode selection."))
-            return HttpResponseRedirect(reverse("wjs_submission_7", kwargs={"article_id": self.object.pk}))
-        return super().get(request, *args, **kwargs)
 
     def get_success_url(self):
         """
@@ -103,6 +77,26 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
             title=self.object.title,
         )
 
+    @property
+    def message_error_text(self):
+        """
+        Get a textual message indicating errors in the submission status of an article.
+
+        This property returns a formatted message string that includes the title of the
+        article for which the action occurred. The message format differs depending on
+        whether the article is a revision or a new submission.
+
+        :return: A formatted message string describing the article submission status.
+        :rtype: str
+        """
+        if is_revision(self.object):
+            return _('Error during the revision for article "{title}"').format(
+                title=self.object.title,
+            )
+        return _('Error during the submission of "{title}"').format(
+            title=self.object.title,
+        )
+
     def form_valid(self, form):
         """
         Process the submitted form and sends a success message upon successful validation.
@@ -115,52 +109,22 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
         :param form: The submitted form to be validated.
         :return: HTTP response object returned after processing the form.
         """
-        response = super().form_valid(form)
-        messages.add_message(
-            self.request,
-            messages.SUCCESS,
-            self.message_text,
-        )
+        try:
+            response = super().form_valid(form)
+            messages.add_message(
+                self.request,
+                messages.SUCCESS,
+                self.message_text,
+            )
+        except ValidationError as e:
+            form.add_error(None, e)
+            response = super().form_invalid(form)
+            messages.add_message(
+                self.request,
+                messages.ERROR,
+                self.message_error_text,
+            )
         return response
-
-    def _step7_skipped(self) -> bool:
-        """
-        Determine whether step 7 is skipped based on access funding check.
-
-        :return: True if step 7 is skipped, False otherwise
-        :rtype: bool
-        """
-        return not step_check_access_funding(self.object.journal, self.object, self.request.user)
-
-    def _process_step7(self):
-        """
-        Assign the access mode configuration if the step7 is skipped.
-
-        :raises Exception: If exceptions occur during the process of fetching or saving the configuration
-        """
-        configuration = get_access_mode_configuration(self.request.user, self.object)
-        editable_revision = is_revision_full(self.object) or is_revision_metadata(self.object)
-        if not editable_revision and self._step7_skipped() and configuration.access_mode:
-            self.object.submission_data.access_mode = configuration.access_mode
-            self.object.submission_data.save()
-        if editable_revision and self._step7_skipped() and configuration.access_mode:
-            revision_storage = RevisionStorage.objects.get(article=self.object)
-            revision_storage.data["access_mode"] = configuration.access_mode.pk
-            revision_storage.save()
-
-    def _validate_step7(self):
-        """
-        Validate the access mode of the submission data.
-
-        Check whether the access mode within the submission data of the object
-        is valid and converts it to a boolean to determine its validity.
-
-        :return: Boolean indicating the validity of the access mode.
-        :rtype: bool
-        """
-        if is_revision_full(self.object):
-            return bool(self.object.revisionstorage.data["access_mode"]) or self._step7_skipped()
-        return bool(self.object.submission_data.access_mode) or self._step7_skipped()
 
     def get_form_kwargs(self):
         """
@@ -174,7 +138,6 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
         kwargs["request"] = self.request
         kwargs["step"] = self.step
         kwargs["revision"] = is_revision(self.object)
-        self._process_step7()
         return kwargs
 
     def _validate_revision_data(self, article: Article) -> RevisionValidationData:
@@ -232,51 +195,93 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
         enable_cas = get_setting("wjs_submission", "enable_cas", self.object.journal).processed_value
         enable_das = get_setting("wjs_submission", "enable_das", self.object.journal).processed_value
         context["files_data"] = {}
-        if context["is_revision_full"]:
+        if context["is_revision"]:
             context["article_data"] = self.object.revisionstorage.data
-            if enable_cas:
-                context["files_data"].update(
-                    {
-                        "cas": self.object.revisionstorage.data["cas"],
-                        "cas_display": self.object.submission_data.CasDeclaration.as_dict()[
-                            self.object.revisionstorage.data["cas"]
-                        ],
-                        "cas_url": self.object.revisionstorage.data["cas_url"],
-                        "cas_show_url": self.object.revisionstorage.data["cas"]
-                        == self.object.submission_data.CasDeclaration.URL.value,
-                    }
+            if context["is_revision_full"]:
+                context["article_data"] = self.object.revisionstorage.data
+                if enable_cas:
+                    context["files_data"].update(
+                        {
+                            "cas": self.object.revisionstorage.data["cas"],
+                            "cas_display": self.object.submission_data.CasDeclaration.as_dict()[
+                                self.object.revisionstorage.data["cas"]
+                            ],
+                            "cas_url": self.object.revisionstorage.data["cas_url"],
+                            "cas_show_url": self.object.revisionstorage.data["cas"]
+                            == self.object.submission_data.CasDeclaration.URL.value,
+                        }
+                    )
+                if enable_das:
+                    context["files_data"].update(
+                        {
+                            "das": self.object.revisionstorage.data["das"],
+                            "das_display": self.object.submission_data.DasDeclaration.as_dict()[
+                                self.object.revisionstorage.data["das"]
+                            ],
+                            "das_url": self.object.revisionstorage.data["das_url"],
+                            "das_show_url": self.object.revisionstorage.data["das"]
+                            == self.object.submission_data.DasDeclaration.URL.value,
+                        }
+                    )
+            else:
+                if enable_cas:
+                    context["files_data"].update(
+                        {
+                            "cas": self.object.submission_data.cas,
+                            "cas_display": self.object.submission_data.get_cas_display(),
+                            "cas_url": self.object.submission_data.cas_url,
+                            "cas_show_url": self.object.submission_data.cas
+                            == self.object.submission_data.CasDeclaration.URL.value,
+                        }
+                    )
+                if enable_das:
+                    context["files_data"].update(
+                        {
+                            "das": self.object.submission_data.das,
+                            "das_display": self.object.submission_data.get_das_display(),
+                            "das_url": self.object.submission_data.das_url,
+                            "das_show_url": self.object.submission_data.das
+                            == self.object.submission_data.DasDeclaration.URL.value,
+                        }
+                    )
+            if context["is_revision_full"] or context["is_revision_metadata"]:
+                if context["article_data"].get("language"):
+                    context["article_data"]["language"] = dict(LANGUAGE_CHOICES)[context["article_data"]["language"]]
+                if context["article_data"].get("section"):
+                    context["article_data"]["section"] = Section.objects.get(pk=context["article_data"]["section"])
+                context["access_mode"] = AccessModeJournal.objects.get(
+                    journal=self.object.journal, access_mode_id=context["article_data"].get("access_mode", None)
                 )
-            if enable_das:
-                context["files_data"].update(
-                    {
-                        "das": self.object.revisionstorage.data["das"],
-                        "das_display": self.object.submission_data.DasDeclaration.as_dict()[
-                            self.object.revisionstorage.data["das"]
-                        ],
-                        "das_url": self.object.revisionstorage.data["das_url"],
-                        "das_show_url": self.object.revisionstorage.data["das"]
-                        == self.object.submission_data.DasDeclaration.URL.value,
-                    }
+                context["correspondence_author"] = Account.objects.get(
+                    pk=context["article_data"]["correspondence_author"]
                 )
-            if context["article_data"].get("language"):
-                context["article_data"]["language"] = dict(LANGUAGE_CHOICES)[context["article_data"]["language"]]
-            if context["article_data"].get("section"):
-                context["article_data"]["section"] = Section.objects.get(pk=context["article_data"]["section"])
-            context["access_mode"] = AccessModeJournal.objects.get(
-                journal=self.object.journal, access_mode_id=context["article_data"].get("access_mode", None)
-            )
-            context["correspondence_author"] = Account.objects.get(pk=context["article_data"]["correspondence_author"])
-            if context["article_data"].get("affiliation_pk", None):
-                context["affiliation"] = ControlledAffiliation.objects.get(
-                    pk=context["article_data"]["affiliation_pk"]
+                if context["article_data"].get("affiliation_pk", None):
+                    context["affiliation"] = ControlledAffiliation.objects.get(
+                        pk=context["article_data"]["affiliation_pk"]
+                    )
+                context["authors_contributions"] = self.object.revisionstorage.data.get("authors_contributions")
+                context["article_data"]["special_request"] = self.object.revisionstorage.data.get(
+                    "special_request", ""
                 )
+                context["article_data"]["comments_editor"] = self.object.revisionstorage.data.get(
+                    "comments_editor", ""
+                )
+            else:
+                context["article_data"]["title"] = self.object.title
+                context["article_data"]["abstract"] = self.object.abstract
+                context["article_data"]["language"] = self.object.get_language_display()
+                context["article_data"]["section"] = self.object.section
+                context["access_mode"] = AccessModeJournal.objects.get(
+                    journal=self.object.journal, access_mode_id=self.object.submission_data.access_mode.pk
+                )
+                context["correspondence_author"] = self.object.correspondence_author
+                context["affiliation"] = self.object.submission_data.affiliation
+                context["article_data"]["special_request"] = self.object.submission_data.special_request
+            if context["is_revision_full"] or context["is_revision_confirm"]:
+                cover_file = self.object.revisionstorage.data.get("cover_letter_file", "")
+                if cover_file:
+                    context["article_data"]["cover_letter_file"] = CoreFile.objects.get(pk=cover_file)
             context["validate_revision_data"] = self._validate_revision_data(self.object)
-            context["authors_contributions"] = self.object.revisionstorage.data.get("authors_contributions")
-            context["article_data"]["special_request"] = self.object.revisionstorage.data.get("special_request", "")
-            context["article_data"]["comments_editor"] = self.object.revisionstorage.data.get("comments_editor", "")
-            cover_file = self.object.revisionstorage.data.get("cover_letter_file", "")
-            if cover_file:
-                context["article_data"]["cover_letter_file"] = CoreFile.objects.get(pk=cover_file)
         else:
             context["article_data"] = self.object
             if enable_cas:
@@ -304,27 +309,9 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
             )
             context["correspondence_author"] = self.object.correspondence_author
             context["affiliation"] = self.object.submission_data.affiliation
-            if context["is_revision"]:
-                if title := self.object.revisionstorage.data.get("title"):
-                    context["article_data"].title = title
-                if abstract := self.object.revisionstorage.data.get("abstract"):
-                    context["article_data"].abstract = abstract
-                if language := self.object.revisionstorage.data.get("language"):
-                    context["article_data"].language = dict(LANGUAGE_CHOICES)[language]
-                if section := self.object.revisionstorage.data.get("section"):
-                    context["article_data"].section = Section.objects.get(pk=section)
-                context["article_data"].special_request = self.object.revisionstorage.data.get("special_request", "")
-                context["article_data"].comments_editor = self.object.revisionstorage.data.get("comments_editor", "")
-                cover_file = self.object.revisionstorage.data.get("cover_letter_file", "")
-                if cover_file:
-                    context["article_data"]["cover_letter_file"] = CoreFile.objects.get(pk=cover_file)
-                context["article_data"].competing_interests = self.object.revisionstorage.data.get(
-                    "competing_interests", ""
-                )
-            else:
-                context["article_data"].language = self.object.get_language_display()
-                context["article_data"].special_request = self.object.submission_data.special_request
-                context["article_data"].cover_letter_file = self.object.submission_data.cover_letter_file
+            context["article_data"].language = self.object.get_language_display()
+            context["article_data"].special_request = self.object.submission_data.special_request
+            context["article_data"].cover_letter_file = self.object.submission_data.cover_letter_file
             context["validate_revision_data"] = self._validate_revision_data(self.object)
 
         # Include files (manuscript_files, data_figure_files, etc.)
