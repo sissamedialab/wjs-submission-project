@@ -173,7 +173,7 @@ def is_submission(article: Article) -> bool:
 
 def is_revision_confirm(article: Article) -> bool:
     """Tell if the given article is undergoing a confirm-previous-version revision submission."""
-    if not article:
+    if not article or not article.pk:
         return False
     try:
         revision_storage = RevisionStorage.objects.get(article=article)
@@ -184,7 +184,7 @@ def is_revision_confirm(article: Article) -> bool:
 
 def is_revision_metadata(article: Article) -> bool:
     """Tell if the given article is undergoing metadata-change revision submission."""
-    if not article:
+    if not article or not article.pk:
         return False
     try:
         revision_storage = RevisionStorage.objects.get(article=article)
@@ -195,7 +195,7 @@ def is_revision_metadata(article: Article) -> bool:
 
 def is_revision_full(article: Article) -> bool:
     """Tell if the given article is undergoing a full revision submission."""
-    if not article:
+    if not article or not article.pk:
         return False
     try:
         revision_storage = RevisionStorage.objects.get(article=article)

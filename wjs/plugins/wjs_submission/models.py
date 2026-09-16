@@ -390,7 +390,7 @@ class ArticleCollaboration(models.Model):
     collaboration = models.ForeignKey(Collaboration, on_delete=models.CASCADE, related_name="articles")
     relation = models.CharField(
         max_length=32,
-        choices=CollaborationRelation.choices,
+        choices=CollaborationRelation,
         default="by",
         help_text=_("Indicates whether the article was written by or on behalf of the collaboration"),
     )
@@ -508,7 +508,7 @@ class RevisionArticleCollaboration(models.Model):
     collaboration = models.ForeignKey(Collaboration, on_delete=models.CASCADE, related_name="revision_storages")
     relation = models.CharField(
         max_length=32,
-        choices=CollaborationRelation.choices,
+        choices=CollaborationRelation,
         default="by",
         help_text=_("Indicates whether the article was written by or on behalf of the collaboration"),
     )
