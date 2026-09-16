@@ -34,11 +34,10 @@ class CollaborationAdmin(admin.ModelAdmin):
     change_list_template = "admin/wjs_submission/collaboration/change_list.html"
     inlines = [ArticleCollaborationInline]
 
+    @admin.display(description="Articles")
     def article_list(self, obj):  # noqa: PLR6301
         """Return a comma-separated list of the first five article titles for this collaboration."""
         return ", ".join(obj.articles.values_list("article__title", flat=True)[:5])
-
-    article_list.short_description = "Articles"
 
     def get_urls(self):
         """

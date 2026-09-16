@@ -51,7 +51,6 @@ run-tests:
 
   # NB: Must match with test_settings.DATABASES
   variables:
-    JANEWAY_VERSION: "production"
     POSTGRES_USER: janeway
     POSTGRES_PASSWORD: janeway
     POSTGRES_DB: janeway
@@ -67,7 +66,7 @@ run-tests:
     PYTHONPATH: ${CI_PROJECT_DIR}
 
   services:
-    - name: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/postgres:13.8
+    - name: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/postgres:17
       alias: db
       command: [
         "postgres",
