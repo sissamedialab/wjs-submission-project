@@ -8,7 +8,6 @@ from submission.models import STAGE_UNASSIGNED, Article
 from utils.logger import get_logger
 
 from ..events import SubmissionEvent
-from ..workflow import is_correction
 
 logger = get_logger(__name__)
 
@@ -66,15 +65,7 @@ class CompleteSubmission:
         """
         with transaction.atomic():
             self.assign_projected_issue()
-            if is_correction(self.article):
-                self.article.date_submitted = now()
-                self.article.stage = STAGE_UNASSIGNED
-                event_logic.Events.raise_event(
-                    SubmissionEvent.ON_CORRECTION_SUBMISSION_COMPLETED,
-                    article=self.article,
-                    request=self.request,
-                )
-            elif self.first_submission:
+            if self.first_submission:
                 self.article.date_submitted = now()
                 self.article.stage = STAGE_UNASSIGNED
                 self.article.save()
