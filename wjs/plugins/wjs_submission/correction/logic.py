@@ -137,7 +137,7 @@ class SetupCorrectionStorage:
             journal=self.from_article.journal,
             section=section,
             stage=STAGE_UNSUBMITTED,
-            current_step=1,
+            current_step=0,
             correspondence_author=user,
         )
 
