@@ -27,7 +27,13 @@ class SubmissionStep5Form(ArticleInfo):
         Initialise the ArticleInfo form and assign proper attributes to set required fields.
         """
         self.step = kwargs.pop("step")
+        self.is_correction = kwargs.pop("is_correction", False)
         super().__init__(*args, **kwargs)
+        if self.is_correction:
+            self.fields["title"].widget.attrs["readonly"] = True
+            self.fields["title"].required = False
+            self.fields["abstract"].required = False
+            self.fields.pop("section")
         if "language" in self.fields:
             self.fields["language"].required = True
             self.fields["language"].choices = get_article_language_choices(self.instance.journal)
@@ -45,6 +51,9 @@ class SubmissionStep5Form(ArticleInfo):
                 else:
                     self.fields[field].widget.attrs["required"] = True
                     self.fields[field].help_text = _("Required")
+            else:
+                self.fields[field].widget.attrs["required"] = False
+                self.fields[field].help_text = ""
 
     def _validate_metadata(self, cleaned_data: dict[str, Any] | None):
         """

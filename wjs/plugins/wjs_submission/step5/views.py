@@ -3,7 +3,7 @@ from django.views.generic import UpdateView
 from submission.models import Article
 
 from ..mixins import AuthorFilteringView, StepCheckView
-from ..workflow import is_revision
+from ..workflow import is_correction, is_revision
 from .forms import RevisionStep5Form, SubmissionStep5Form
 
 
@@ -41,6 +41,7 @@ class SubmissionStep5View(AuthorFilteringView, StepCheckView, UpdateView):
         kwargs = super().get_form_kwargs()
         kwargs["step"] = self.step
         kwargs["journal"] = self.request.journal
+        kwargs["is_correction"] = is_correction(self.object)
         return kwargs
 
     def form_valid(self, form):

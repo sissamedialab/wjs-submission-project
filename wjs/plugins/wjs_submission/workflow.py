@@ -253,14 +253,13 @@ def step_check_select_issue(
     - open_for_submission() -> uses date_open and date_close to filter out outdated or future issues
     - current_journal() -> only returns issues for the current journal
     """
-    if is_correction(article):
-        return False
+    correction = is_correction(article)
     submission = is_submission(article)
     revision_confirm = is_revision_confirm(article)
     revision_metadata = is_revision_metadata(article)
     revision_revision = is_revision_full(article)
     enabled_conditions = submission
-    disabled_conditions = revision_confirm or revision_metadata or revision_revision
+    disabled_conditions = revision_confirm or revision_metadata or revision_revision or correction
     if not enabled_conditions or disabled_conditions:
         return False
     return Issue.objects.collection().by_user(user).open_for_submission().current_journal(journal).exists()
@@ -271,14 +270,13 @@ def step_check_keywords(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
-    if is_correction(article):
-        return False
+    correction = is_correction(article)
     submission = is_submission(article)
     revision_confirm = is_revision_confirm(article)
     revision_metadata = is_revision_metadata(article)
     revision_revision = is_revision_full(article)
     enabled_conditions = submission
-    disabled_conditions = revision_confirm or revision_metadata or revision_revision
+    disabled_conditions = revision_confirm or revision_metadata or revision_revision or correction
     return enabled_conditions and not disabled_conditions
 
 
@@ -287,14 +285,13 @@ def step_check_authors(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
-    if is_correction(article):
-        return False
+    correction = is_correction(article)
     submission = is_submission(article)
     revision_confirm = is_revision_confirm(article)
     revision_metadata = is_revision_metadata(article)
     revision_revision = is_revision_full(article)
     enabled_conditions = submission or revision_metadata or revision_revision
-    disabled_conditions = revision_confirm
+    disabled_conditions = revision_confirm or correction
     return enabled_conditions and not disabled_conditions
 
 
@@ -303,13 +300,12 @@ def step_check_metadata(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
-    if is_correction(article):
-        return False
+    correction = is_correction(article)
     submission = is_submission(article)
     revision_confirm = is_revision_confirm(article)
     revision_metadata = is_revision_metadata(article)
     revision_revision = is_revision_full(article)
-    enabled_conditions = submission or revision_metadata or revision_revision
+    enabled_conditions = submission or revision_metadata or revision_revision or correction
     disabled_conditions = revision_confirm
     return enabled_conditions and not disabled_conditions
 
@@ -319,13 +315,12 @@ def step_check_files(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
-    if is_correction(article):
-        return True
+    correction = is_correction(article)
     submission = is_submission(article)
     revision_confirm = is_revision_confirm(article)
     revision_metadata = is_revision_metadata(article)
     revision_revision = is_revision_full(article)
-    enabled_conditions = submission or revision_revision
+    enabled_conditions = submission or revision_revision or correction
     disabled_conditions = revision_metadata or revision_confirm
     return enabled_conditions and not disabled_conditions
 
@@ -335,13 +330,12 @@ def step_check_access_funding(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
-    if is_correction(article):
-        return True
+    correction = is_correction(article)
     submission = is_submission(article)
     revision_confirm = is_revision_confirm(article)
     revision_metadata = is_revision_metadata(article)
     revision_revision = is_revision_full(article)
-    enabled_conditions = submission or revision_revision or revision_metadata
+    enabled_conditions = submission or revision_revision or revision_metadata or correction
     disabled_conditions = revision_confirm
     return enabled_conditions and not disabled_conditions
 

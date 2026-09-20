@@ -16,13 +16,21 @@
   <div class="wjs-submission-form__section mb-5">
     <div class="wjs-submission-form__section-content">
       {% bootstrap_form_errors form %}
-      {% bootstrap_field form.title label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" %}
+      {% if form.title.field.required %}
+        {% bootstrap_field form.title label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" %}
+      {% else %}
+        {% bootstrap_field form.title label_class="wjs-submission-form__form-label" %}
+      {% endif %}
     </div>
   </div>
   {% if form.abstract %}
     <div class="wjs-submission-form__section mb-5">
       <div class="wjs-submission-form__section-content">
+      {% if form.abstract.field.required %}
         {% bootstrap_field form.abstract label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" %}
+      {% else %}
+        {% bootstrap_field form.abstract label_class="wjs-submission-form__form-label" %}
+      {% endif %}
       </div>
     </div>
   {% endif %}
