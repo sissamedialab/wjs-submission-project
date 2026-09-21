@@ -223,7 +223,7 @@ def test_run_creates_correction_article(
     assert to_article.journal == published_article_with_frozen_authors.journal
     assert to_article.section.name == "Erratum"
     assert to_article.title.startswith("ERRATUM:")
-    assert to_article.abstract == published_article_with_frozen_authors.abstract
+    assert not to_article.abstract
     # Verify FrozenAuthor records were copied.
     assert FrozenAuthor.objects.filter(article=to_article).count() == 2
 
