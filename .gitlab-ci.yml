@@ -58,6 +58,12 @@ run-tests:
     DJANGO_SETTINGS_MODULE: core.cicd_test_settings
     # used by `manage.py ...`:
     JANEWAY_SETTINGS_MODULE: core.cicd_settings
+    # Hydra is a third-party Janeway plugin (article/journal linking): `setup_environment`
+    # clones it into src/plugins. The job token needs wjs/hydra to allow this project in its
+    # "CI/CD job token allowlist" (Settings > CI/CD > Job token permissions).
+    # NB: defined here (and not inherited from wjs-profile's `.run-tests`) because this job
+    # does not extend that template.
+    HYDRA_REPO: "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.sissamedialab.it/wjs/hydra.git"
     # Use the following after force-pushes:
     GIT_STRATEGY: clone
     # see e.g.:
