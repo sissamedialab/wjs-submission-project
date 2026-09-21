@@ -82,7 +82,7 @@ class SetupCorrectionStorage:
             return False
         return (
             user in (article.owner, article.correspondence_author)
-            or article.author_accounts.filter(pk=user.pk).exists()
+            or article.frozen_authors().filter(author=user).exists()
         )
 
     def _get_section(self) -> Section:
