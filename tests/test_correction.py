@@ -225,7 +225,10 @@ def test_run_creates_correction_article(
     assert to_article.title.startswith("ERRATUM:")
     assert not to_article.abstract
     # Verify FrozenAuthor records were copied.
-    assert FrozenAuthor.objects.filter(article=to_article).count() == 2
+    assert (
+        FrozenAuthor.objects.filter(article=to_article).count()
+        == FrozenAuthor.objects.filter(article=published_article_with_frozen_authors).count()
+    )
 
 
 @pytest.mark.django_db
