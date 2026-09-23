@@ -39,11 +39,27 @@ class CoreFileWrapper(DjangoFile):
         """
         file_path = Path(core_file.self_article_path())
         super().__init__(file_path.open("rb"), name=core_file.original_filename)
-        self.url = reverse(
+        self._core_file = core_file
+
+    @property
+    def url(self):
+        """
+        Generate and return the URL for downloading a single file.
+
+        The view has a custom permission checker that allows only the file owner, or any role holder
+        (author/reviewer/section editor/typesetter/director/superuser) for that specific article's workflow,
+        scoped to the exact file relation to access the file.
+
+        # TODO: This creates a dependency on wjs-review, but we must decide how to handle this dependency.
+
+        :return: The URL for the file download based on the associated article and file IDs.
+        :rtype: str
+        """
+        return reverse(
             "download_single_file",
             kwargs={
-                "article_id": core_file.article_id,
-                "file_id": core_file.pk,
+                "article_id": self._core_file.article_id,
+                "file_id": self._core_file.pk,
             },
         )
 

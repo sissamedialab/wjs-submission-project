@@ -286,9 +286,18 @@ class SubmissionStep1Form(forms.ModelForm):
                 self.instance.submission_data.use_of_ai_flag = bool(answer) if answer else False
                 self.instance.submission_data.save()
 
-        if self.cleaned_data.get("cover_letter_file"):
+        cover_letter_file = self.cleaned_data.get("cover_letter_file")
+        if isinstance(cover_letter_file, CoreFileWrapper):
+            # The author didn't touch the file field: FileField.clean() falls back to the initial
+            # value (a wrapper around the file already saved on a previous visit to this step).
+            # Nothing changed, so there is nothing to do.
+            pass
+        elif cover_letter_file:
+            # A genuinely new file: replace the previous one instead of leaving it orphaned.
+            if self.instance.submission_data.cover_letter_file:
+                self.instance.submission_data.cover_letter_file.delete()
             file = core_files.save_file_to_article(
-                file_to_handle=self.cleaned_data["cover_letter_file"],
+                file_to_handle=cover_letter_file,
                 article=self.instance,
                 owner=self.user,  # FIXME: change owner when changing correspondence author
                 label="Cover letter",  # NB: fixed label: no translation!
@@ -297,7 +306,7 @@ class SubmissionStep1Form(forms.ModelForm):
             file.save()
             self.instance.submission_data.cover_letter_file = file
             self.instance.submission_data.save()
-        elif self.cleaned_data.get("cover_letter_file") is False:
+        elif cover_letter_file is False:
             # False means that we should clear the existing file
             if self.instance.submission_data.cover_letter_file:
                 self.instance.submission_data.cover_letter_file.delete()
@@ -397,7 +406,9 @@ class RevisionConfirmForm(SubmissionStep1Form):
 
             if isinstance(field, forms.FileField):
                 if field_name == "cover_letter_file":
-                    if field_value is None:
+                    if field_value is None or isinstance(field_value, CoreFileWrapper):
+                        # Either there was never a file and none was uploaded, or the author left
+                        # the existing (draft) file untouched - nothing to do.
                         pass
                     elif field_value is False:
                         # "False" here means that we should clear the existing file
