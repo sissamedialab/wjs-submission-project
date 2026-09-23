@@ -419,6 +419,7 @@ class AddCollaborationForm(forms.ModelForm):
         :param commit: Whether to commit the instance to the database.
         :return: The saved Collaboration instance.
         """
+        self.instance.creator = self.user
         instance = super().save()
 
         if self.cleaned_data["file"]:
