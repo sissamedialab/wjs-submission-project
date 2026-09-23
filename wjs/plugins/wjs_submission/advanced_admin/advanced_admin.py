@@ -1,11 +1,47 @@
+from urllib.parse import urlencode
+
 from django.contrib import admin, messages
+from django.contrib.admin.widgets import RelatedFieldWidgetWrapper
 from django.http import HttpRequest
 from django.shortcuts import redirect, render, reverse
 from django.urls import path
+from django.utils.translation import gettext_lazy as _
 from wjs.advanced_admin.admin import advanced_admin_site
 
 from ..models import ArticleCollaboration, ArticleSubmission, Collaboration
 from .forms import ArticleSubmissionAdminForm, CollaborationMergeForm
+
+
+class ParamsWrapper(RelatedFieldWidgetWrapper):
+    def __init__(self, wrapper, extra):
+        """
+        Add wrapper to wrap some extra context to url params.
+        """
+        super().__init__(
+            wrapper.widget,
+            wrapper.rel,
+            wrapper.admin_site,
+            wrapper.can_add_related,
+            wrapper.can_change_related,
+            wrapper.can_delete_related,
+            wrapper.can_view_related,
+        )
+        self.extra = extra
+
+    def get_context(self, name, value, attrs):
+        """
+        Add extra context to url params.
+        """
+        ctx = super().get_context(name, value, attrs)
+        ctx["url_params"] += "&" + urlencode(self.extra)
+        return ctx
+
+
+class CollaborationProxy(Collaboration):
+    class Meta:
+        proxy = True
+        verbose_name = _("Manage collaboration")
+        verbose_name_plural = _("Manage collaborations")
 
 
 class ArticleCollaborationInline(admin.TabularInline):
@@ -16,7 +52,7 @@ class ArticleCollaborationInline(admin.TabularInline):
     fields = ("article", "relation", "order")
 
 
-@admin.register(Collaboration, site=advanced_admin_site)
+@admin.register(CollaborationProxy, site=advanced_admin_site)
 class CollaborationAdmin(admin.ModelAdmin):
     list_display = (
         "name",
@@ -28,7 +64,16 @@ class CollaborationAdmin(admin.ModelAdmin):
         "article_list",
     )
     list_filter = ("public_listing", "cluster", "author_list_mode", "collaboration_list_mode")
-    search_fields = ("name", "short_name", "institutional_email", "address", "notes", "logo_name", "articles__title")
+    search_fields = (
+        "name",
+        "short_name",
+        "institutional_email",
+        "address",
+        "notes",
+        "logo_name",
+        "articles__title",
+        "articles__identifier__identifier",
+    )
     raw_id_fields = ("logo", "creator", "linked_account")
     ordering = ("name",)
     change_list_template = "admin/wjs_submission/collaboration/change_list.html"
@@ -117,6 +162,18 @@ class ArticleSubmissionAdmin(admin.ModelAdmin):
     list_filter = ["article__journal"]
     ordering = ("-pk",)
     search_fields = ("article__identifier__identifier",)
+
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        """
+        Add article id in widget.
+        """
+        ff = super().formfield_for_dbfield(db_field, request, **kwargs)
+        if db_field.name == "cover_letter_file":
+            object_id = request.resolver_match.kwargs.get("object_id")
+            if object_id:
+                article_id = self.model.objects.get(id=object_id).article.id
+                ff.widget = ParamsWrapper(ff.widget, {"article": article_id})
+        return ff
 
     def get_list_filter(self, request):
         """
