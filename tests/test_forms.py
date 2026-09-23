@@ -19,6 +19,7 @@ from plugins.wjs_submission.settings import OA_CODE
 from plugins.wjs_submission.step1.forms import SubmissionStep1Form
 from plugins.wjs_submission.step2.forms import SubmissionStep2Form
 from plugins.wjs_submission.step3.forms import SubmissionStep3Form
+from plugins.wjs_submission.step4.forms import AddCollaborationForm
 from plugins.wjs_submission.step5.forms import SubmissionStep5Form
 from plugins.wjs_submission.step6.forms import SubmissionStep6Form
 from plugins.wjs_submission.step7.forms import SubmissionStep7Form
@@ -696,3 +697,20 @@ def test_keyword_handling_rollback(client, article):
     assert not response.context_data["form"].is_valid()
     weights = {ka.keyword_id: ka.weight for ka in KeywordArticle.objects.filter(article=article)}
     assert weights == {keyword.pk: 50}
+
+
+@pytest.mark.django_db
+def test_add_collaboration_form_sets_creator(article: Article, user: Account):
+    """Saving AddCollaborationForm records the current user as the collaboration's creator."""
+    form = AddCollaborationForm(
+        data={"name": "Test Collaboration", "institutional_email": "", "collaboration_relation": "by"},
+        is_revision=False,
+        article=article,
+        collaboration_relation="by",
+        user=user,
+    )
+
+    assert form.is_valid(), form.errors
+    collaboration = form.save()
+
+    assert collaboration.creator == user

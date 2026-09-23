@@ -130,13 +130,6 @@ JCOMASSISTANT_URL = "http://janeway-services.ud.sissamedialab.it:1234/jcomassist
 YAKUNIN_URL = "http://janeway-services.ud.sissamedialab.it:1235/watermark/"
 
 
-# Override the default bootstrap5 css as we customize it, and the css below will include all the bootstrap5 css plus
-# our own customizations
-# We might have an issue if we want to customize this per journal, but I would leave as an issue as it has a low impact
-# for now as it's just the dashboard css
-BOOTSTRAP5 = {"css_url": "/static/JCOM-theme/css/wjs_review.css"}
-
-
 SUBMISSION_ARTICLE_LANGUAGES = {
     None: [("eng", _("English"))],
     "JCOM": [
