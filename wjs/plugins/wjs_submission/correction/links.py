@@ -20,8 +20,8 @@ def correction_parent(article: Article) -> Article | None:
     return (
         Article.objects.filter(
             linked_from__to_article=article,
+            linked_from__relationship__in=CORRECTION_RELATIONSHIPS,
         )
-        .filter(linked_to__relationship__in=CORRECTION_RELATIONSHIPS)
         .order_by("linked_from__order", "linked_from__id")
         .first()
     )
