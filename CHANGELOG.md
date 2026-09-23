@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.1.1] - 2026-09-23
+
+- fix: fix accessibily issue
+- [specs#2981: Investigate possible bugs in submission and revision-submission related to cover-letter file](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2981) — fix(submission): stop orphaning/recreating the step1 cover-letter file on resubmit (!157)
+- [specs#2983: Quality of life admin improvementrs](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2983) — Feat: advanced admin (!152)
+- [specs#2984: As EO I want to create new files](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2984) — Feat: advanced admin (!152)
+- [specs#3162: 17.9: 2nd Feedback JCAP & other journals' whole flow with Django 5.2](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3162) — Fix: set creator on Collaboration created in step4 (!158)
+- [specs#2808: Drop JCOM-theme](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2808) — chore: drop dead BOOTSTRAP5 setting referencing JCOM-theme (!160)
+
 ## [2.1.0] - 2026-09-16
 
 - [specs#2595: Migrate to Django 5.2](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2595) — Django 5.2 migration (!151)
