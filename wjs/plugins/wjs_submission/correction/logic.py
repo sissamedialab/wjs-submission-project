@@ -7,6 +7,7 @@ Hydra ``LinkedArticle`` model.
 """
 
 import dataclasses
+from typing import Literal
 
 from django.db.transaction import atomic
 from identifiers.models import Identifier
@@ -25,17 +26,21 @@ from ..models import (
     ArticleCollaboration,
     ArticleSubmission,
 )
+from .links import article_children
 
 # Relationship labels (matching Hydra LinkType values).
 ERRATUM = "erratum"
 ADDENDUM = "addendum"
 CORRECTION_RELATIONSHIPS = (ERRATUM, ADDENDUM)
 
+CORRECTION_RELATIONSHIPS_TYPES = Literal[ERRATUM, ADDENDUM]
+
 # Section names corresponding to each relationship.
 SECTION_NAME_BY_RELATIONSHIP = {
     ERRATUM: "Erratum",
     ADDENDUM: "Addendum",
 }
+
 
 # Set of section names that identify correction articles.
 CORRECTION_SECTION_NAMES = set(SECTION_NAME_BY_RELATIONSHIP.values())
@@ -148,7 +153,8 @@ class SetupCorrectionStorage:
 
     def _find_existing_correction(self) -> Article | None:
         """Find an existing in-progress correction of the same type for the from_article."""
-        return find_existing_correction(self.from_article, self.relationship)
+        articles = article_children(self.from_article, [self.relationship])
+        return articles.first()
 
     def _link_articles(self):
         """Link from_article and to_article via the Hydra LinkedArticle model."""
