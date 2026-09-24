@@ -153,8 +153,10 @@ class SetupCorrectionStorage:
 
     def _find_existing_correction(self) -> Article | None:
         """Find an existing in-progress correction of the same type for the from_article."""
+        from plugins.wjs_review.logic import states_when_correction_must_be_ignored  # noqa: PLC0415
+
         articles = article_children(self.from_article, [self.relationship])
-        return articles.first()
+        return articles.exclude(articleworkflow__state__in=states_when_correction_must_be_ignored).first()
 
     def _link_articles(self):
         """Link from_article and to_article via the Hydra LinkedArticle model."""
