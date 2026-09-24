@@ -136,28 +136,33 @@ function updateRequiredChecklist() {
   let allSectionsFilled = true;
   const submitBtn = document.getElementById("submit-btn");
   const fieldsStatusList = document.getElementById("wjs-submission-form__fields-list");
+  const requiredFieldsWrapper = document.getElementById("wjs-submission-form__footer-required");
   const form = fieldsStatusList.closest("form");
 
-  fieldsStatusList.childNodes.forEach(fieldStatusItem => {
-    const fields = JSON.parse(fieldStatusItem.dataset.fields).map(field => {
-      return document.getElementById(field);
-    });
-    const filled = allFilled(form, fields);
-    if (debug)
-      console.log("Filled", fieldStatusItem, fields, filled);
-    if (filled) {
-      fieldStatusItem.classList.add("wjs-submission-form__label--filled");
-      if (!fieldStatusItem.querySelector(".visually-hidden")) {
-        const srOnlyFilledElement = document.createElement("span");
-        srOnlyFilledElement.classList.add("visually-hidden");
-        srOnlyFilledElement.textContent = "Done";
-        fieldStatusItem.appendChild(srOnlyFilledElement);
+  if (fieldsStatusList.childNodes.length) {
+    fieldsStatusList.childNodes.forEach(fieldStatusItem => {
+      const fields = JSON.parse(fieldStatusItem.dataset.fields).map(field => {
+        return document.getElementById(field);
+      });
+      const filled = allFilled(form, fields);
+      if (debug)
+        console.log("Filled", fieldStatusItem, fields, filled);
+      if (filled) {
+        fieldStatusItem.classList.add("wjs-submission-form__label--filled");
+        if (!fieldStatusItem.querySelector(".visually-hidden")) {
+          const srOnlyFilledElement = document.createElement("span");
+          srOnlyFilledElement.classList.add("visually-hidden");
+          srOnlyFilledElement.textContent = "Done";
+          fieldStatusItem.appendChild(srOnlyFilledElement);
+        }
+      } else {
+        fieldStatusItem.classList.remove("wjs-submission-form__label--filled");
+        allSectionsFilled = false;
       }
-    } else {
-      fieldStatusItem.classList.remove("wjs-submission-form__label--filled");
-      allSectionsFilled = false;
-    }
-  });
+    })
+  } else {
+    requiredFieldsWrapper.classList.add("visually-hidden");
+  }
 
   submitBtn.disabled = !allSectionsFilled;
 }
@@ -226,12 +231,12 @@ function addTinyMceListener(field) {
   const editor = tinymce.get(field.id);
 
   if (editor) {
-    editor.on("change", function() {
+    editor.on("change", function () {
       if (typeof updateRequiredChecklist === "function") {
         updateRequiredChecklist();
       }
     });
-    editor.on("keyup", function() {
+    editor.on("keyup", function () {
       if (typeof updateRequiredChecklist === "function") {
         updateRequiredChecklist();
       }
