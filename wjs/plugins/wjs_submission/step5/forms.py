@@ -33,7 +33,7 @@ class SubmissionStep5Form(ArticleInfo):
             self.fields["title"].widget.attrs["readonly"] = True
             self.fields["title"].required = False
             self.fields["abstract"].required = False
-            if "section":
+            if "section" in self.fields:
                 self.fields.pop("section")
         if "language" in self.fields:
             self.fields["language"].required = True
