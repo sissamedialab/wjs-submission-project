@@ -7,6 +7,7 @@ from django.urls import reverse
 from journal.models import Issue, Journal
 from submission.models import STAGE_UNSUBMITTED, Article
 
+from .correction.links import correction_parent
 from .models import RevisionStorage
 
 
@@ -220,11 +221,7 @@ def is_correction(article: Article) -> bool:
     except ImportError:
         return False
 
-    from .correction.logic import CORRECTION_SECTION_NAMES  # noqa: PLC0415
-
-    if not article.section or article.section.name not in CORRECTION_SECTION_NAMES:
-        return False
-    return article.linked_to.exists()
+    return correction_parent(article) is not None
 
 
 def step_incomplete(
