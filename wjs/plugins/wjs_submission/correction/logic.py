@@ -155,7 +155,7 @@ class SetupCorrectionStorage:
 
     def _find_existing_correction(self) -> Article | None:
         """Find an existing in-progress correction of the same type for the from_article."""
-        stages = (STAGE_UNSUBMITTED, STAGE_ARCHIVED, STAGE_REJECTED)
+        stages = (STAGE_ARCHIVED, STAGE_REJECTED)
 
         articles = article_children(self.from_article, [self.relationship])
         return articles.exclude(stage__in=stages).first()
