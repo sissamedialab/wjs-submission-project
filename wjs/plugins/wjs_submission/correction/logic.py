@@ -13,7 +13,9 @@ from django.db.transaction import atomic
 from identifiers.models import Identifier
 from plugins.hydra.models import LinkedArticle
 from submission.models import (
+    STAGE_ARCHIVED,
     STAGE_PUBLISHED,
+    STAGE_REJECTED,
     STAGE_UNSUBMITTED,
     Article,
     FrozenAuthor,
@@ -153,10 +155,10 @@ class SetupCorrectionStorage:
 
     def _find_existing_correction(self) -> Article | None:
         """Find an existing in-progress correction of the same type for the from_article."""
-        from plugins.wjs_review.logic import states_when_correction_must_be_ignored  # noqa: PLC0415
+        stages = (STAGE_UNSUBMITTED, STAGE_ARCHIVED, STAGE_REJECTED)
 
         articles = article_children(self.from_article, [self.relationship])
-        return articles.exclude(articleworkflow__state__in=states_when_correction_must_be_ignored).first()
+        return articles.exclude(stage__in=stages).first()
 
     def _link_articles(self):
         """Link from_article and to_article via the Hydra LinkedArticle model."""
