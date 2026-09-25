@@ -16,6 +16,11 @@ DEFAULT_KEYWORD_VALIDATORS = {
     "JHEP": ("plugins.wjs_submission.keywords.jhep_keyword_selection_rule",),
 }
 
+# A keyword filter returns what submission step 3 may offer: either a Keyword queryset (flat
+# journals) or a top-level KeywordGroup queryset (hierarchical journals). A KeywordGroup queryset
+# must carry the prefetches built by wjs.plugins.wjs_submission.keywords._with_keyword_prefetches:
+# the step 3 template renders its leaf checkboxes from the groups' reverse keyword relations, so a
+# queryset without them offers deactivated (and other journals') keywords regardless of its own filters.
 DEFAULT_KEYWORD_FILTERS = {
     None: "plugins.wjs_submission.keywords.get_keywords_by_journal",
     "JCOM": "plugins.wjs_submission.keywords.get_keywords_by_journal",

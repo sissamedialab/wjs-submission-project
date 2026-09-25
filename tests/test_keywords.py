@@ -1,5 +1,6 @@
 import pytest
 from django.db.models import QuerySet
+from django.utils import timezone
 from plugins.wjs_submission.keywords import (
     get_keywords_by_journal,
     get_keywords_by_journal_and_arxiv_category,
@@ -181,3 +182,128 @@ def test_get_keywords_by_journal_and_arxiv_category_groups(
     assert all(g.parent_group is None for g in qs)
     assert sorted(actual_groups) == sorted(expected_groups)
     assert isinstance(qs, QuerySet)
+
+
+@pytest.mark.django_db
+def test_get_keywords_by_journal_excludes_deactivated_flat(journal):
+    """Deactivated keywords are not offered on a journal with flat (non-hierarchical) keywords."""
+    active = Keyword.objects.create(word="active-kw")
+    stale = Keyword.objects.create(word="stale-kw", deactivated=timezone.now())
+    journal.keywords.add(active, stale)
+
+    assert list(get_keywords_by_journal(journal)) == [active], "only the active keyword is offered"
+
+
+@pytest.mark.django_db
+def test_get_keywords_by_journal_excludes_deactivated_hierarchical(jquant_journal):
+    """
+    Deactivated keywords are dropped from the groups they belong to.
+
+    A group whose keywords are all deactivated disappears from the result entirely.
+    """
+    journal = jquant_journal
+    live_group = KeywordGroup.objects.create(name="live-group")
+    dead_group = KeywordGroup.objects.create(name="dead-group")
+
+    active = Keyword.objects.create(word="active-kw", group=live_group)
+    stale = Keyword.objects.create(word="stale-kw", group=live_group, deactivated=timezone.now())
+    only_stale = Keyword.objects.create(word="only-stale-kw", group=dead_group, deactivated=timezone.now())
+    journal.keywords.add(active, stale, only_stale)
+
+    groups = list(get_keywords_by_journal(journal))
+
+    assert [group.name for group in groups] == ["live-group"], "the fully deactivated group is dropped"
+    assert list(groups[0].keywords.all()) == [active], "the deactivated keyword is dropped from its group"
+
+
+@pytest.mark.django_db
+def test_get_keywords_by_journal_excludes_deactivated_in_subgroups(jquant_journal):
+    """Deactivated keywords are dropped from subgroups, and emptied subgroups are not offered."""
+    journal = jquant_journal
+    parent = KeywordGroup.objects.create(name="parent-group")
+    live_subgroup = KeywordGroup.objects.create(name="live-subgroup", parent_group=parent, order=1)
+    dead_subgroup = KeywordGroup.objects.create(name="dead-subgroup", parent_group=parent, order=2)
+
+    active = Keyword.objects.create(word="active-kw", group=live_subgroup)
+    stale = Keyword.objects.create(word="stale-kw", group=live_subgroup, deactivated=timezone.now())
+    only_stale = Keyword.objects.create(word="only-stale-kw", group=dead_subgroup, deactivated=timezone.now())
+    journal.keywords.add(active, stale, only_stale)
+
+    groups = list(get_keywords_by_journal(journal))
+
+    assert [group.name for group in groups] == ["parent-group"], "the parent group is still offered"
+    subgroups = list(groups[0].keywordgroup_set.all())
+    assert [subgroup.name for subgroup in subgroups] == ["live-subgroup"], "the emptied subgroup is dropped"
+    assert list(subgroups[0].keywords.all()) == [active], "the deactivated keyword is dropped from its subgroup"
+
+
+@pytest.mark.django_db
+def test_get_keywords_by_journal_keywords_are_journal_scoped(jquant_journal, journal):
+    """Keywords offered inside a group belong to the requested journal only."""
+    shared_group = KeywordGroup.objects.create(name="shared-group")
+    ours = Keyword.objects.create(word="ours-kw", group=shared_group)
+    theirs = Keyword.objects.create(word="theirs-kw", group=shared_group)
+    jquant_journal.keywords.add(ours)
+    journal.keywords.add(theirs)
+
+    groups = list(get_keywords_by_journal(jquant_journal))
+
+    assert [group.name for group in groups] == ["shared-group"], "the shared group is offered"
+    assert list(groups[0].keywords.all()) == [ours], "another journal's keyword must not leak into the group"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(("arxiv_category", "group_name"), [("hep-ex", "hep-ex"), ("hep-ph", "group_main")])
+def test_get_keywords_by_journal_and_arxiv_category_excludes_deactivated(jhep_journal, arxiv_category, group_name):
+    """Deactivated keywords are dropped for both arXiv category branches."""
+    journal = jhep_journal
+    group = KeywordGroup.objects.create(name=group_name)
+
+    active = Keyword.objects.create(word="active-kw", group=group)
+    stale = Keyword.objects.create(word="stale-kw", group=group, deactivated=timezone.now())
+    journal.keywords.add(active, stale)
+
+    groups = list(get_keywords_by_journal_and_arxiv_category(journal, arxiv_category=arxiv_category))
+
+    assert [returned.name for returned in groups] == [group_name], "the group is still offered"
+    assert list(groups[0].keywords.all()) == [active], "the deactivated keyword is dropped from its group"
+
+
+@pytest.mark.django_db
+def test_get_keywords_by_journal_and_arxiv_category_drops_fully_deactivated_group(jhep_journal):
+    """A group whose keywords are all deactivated is not offered for JHEP."""
+    journal = jhep_journal
+    live_group = KeywordGroup.objects.create(name="group_main")
+    dead_group = KeywordGroup.objects.create(name="group_dead")
+
+    active = Keyword.objects.create(word="active-kw", group=live_group)
+    only_stale = Keyword.objects.create(word="only-stale-kw", group=dead_group, deactivated=timezone.now())
+    journal.keywords.add(active, only_stale)
+
+    groups = list(get_keywords_by_journal_and_arxiv_category(journal, arxiv_category="hep-ph"))
+
+    assert [group.name for group in groups] == ["group_main"], "the fully deactivated group is dropped"
+    assert list(groups[0].keywords.all()) == [active], "only the active keyword is offered"
+
+
+@pytest.mark.django_db
+def test_get_keywords_by_journal_prefetches_the_whole_group_tree(django_assert_num_queries, jquant_journal):
+    """
+    Walking the returned group tree must not issue a query per group.
+
+    This pins the prefetching in place: a refactor dropping it would both reintroduce an N+1 and
+    silently stop filtering the keywords the step 3 template actually renders.
+    """
+    journal = jquant_journal
+    for index in range(3):
+        parent = KeywordGroup.objects.create(name=f"parent-{index}")
+        subgroup = KeywordGroup.objects.create(name=f"subgroup-{index}", parent_group=parent)
+        keyword = Keyword.objects.create(word=f"kw-{index}", group=subgroup)
+        journal.keywords.add(keyword)
+
+    # One query for the groups themselves, plus one per prefetched relation.
+    with django_assert_num_queries(4):
+        for group in get_keywords_by_journal(journal):
+            for subgroup in group.keywordgroup_set.all():
+                list(subgroup.keywords.all())
+            list(group.keywords.all())
