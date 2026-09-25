@@ -6,6 +6,7 @@ from core.models import Account
 from django.conf import settings
 from django.test import Client
 from django.urls import reverse
+from django.utils import timezone
 from journal.models import Journal
 from plugins.wjs_submission.models import (
     AccessMode,
@@ -590,3 +591,65 @@ def test_submission_step8_access_mode_verify(fake_request, article):
     article.submission_data.save()
     response = view_obj.get(fake_request)
     assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_deactivated_keywords_not_rendered_hierarchical(hierarchical_keywords, client, article):
+    """Deactivated keywords never reach the rendered step 3 form on a hierarchical journal."""
+    journal = article.journal
+    group = KeywordGroup.objects.create(name="group1")
+    subgroup = KeywordGroup.objects.create(name="subgroup1", parent_group=group)
+
+    visible = Keyword.objects.create(word="visible-kw", group=subgroup)
+    hidden = Keyword.objects.create(word="hidden-kw", group=subgroup, deactivated=timezone.now())
+    journal.keywords.add(visible, hidden)
+
+    client.force_login(article.owner)
+    url = reverse("wjs_submission_3", kwargs={"article_id": article.pk})
+    content = client.get(url).content.decode()
+
+    assert "visible-kw" in content, "the active keyword must be offered"
+    assert "hidden-kw" not in content, "the deactivated keyword must not be offered"
+
+
+@pytest.mark.django_db
+def test_deactivated_keywords_not_rendered_flat(client, article):
+    """Deactivated keywords never reach the rendered step 3 form on a flat journal."""
+    journal = article.journal
+
+    visible = Keyword.objects.create(word="visible-kw")
+    hidden = Keyword.objects.create(word="hidden-kw", deactivated=timezone.now())
+    journal.keywords.add(visible, hidden)
+
+    client.force_login(article.owner)
+    url = reverse("wjs_submission_3", kwargs={"article_id": article.pk})
+    content = client.get(url).content.decode()
+
+    assert "visible-kw" in content, "the active keyword must be offered"
+    assert "hidden-kw" not in content, "the deactivated keyword must not be offered"
+
+
+@pytest.mark.django_db
+def test_group_with_only_deactivated_subgroup_still_offers_its_own_keywords(hierarchical_keywords, client, article):
+    """
+    A group keeps offering its direct keywords when all of its subgroups are emptied.
+
+    The step 3 template picks between the subgroup accordion and the flat keyword list by testing
+    ``group.keywordgroup_set``. That test must read the same filtered prefetch the loop below it
+    iterates, otherwise the group renders an empty accordion and its own active keywords become
+    unselectable.
+    """
+    journal = article.journal
+    group = KeywordGroup.objects.create(name="group1")
+    dead_subgroup = KeywordGroup.objects.create(name="dead-subgroup", parent_group=group)
+
+    direct = Keyword.objects.create(word="direct-kw", group=group)
+    hidden = Keyword.objects.create(word="hidden-kw", group=dead_subgroup, deactivated=timezone.now())
+    journal.keywords.add(direct, hidden)
+
+    client.force_login(article.owner)
+    url = reverse("wjs_submission_3", kwargs={"article_id": article.pk})
+    content = client.get(url).content.decode()
+
+    assert "direct-kw" in content, "the group's own active keyword must stay selectable"
+    assert "hidden-kw" not in content, "the deactivated keyword must not be offered"
