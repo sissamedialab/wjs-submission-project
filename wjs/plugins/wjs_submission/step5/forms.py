@@ -27,7 +27,16 @@ class SubmissionStep5Form(ArticleInfo):
         Initialise the ArticleInfo form and assign proper attributes to set required fields.
         """
         self.step = kwargs.pop("step")
+        self._is_correction = kwargs.pop("is_correction", False)
+        self._section = None
         super().__init__(*args, **kwargs)
+        if self._is_correction:
+            self.fields["title"].widget.attrs["readonly"] = True
+            self.fields["title"].required = False
+            self.fields["abstract"].required = False
+            self._section = self.instance.section
+            if "section" in self.fields:
+                self.fields.pop("section")
         if "language" in self.fields:
             self.fields["language"].required = True
             self.fields["language"].choices = get_article_language_choices(self.instance.journal)
@@ -45,6 +54,9 @@ class SubmissionStep5Form(ArticleInfo):
                 else:
                     self.fields[field].widget.attrs["required"] = True
                     self.fields[field].help_text = _("Required")
+            else:
+                self.fields[field].widget.attrs["required"] = False
+                self.fields[field].help_text = ""
 
     def _validate_metadata(self, cleaned_data: dict[str, Any] | None):
         """
@@ -97,6 +109,11 @@ class SubmissionStep5Form(ArticleInfo):
         self.instance.current_step = max(self.instance.current_step, self.step)
         super().save(commit=commit, request=request)
         self.instance.refresh_from_db()
+        # for corrections we must restore the original section as janeway overwrites it in
+        # submission.models.SubmissionConfiguration.handle_defaults
+        if self._section and self._is_correction:
+            self.instance.section = self._section
+            self.instance.save(update_fields=["section"])
         for keyword in current_keywords:
             KeywordArticle.objects.create(
                 article=self.instance, keyword=keyword.keyword, order=keyword.order, weight=keyword.weight
