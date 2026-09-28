@@ -4,6 +4,7 @@
 
 {% block title %}
   {% if revision_storage %}{{ revision_storage.get_revision_flow_type_display }}
+  {% elif correction %}Submission of {{ article.title }}
   {% else %}New submission{% endif %}
 {% endblock title %}
 
