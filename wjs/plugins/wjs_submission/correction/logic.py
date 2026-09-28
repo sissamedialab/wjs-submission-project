@@ -7,11 +7,15 @@ Hydra ``LinkedArticle`` model.
 """
 
 import dataclasses
+from typing import Literal
 
 from django.db.transaction import atomic
 from identifiers.models import Identifier
+from plugins.hydra.models import LinkedArticle
 from submission.models import (
+    STAGE_ARCHIVED,
     STAGE_PUBLISHED,
+    STAGE_REJECTED,
     STAGE_UNSUBMITTED,
     Article,
     FrozenAuthor,
@@ -24,24 +28,21 @@ from ..models import (
     ArticleCollaboration,
     ArticleSubmission,
 )
-
-# Hydra LinkedArticle is used for all article-to-article relationships.
-# The plugin may not be installed; in that case correction submission is a no-op.
-try:
-    from plugins.hydra.models import LinkedArticle
-except ImportError:
-    LinkedArticle = None  # type: ignore[assignment]
+from .links import article_children
 
 # Relationship labels (matching Hydra LinkType values).
 ERRATUM = "erratum"
 ADDENDUM = "addendum"
 CORRECTION_RELATIONSHIPS = (ERRATUM, ADDENDUM)
 
+CORRECTION_RELATIONSHIPS_TYPES = Literal[ERRATUM, ADDENDUM]
+
 # Section names corresponding to each relationship.
 SECTION_NAME_BY_RELATIONSHIP = {
     ERRATUM: "Erratum",
     ADDENDUM: "Addendum",
 }
+
 
 # Set of section names that identify correction articles.
 CORRECTION_SECTION_NAMES = set(SECTION_NAME_BY_RELATIONSHIP.values())
@@ -88,7 +89,7 @@ class SetupCorrectionStorage:
             return False
         return (
             user in (article.owner, article.correspondence_author)
-            or article.author_accounts.filter(pk=user.pk).exists()
+            or article.frozen_authors().filter(author=user).exists()
         )
 
     def _get_section(self) -> Section:
@@ -137,7 +138,7 @@ class SetupCorrectionStorage:
             journal=self.from_article.journal,
             section=section,
             stage=STAGE_UNSUBMITTED,
-            current_step=1,
+            current_step=0,
             correspondence_author=user,
         )
 
@@ -154,7 +155,10 @@ class SetupCorrectionStorage:
 
     def _find_existing_correction(self) -> Article | None:
         """Find an existing in-progress correction of the same type for the from_article."""
-        return find_existing_correction(self.from_article, self.relationship)
+        stages = (STAGE_ARCHIVED, STAGE_REJECTED)
+
+        articles = article_children(self.from_article, [self.relationship])
+        return articles.exclude(stage__in=stages).first()
 
     def _link_articles(self):
         """Link from_article and to_article via the Hydra LinkedArticle model."""
@@ -175,7 +179,6 @@ class SetupCorrectionStorage:
         """
         # Compute title before linking to avoid counting self.
         self.to_article.title = get_correction_title(self.from_article, self.relationship)
-        self.to_article.abstract = self.from_article.abstract
         self.to_article.license = self.from_article.license
         self.to_article.language = self.from_article.language
         self.to_article.save()
@@ -208,9 +211,6 @@ class SetupCorrectionStorage:
         # (corrections skip step 4 which normally creates them).
         frozen_authors = FrozenAuthor.objects.filter(article=self.from_article)
         for frozen_author in frozen_authors:
-            # Link the author account to the new article (if the author has an account).
-            if frozen_author.author:
-                self.to_article.authors.add(frozen_author.author)
             # Create a FrozenAuthor copy for the correction article.
             frozen_author.pk = None
             frozen_author.article = self.to_article
@@ -260,10 +260,7 @@ def find_existing_correction(from_article: Article, relationship: str) -> Articl
         or None if no such article is found.
     :rtype: Article | None
     """
-    if LinkedArticle is None:
-        return None
-
-    return (
+    link = (
         from_article.linked_from.filter(
             relationship=relationship,
             to_article__stage=STAGE_UNSUBMITTED,
@@ -271,6 +268,9 @@ def find_existing_correction(from_article: Article, relationship: str) -> Articl
         .select_related("to_article")
         .first()
     )
+    if link:
+        return link.to_article
+    return None
 
 
 def get_correction_title(from_article: Article, relationship: str) -> str:
@@ -284,9 +284,7 @@ def get_correction_title(from_article: Article, relationship: str) -> str:
     linked to ``from_article`` via Hydra ``LinkedArticle``, regardless of their stage.
     """
     prefix = relationship.upper()
-    count = 0
-    if LinkedArticle is not None:
-        count = from_article.linked_from.filter(relationship=relationship).count()
+    count = from_article.linked_from.filter(relationship=relationship).count()
     if count > 0:
         prefix = f"{prefix}{count + 1}"
     return f"{prefix}: {from_article.title}"
@@ -311,9 +309,6 @@ def get_or_create_linked_article(from_article: Article, to_article: Article, rel
     :return: The ``LinkedArticle`` instance (created or existing).
     :rtype: LinkedArticle
     """
-    if LinkedArticle is None:
-        return None
-
     link, _created = LinkedArticle.objects.get_or_create(
         from_article=from_article,
         to_article=to_article,
