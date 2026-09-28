@@ -13,3 +13,8 @@ class SubmissionEvent:
     # - ON_REVISIONS_COMPLETE and
     # - ON_WORKFLOW_ELEMENT_COMPLETE
     ON_REVISION_SUBMISSION_COMPLETED = "on_revision_submission_completed"
+
+    # This event will be triggered at the end of the submission of a correction (erratum/addendum).
+    # This event should trigger the journal-specific logic related to correction-submission
+    # (notifications, editor assignment, etc.)
+    ON_CORRECTION_SUBMISSION_COMPLETED = "on_correction_submission_completed"
