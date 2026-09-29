@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.1.2] - 2026-09-29
+
+- [specs#3201: Internal Server Error: /admin/wjs_submission/articlesubmission/](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3201) — fix: use exact lookup for article_id in admin search_fields (!162)
+- chore: bump wjs-themes
+- [specs#3171: 18.9: feedback errata/addenda](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3171) — fix: fix errata workflow (!159)
+- [specs#2873: Submit erratum / addendum](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2873) — fix: fix errata workflow (!159)
+- [specs#2873: Submit erratum / addendum](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2873) — feat: adapt labels to submission of erratum/addendum (!156)
+- [specs#2873: Submit erratum / addendum](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2873) — feat: erratum addendum (part 1/2) (!120)
+- [specs#3099: Test erratum / addendum](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3099) — feat: erratum addendum (part 1/2) (!120)
+- [specs#3056: Integrate hydra in erratum / addenda submission](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3056) — feat: erratum addendum (part 1/2) (!120)
+- [specs#3053: Respect Keyword.deactivated filter in submission](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3053) — fix(keywords): respect Keyword.deactivated when offering keywords (!161)
+
 ## [2.1.1] - 2026-09-23
 
 - fix: fix accessibily issue
