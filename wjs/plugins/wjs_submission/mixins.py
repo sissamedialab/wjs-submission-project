@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib.auth.mixins import UserPassesTestMixin
+from django.core.exceptions import FieldError
 from django.db.models import Q, QuerySet
 from django.http import HttpResponseRedirect
 from django.urls import reverse
@@ -12,6 +13,7 @@ from submission.models import (
 )
 from utils.setting_handler import get_setting
 
+from .correction.links import correction_parent
 from .models import RevisionStorage
 from .workflow import STEPS, Step
 
@@ -99,6 +101,11 @@ class StepCheckView(ModelFormMixin):
             journal=self.request.journal, article=self.object, user=self.request.user
         )
         context["step"] = self._step_object
+        try:
+            context["correction"] = correction_parent(self.object)
+        except FieldError:
+            # hydra not available
+            context["correction"] = None
         try:
             # If object does not exists we are not in a revision, "by definition".
             context["revision_storage"] = RevisionStorage.objects.get(article=self.object)

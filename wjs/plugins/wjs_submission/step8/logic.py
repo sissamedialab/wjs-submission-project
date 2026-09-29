@@ -54,6 +54,7 @@ class CompleteSubmission:
         - ON_WORKFLOW_ELEMENT_COMPLETE: On article submission only
         - ON_ARTICLE_SUBMITTED: On article submission only
         - ON_REVISION_SUBMISSION_COMPLETED: On revision only
+        - ON_CORRECTION_SUBMISSION_COMPLETED: On correction (erratum/addendum) only
         - ON_ACCESS_MODE_SELECTION: On article submission only (on revision, it's raised by
           wjs_review's PopulateRevisionStep7 instead, while the revision storage still exists;
           raising it here too would fire it twice for every revision)

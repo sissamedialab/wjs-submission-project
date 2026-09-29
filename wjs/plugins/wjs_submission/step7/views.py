@@ -1,3 +1,4 @@
+import contextlib
 from typing import Any
 
 from django.urls import reverse, reverse_lazy
@@ -5,7 +6,13 @@ from django.utils.functional import cached_property
 from django.views.generic import TemplateView, UpdateView
 from submission.models import Article
 
-from ..access_mode import AccessModeConfiguration, get_access_mode_configuration, get_access_modes_with_disclaimer
+from ..access_mode import (
+    AccessModeConfiguration,
+    get_access_mode_configuration,
+    get_access_modes_with_disclaimer,
+    get_configuration,
+)
+from ..correction.links import correction_parent
 from ..mixins import AuthorFilteringView, HtmxMixin, StepCheckView
 from ..models import (
     RevisionStorage,
@@ -13,9 +20,10 @@ from ..models import (
     SubmissionArticleFunding,
 )
 from ..step4 import ModalRenderingMixin
-from ..workflow import is_revision, is_revision_confirm, is_revision_full, is_revision_metadata
+from ..workflow import is_correction, is_revision, is_revision_confirm, is_revision_full, is_revision_metadata
 from .forms import (
     AddFundingForm,
+    CorrectionStep7Form,
     RevisionAddFundingForm,
     RevisionStep7Form,
     SubmissionStep7Form,
@@ -50,6 +58,8 @@ class SubmissionStep7View(AuthorFilteringView, StepCheckView, UpdateView):
         """
         if is_revision(self.object):
             return RevisionStep7Form
+        if is_correction(self.object):
+            return CorrectionStep7Form
         return SubmissionStep7Form
 
     def get_success_url(self):
@@ -71,7 +81,15 @@ class SubmissionStep7View(AuthorFilteringView, StepCheckView, UpdateView):
         :raises AttributeError: If `get_access_mode_configuration` or `super().get_object` encounters an error
         """
         obj = super().get_object(queryset)
-        self.access_mode_configuration = get_access_mode_configuration(self.request.user, obj)
+        parent_access_mode = None
+        # For corrections the original access mode configuration is used
+        if is_correction(obj):
+            with contextlib.suppress(AttributeError):
+                parent_access_mode = correction_parent(obj).submission_data.access_mode
+        if parent_access_mode:
+            self.access_mode_configuration = get_configuration(parent_access_mode, obj.journal, user_selectable=False)
+        else:
+            self.access_mode_configuration = get_access_mode_configuration(self.request.user, obj)
         return obj
 
     def get_form_kwargs(self):

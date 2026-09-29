@@ -1,4 +1,4 @@
-from django.db.models import Q, QuerySet
+from django.db.models import Prefetch, Q, QuerySet
 from journal.models import Journal
 from submission.models import Keyword, KeywordGroup
 
@@ -21,32 +21,82 @@ def get_keyword_range_by_journal(journal: Journal) -> tuple[int, int]:
     return KEYWORDS_INTERVAL_PER_JOURNAL.get(journal.code, KEYWORDS_INTERVAL_PER_JOURNAL[None])
 
 
+def _selectable_keywords(journal: Journal) -> QuerySet:
+    """
+    Build the base queryset of keywords an author may pick for a journal.
+
+    A keyword is selectable when it belongs to the journal and has not been deactivated
+    (``Keyword.deactivated`` is a nullable timestamp: ``NULL`` means still active).
+
+    :param journal: The journal whose selectable keywords are sought.
+    :type journal: Journal
+    :return: A queryset of active keywords belonging to the journal.
+    :rtype: QuerySet
+    """
+    return Keyword.objects.filter(journal=journal, deactivated__isnull=True)
+
+
+def _with_keyword_prefetches(groups: QuerySet, keywords: QuerySet) -> QuerySet:
+    """
+    Attach the selectable keywords to the group tree the step 3 template walks.
+
+    The template renders the leaf checkboxes from ``group.keywords.all`` and
+    ``subgroup.keywords.all`` — unfiltered reverse relations. Without these prefetches the
+    group-level filtering applied by the callers would never reach the rendered form, and
+    deactivated (or other journals') keywords would still be offered. Subgroups left without
+    any selectable keyword are dropped for the same reason.
+
+    :param groups: Queryset of top-level keyword groups to attach the prefetches to.
+    :type groups: QuerySet
+    :param keywords: Queryset of the keywords that may be offered.
+    :type keywords: QuerySet
+    :return: The same group queryset, with the filtered keyword tree prefetched.
+    :rtype: QuerySet
+    """
+    # The nested "keywordgroup_set__keywords" lookup must come *after* its parent
+    # "keywordgroup_set": Django resolves prefetch lookups in the given order, and reversing these
+    # two raises "'keywordgroup_set' lookup was already seen with a different queryset".
+    return groups.prefetch_related(
+        Prefetch("keywords", queryset=keywords.all()),
+        Prefetch(
+            "keywordgroup_set",
+            queryset=KeywordGroup.objects.filter(keywords__in=keywords).distinct().order_by("order"),
+        ),
+        Prefetch("keywordgroup_set__keywords", queryset=keywords.all()),
+    )
+
+
 def get_keywords_by_journal(journal: Journal, arxiv_category: str | None = None) -> QuerySet:
     """
     Fetch top-level keyword groups associated with the keywords of the provided journal.
 
     Keyword groups are filtered by matching keywords or by their association with matching groups.
+    Deactivated keywords are never offered, and a group left without any selectable keyword is
+    dropped from the result.
 
     :param journal: The journal object whose keywords will be used to retrieve associated top-level keyword groups.
     :type journal: Journal
 
-    :return: A queryset of distinct top-level keyword groups linked to the journal's keywords.
+    :return: A queryset of distinct top-level keyword groups linked to the journal's keywords, or — for journals
+        without hierarchical keywords — a queryset of the journal's selectable keywords.
     :rtype: QuerySet
 
     :raises: Any exception that occurs during queryset execution or database access.
     """
     # TODO: This is a limited implementation of the keyword filtering logic.
     #  It should be extended to support arbitrary keyword groups depth.
+    keywords = _selectable_keywords(journal)
     if journal.submissionconfiguration.hierarchical_keywords:
-        groups_all = KeywordGroup.objects.filter(keywords__journal=journal)
-        filter_by_keyword = Q(keywordgroup__in=groups_all) | Q(keywords__journal=journal)
-        return (
+        groups_all = KeywordGroup.objects.filter(keywords__in=keywords)
+        filter_by_keyword = Q(keywordgroup__in=groups_all) | Q(keywords__in=keywords)
+        groups = (
             KeywordGroup.objects.filter(parent_group__isnull=True)
             .filter(filter_by_keyword)
             .distinct()
             .order_by("parent_group", "order")
         )
-    return Keyword.objects.filter(journal=journal).distinct()
+        return _with_keyword_prefetches(groups, keywords)
+    return keywords.distinct()
 
 
 def get_keywords_by_journal_and_arxiv_category(journal, arxiv_category=None):
@@ -54,24 +104,28 @@ def get_keywords_by_journal_and_arxiv_category(journal, arxiv_category=None):
     Fetch top-level keyword groups associated with the keywords of JHEP.
 
     Filtered according to arxiv_category rules. Only includes keywords that belong to a group.
+    Deactivated keywords are never offered, and a group left without any selectable keyword is
+    dropped from the result.
 
     :param journal: Journal instance
     :param arxiv_category: Optional arXiv category
     :return: QuerySet of distinct top-level KeywordGroups
     """
-    qs = Keyword.objects.filter(journal=journal, group__isnull=False).select_related("group")
+    keywords = _selectable_keywords(journal).filter(group__isnull=False)
 
     if arxiv_category == "hep-ex":
-        qs = qs.filter(group__name="hep-ex")
+        keywords = keywords.filter(group__name="hep-ex")
     else:
-        qs = qs.exclude(group__name="hep-ex")
+        keywords = keywords.exclude(group__name="hep-ex")
 
-    groups_all = KeywordGroup.objects.filter(keywords__in=qs)
-    return (
+    groups_all = KeywordGroup.objects.filter(keywords__in=keywords)
+    groups = (
         KeywordGroup.objects.filter(parent_group__isnull=True)
-        .filter(Q(pk__in=groups_all) | Q(keywords__in=qs))
+        .filter(Q(pk__in=groups_all) | Q(keywords__in=keywords))
         .distinct()
+        .order_by("order")
     )
+    return _with_keyword_prefetches(groups, keywords)
 
 
 def always_pass(

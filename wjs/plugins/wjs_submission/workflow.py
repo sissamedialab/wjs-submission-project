@@ -7,6 +7,7 @@ from django.urls import reverse
 from journal.models import Issue, Journal
 from submission.models import STAGE_UNSUBMITTED, Article
 
+from .correction.links import correction_parent
 from .models import RevisionStorage
 
 
@@ -208,6 +209,21 @@ def is_revision(article: Article) -> bool:
     return is_revision_confirm(article) or is_revision_metadata(article) or is_revision_full(article)
 
 
+def is_correction(article: Article) -> bool:
+    """Tell if the given article is an erratum or addendum submission."""
+    if not article:
+        return False
+    # Hydra's LinkedArticle is used for all article-to-article relationships.
+    # We require a CROSSREF_UPDATES-type link AND the section to be Erratum/Addendum.
+    # The hydra plugin may not be installed; in that case no article is a correction.
+    try:
+        from plugins.hydra.models import LinkedArticle  # noqa: F401,PLC0415
+    except ImportError:
+        return False
+
+    return correction_parent(article) is not None
+
+
 def step_incomplete(
     journal: Journal,
     article: Article | None = None,
@@ -234,12 +250,13 @@ def step_check_select_issue(
     - open_for_submission() -> uses date_open and date_close to filter out outdated or future issues
     - current_journal() -> only returns issues for the current journal
     """
+    correction = is_correction(article)
     submission = is_submission(article)
     revision_confirm = is_revision_confirm(article)
     revision_metadata = is_revision_metadata(article)
     revision_revision = is_revision_full(article)
     enabled_conditions = submission
-    disabled_conditions = revision_confirm or revision_metadata or revision_revision
+    disabled_conditions = revision_confirm or revision_metadata or revision_revision or correction
     if not enabled_conditions or disabled_conditions:
         return False
     return Issue.objects.collection().by_user(user).open_for_submission().current_journal(journal).exists()
@@ -250,12 +267,13 @@ def step_check_keywords(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
+    correction = is_correction(article)
     submission = is_submission(article)
     revision_confirm = is_revision_confirm(article)
     revision_metadata = is_revision_metadata(article)
     revision_revision = is_revision_full(article)
     enabled_conditions = submission
-    disabled_conditions = revision_confirm or revision_metadata or revision_revision
+    disabled_conditions = revision_confirm or revision_metadata or revision_revision or correction
     return enabled_conditions and not disabled_conditions
 
 
@@ -264,12 +282,13 @@ def step_check_authors(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
+    correction = is_correction(article)
     submission = is_submission(article)
     revision_confirm = is_revision_confirm(article)
     revision_metadata = is_revision_metadata(article)
     revision_revision = is_revision_full(article)
     enabled_conditions = submission or revision_metadata or revision_revision
-    disabled_conditions = revision_confirm
+    disabled_conditions = revision_confirm or correction
     return enabled_conditions and not disabled_conditions
 
 
@@ -278,11 +297,12 @@ def step_check_metadata(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
+    correction = is_correction(article)
     submission = is_submission(article)
     revision_confirm = is_revision_confirm(article)
     revision_metadata = is_revision_metadata(article)
     revision_revision = is_revision_full(article)
-    enabled_conditions = submission or revision_metadata or revision_revision
+    enabled_conditions = submission or revision_metadata or revision_revision or correction
     disabled_conditions = revision_confirm
     return enabled_conditions and not disabled_conditions
 
@@ -292,11 +312,12 @@ def step_check_files(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
+    correction = is_correction(article)
     submission = is_submission(article)
     revision_confirm = is_revision_confirm(article)
     revision_metadata = is_revision_metadata(article)
     revision_revision = is_revision_full(article)
-    enabled_conditions = submission or revision_revision
+    enabled_conditions = submission or revision_revision or correction
     disabled_conditions = revision_metadata or revision_confirm
     return enabled_conditions and not disabled_conditions
 
@@ -306,11 +327,12 @@ def step_check_access_funding(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
+    correction = is_correction(article)
     submission = is_submission(article)
     revision_confirm = is_revision_confirm(article)
     revision_metadata = is_revision_metadata(article)
     revision_revision = is_revision_full(article)
-    enabled_conditions = submission or revision_revision or revision_metadata
+    enabled_conditions = submission or revision_revision or revision_metadata or correction
     disabled_conditions = revision_confirm
     return enabled_conditions and not disabled_conditions
 

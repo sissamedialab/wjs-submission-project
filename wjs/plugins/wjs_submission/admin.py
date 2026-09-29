@@ -14,7 +14,7 @@ from .models import (
 
 @admin.register(ArticleSubmission)
 class ArticleSubmissionAdmin(admin.ModelAdmin):
-    search_fields = ("article_id",)
+    search_fields = ("article_id__exact",)
 
 
 @admin.register(Collaboration)
@@ -60,5 +60,5 @@ class WhitelistedCorrespondenceAuthorsAdmin(admin.ModelAdmin):
 @admin.register(RevisionStorage)
 class RevisionStorageAdmin(admin.ModelAdmin):
     list_display = ("article_id", "revision_flow_type", "revision_step")
-    search_fields = ("article_id",)
+    search_fields = ("article_id__exact",)
     list_filter = ["article__journal"]

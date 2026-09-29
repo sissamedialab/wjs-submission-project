@@ -4,6 +4,7 @@
 
 {% block title %}
   {% if revision_storage %}{{ revision_storage.get_revision_flow_type_display }}
+  {% elif correction %}Submission of {{ article.title }}
   {% else %}New submission{% endif %}
 {% endblock title %}
 
@@ -19,7 +20,7 @@
       {% block submission_footer %}
         <div class="wjs-submission-form__footer">
           {% block submission_required_fields %}
-            <div class="mx-2 my-1">
+            <div class="mx-2 my-1" id="wjs-submission-form__footer-required">
               <h2 class="wjs-submission-form__footer-label fs-4">Required fields</h2>
               Fill in the following fields to enable the <strong>Save and Continue</strong> button and proceed to the next step:
             </div>
