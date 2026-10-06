@@ -71,8 +71,8 @@ class CollaborationAdmin(admin.ModelAdmin):
         "address",
         "notes",
         "logo_name",
-        "articles__title",
-        "articles__identifier__identifier",
+        "articles__article__title",
+        "articles__article__identifier__identifier",
     )
     raw_id_fields = ("logo", "creator", "linked_account")
     ordering = ("name",)
