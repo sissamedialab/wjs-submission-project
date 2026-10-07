@@ -2,7 +2,8 @@ from core.models import Account, ControlledAffiliation
 from core.models import File as CoreFile
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.urls import reverse_lazy
+from django.http import HttpResponseRedirect
+from django.urls import reverse, reverse_lazy
 from django.utils.translation import gettext_lazy as _
 from django.views.generic import UpdateView
 from repository.models import Author
@@ -49,6 +50,35 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
     step = 8
     template_name = "wjs_submission/step8/article_form.html"
     form_class = SubmissionStep8Form
+
+    def _get_access_mode_id(self) -> int | None:
+        """
+        Return the id of the access mode the review & submit step refers to.
+
+        Full and metadata revisions keep it in the revision storage, any other submission in the submission data.
+        """
+        if is_revision_full(self.object) or is_revision_metadata(self.object):
+            return self.object.revisionstorage.data.get("access_mode")
+        return self.object.submission_data.access_mode_id
+
+    def _verify_step(self, request, *args, **kwargs) -> HttpResponseRedirect | None:
+        """
+        Send the user back to step 7 if the access mode is not known.
+
+        The summary page cannot be rendered without an access mode: it is normally set by step 7, so it is missing if
+        step 7 has not been completed (or the access mode cannot be determined for the article).
+        """
+        if skip := super()._verify_step(request, *args, **kwargs):
+            return skip
+        self.object = self.get_object()
+        if self._get_access_mode_id() is None:
+            messages.add_message(
+                request,
+                messages.ERROR,
+                _("Cannot determine the access mode: please write to the editorial office for more information."),
+            )
+            return HttpResponseRedirect(reverse("wjs_submission_7", kwargs={"article_id": self.object.pk}))
+        return None
 
     def get_success_url(self):
         """

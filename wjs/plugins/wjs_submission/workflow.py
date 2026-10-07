@@ -327,6 +327,15 @@ def step_check_access_funding(
     article: Article | None = None,
     user: Account | None = None,
 ) -> bool:
+    """
+    Tell if step 7 (access mode and funding) is active for the given journal / article.
+
+    NOTE: step 8 (review & submit) cannot be rendered without an access mode, which is normally set by step 7:
+    ``SubmissionStep8View._verify_step`` sends the user back to step 7 when it is missing. If step 7 is ever made
+    inactive under specific conditions (for example when the access mode is fixed by the journal), check those
+    conditions against that redirect: an inactive step 7 that leaves the access mode unset would make the two steps
+    redirect to each other, and the access mode would have to be set elsewhere.
+    """
     correction = is_correction(article)
     submission = is_submission(article)
     revision_confirm = is_revision_confirm(article)
