@@ -4,6 +4,8 @@ from unittest.mock import patch
 import pytest
 from core.models import Account
 from django.conf import settings
+from django.contrib.messages import get_messages
+from django.http import HttpResponse
 from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
@@ -13,10 +15,10 @@ from plugins.wjs_submission.models import (
     ArticleCollaboration,
     ArticleSubmission,
     Collaboration,
+    RevisionStorage,
 )
 from plugins.wjs_submission.step1 import SubmissionStep1View
 from plugins.wjs_submission.step6 import SubmissionStep6View
-from plugins.wjs_submission.step8 import SubmissionStep8View
 from plugins.wjs_submission.views import SubmissionLastStepRedirectView
 from plugins.wjs_submission.workflow import STEPS
 from submission.models import (
@@ -560,37 +562,56 @@ def test_submission_step6_load_value(fake_request, article):
     assert form.initial["cas_url"] == "http://example.com"
 
 
-@pytest.mark.xfail
 @pytest.mark.django_db
-def test_submission_step8_access_mode_verify(fake_request, article):
+def test_submission_step8_access_mode_verify(client: Client, article: Article, install_plugins: Callable):
     """
-    Access mode verification in the eighth step of submission.
+    Step 8 is not rendered while the access mode is unknown: the user is sent back to step 7 with an error message.
 
-    This test function ensures that the access mode verification step during
-    the eighth submission step behaves according to defined requirements. When
-    the article's access mode has not been set, the response should redirect
-    to the previous step. If the access mode is set properly, the response
-    should return a successful status.
-
-    :param fake_request: The mock HTTP request object used to simulate user
-        interactions during the test.
-    :param article: The mock article object associated with the submission
-        process.
-    :return: None
+    Once the access mode is set the step is rendered.
     """
-    fake_request.user = article.owner
-    view_obj = SubmissionStep8View()
-    view_obj.kwargs = {"article_id": article.pk}
-    view_obj.object = article
-    view_obj.request = fake_request
-    assert article.submission_data.access_mode is None
-    response = view_obj.get(fake_request)
+    client.force_login(article.owner)
+    url = reverse("wjs_submission_8", kwargs={"article_id": article.pk})
+    assert article.submission_data.access_mode is None, "the article has not completed step 7"
+
+    response = client.get(url)
+
     assert response.status_code == 302
     assert response.headers["Location"] == reverse("wjs_submission_7", kwargs={"article_id": article.pk})
+    messages = [str(message) for message in get_messages(response.wsgi_request)]
+    assert any("Cannot determine the access mode" in message for message in messages), (
+        f"the user must be told why they were redirected: {messages}"
+    )
+
     article.submission_data.access_mode = AccessMode.objects.filter(parameters__journal=article.journal).first()
     article.submission_data.save()
-    response = view_obj.get(fake_request)
+    # The template uses tags provided by wjs-profile-project, which is not available in this repo's CI: the guard
+    # lets the request through and the context is built, the rendering itself is replaced.
+    with patch(
+        "plugins.wjs_submission.step8.views.SubmissionStep8View.render_to_response",
+        return_value=HttpResponse("rendered"),
+    ):
+        response = client.get(url)
     assert response.status_code == 200
+    assert response.content == b"rendered", "step 8 must be rendered once the access mode is set"
+
+
+@pytest.mark.parametrize("flow_type", RevisionStorage.RevisionFlowType.values)
+@pytest.mark.django_db
+def test_submission_step8_revision_without_access_mode_redirects(
+    client: Client, article: Article, install_plugins: Callable, flow_type: str
+):
+    """The same guard applies to every kind of revision without an access mode (stored or in the submission data)."""
+    RevisionStorage.objects.create(
+        article=article,
+        revision_flow_type=flow_type,
+        data={"access_mode": None},
+    )
+    client.force_login(article.owner)
+
+    response = client.get(reverse("wjs_submission_8", kwargs={"article_id": article.pk}))
+
+    assert response.status_code == 302
+    assert response.headers["Location"] == reverse("wjs_submission_7", kwargs={"article_id": article.pk})
 
 
 @pytest.mark.django_db
