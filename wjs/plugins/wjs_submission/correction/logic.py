@@ -176,6 +176,7 @@ class SetupCorrectionStorage:
         - access_mode = AccessMode.objects.get(code='open-access')
         - rights = AccessModeJournal for open-access + journal
         - license = from_article.license
+        - arxiv_category = from_article.submission_data.arxiv_category (empty if missing)
         """
         # Compute title before linking to avoid counting self.
         self.to_article.title = get_correction_title(self.from_article, self.relationship)
@@ -189,6 +190,15 @@ class SetupCorrectionStorage:
 
         # Create ArticleSubmission wrapper (needed by steps 6/7).
         ArticleSubmission.objects.get_or_create(article=self.to_article)
+        # Corrections skip the arXiv step: inherit the category shown next to the arXiv id.
+        # Write through to_article.submission_data, the instance saved again below.
+        self.to_article.submission_data.arxiv_category = (
+            ArticleSubmission.objects.filter(article=self.from_article)
+            .values_list("arxiv_category", flat=True)
+            .first()
+            or ""
+        )
+        self.to_article.submission_data.save()
 
         # Set access_mode and rights.
         try:
