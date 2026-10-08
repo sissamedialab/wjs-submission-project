@@ -21,6 +21,7 @@ from plugins.wjs_submission.correction.logic import (  # noqa: E402
     SetupCorrectionStorage,
     get_correction_title,
 )
+from plugins.wjs_submission.models import ArticleSubmission  # noqa: E402
 from plugins.wjs_submission.workflow import is_correction  # noqa: E402
 
 from tests.conftest import _user  # noqa: E402
@@ -293,3 +294,51 @@ def test_run_twice_does_not_corrupt_article(
     assert to_article2.title == original_title
     # Author count should not double.
     assert FrozenAuthor.objects.filter(article=to_article2).count() == original_author_count
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("relationship", "section_fixture"),
+    [(ERRATUM, "erratum_section"), (ADDENDUM, "addendum_section")],
+)
+def test_run_copies_arxiv_category(
+    published_article_with_frozen_authors: Article,
+    request_user: Account,
+    install_plugins: Callable,
+    relationship: str,
+    section_fixture: str,
+    request: pytest.FixtureRequest,
+):
+    """The correction inherits the arXiv category of the corrected article."""
+    request.getfixturevalue(section_fixture)
+    # ArticleSubmission is created by a post_save signal on Article.
+    ArticleSubmission.objects.filter(article=published_article_with_frozen_authors).update(
+        arxiv_category="astro-ph.CO"
+    )
+    setup = SetupCorrectionStorage(
+        article_id=published_article_with_frozen_authors.id,
+        relationship=relationship,
+        request=MagicMock(user=request_user),
+    )
+    to_article = setup.run()
+    to_article.refresh_from_db()
+    assert to_article.submission_data.arxiv_category == "astro-ph.CO"
+
+
+@pytest.mark.django_db
+def test_run_without_from_article_submission_data(
+    published_article_with_frozen_authors: Article,
+    request_user: Account,
+    erratum_section: Section,
+    install_plugins: Callable,
+):
+    """A corrected article without ArticleSubmission (legacy data) leaves the correction's category empty."""
+    ArticleSubmission.objects.filter(article=published_article_with_frozen_authors).delete()
+    setup = SetupCorrectionStorage(
+        article_id=published_article_with_frozen_authors.id,
+        relationship=ERRATUM,
+        request=MagicMock(user=request_user),
+    )
+    to_article = setup.run()
+    to_article.refresh_from_db()
+    assert not to_article.submission_data.arxiv_category
