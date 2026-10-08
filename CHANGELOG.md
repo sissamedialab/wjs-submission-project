@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.3] - 2026-10-08
+
+- [specs#3208: Internal Server Error: /plugins/wjs-submission/submission/4242/8/](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3208) — fix(step8): redirect to step 7 when the access mode is not known (!168)
+- [specs#3169: missing access mode added by import after upgrade to 2.1](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3169) — fix(step8): redirect to step 7 when the access mode is not known (!168)
+- [specs#3242: Remove the dependency of wjs-submission on wjs-profile-project code](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3242) — fix(step8): redirect to step 7 when the access mode is not known (!168)
+- [specs#3212: Errata / Addenda should have arXiv category on article page](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3212) — fix: copy arXiv category to errata and addenda (!166)
+- [specs#3179: Improve Collaboration advanced admin](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3179) — Fix collaborations advanced admin (!165)
+
 ## [2.1.2] - 2026-09-29
 
 - [specs#3201: Internal Server Error: /admin/wjs_submission/articlesubmission/](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3201) — fix: use exact lookup for article_id in admin search_fields (!162)
