@@ -1,5 +1,7 @@
+from core.models import ControlledAffiliation
 from django import forms
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 from submission.models import Licence
 
 from ..models import ArticleSubmission, Collaboration
@@ -40,6 +42,8 @@ class ArticleSubmissionAdminForm(forms.ModelForm):
     values are applied to the article only when the flag is set; otherwise the
     model's ``save()`` syncs license and rights from the ``AccessModeJournal``
     configuration.
+
+    The ``affiliation`` field is limited to the correspondence author's affiliations, plus the stored one.
     """
 
     # These fields live on the related Article, not on ArticleSubmission.
@@ -59,7 +63,14 @@ class ArticleSubmissionAdminForm(forms.ModelForm):
 
     class Meta:
         model = ArticleSubmission
-        fields = ["cover_letter_file", "access_mode", "license_override", "rights_override", "special_request"]
+        fields = [
+            "cover_letter_file",
+            "access_mode",
+            "affiliation",
+            "license_override",
+            "rights_override",
+            "special_request",
+        ]
 
     class Media:
         js = ("js/override_toggle.js",)
@@ -76,6 +87,7 @@ class ArticleSubmissionAdminForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
             article = self.instance.article
+            self.fields["affiliation"].queryset = self._get_affiliation_queryset(article)
             self.fields["article_license"].queryset = Licence.objects.filter(journal=article.journal)
             self.fields["article_license"].initial = article.license
             self.fields["article_rights"].initial = article.rights
@@ -102,6 +114,19 @@ class ArticleSubmissionAdminForm(forms.ModelForm):
                 self.fields["article_license"].disabled = True
             if not rights_override:
                 self.fields["article_rights"].disabled = True
+
+    def _get_affiliation_queryset(self, article):
+        """
+        Return the affiliations the EO can choose for the article.
+
+        Like submission step 4, these are the correspondence author's affiliations. The stored
+        affiliation is always included, so that an affiliation left from a previous correspondence
+        author does not make the whole form invalid.
+        """
+        choices = Q(pk=self.instance.affiliation_id) if self.instance.affiliation_id else Q(pk__in=[])
+        if article.correspondence_author_id:
+            choices |= Q(account_id=article.correspondence_author_id)
+        return ControlledAffiliation.objects.filter(choices)
 
     def save(self, commit=True):
         """
