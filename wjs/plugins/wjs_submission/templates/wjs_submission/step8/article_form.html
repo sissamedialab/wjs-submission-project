@@ -328,7 +328,7 @@
     {% if journal_settings.general.abstract_required %}
       <div class="wjs-submission-form__section-content mb-3">
         <label class="fw-bold">Abstract</label>
-        <div class="wjs-submission-form__text-area">{{ article_data.abstract|safe }}</div>
+        <div class="wjs-submission-form__text-area tex2jax_process">{{ article_data.abstract|safe }}</div>
       </div>
     {% endif %}
     {% if journal.submissionconfiguration.language %}
