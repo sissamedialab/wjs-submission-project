@@ -149,6 +149,7 @@ class ArticleSubmissionAdmin(admin.ModelAdmin):
     fields = (
         "cover_letter_file",
         "access_mode",
+        "affiliation",
         "license_override",
         "article_license",
         "rights_override",
