@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.1.4] - 2026-10-21
+
+- [specs#3270: Math is not rendered in abstract](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3270) — fix(step8): render mathjax on the abstract summary (!176)
+- [specs#3131: As EO I want imported papers to have affiliation](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3131) — feat: let the EO set the paper affiliation in the advanced admin (!170)
+
 ## [2.1.3] - 2026-10-08
 
 - [specs#3208: Internal Server Error: /plugins/wjs-submission/submission/4242/8/](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3208) — fix(step8): redirect to step 7 when the access mode is not known (!168)
