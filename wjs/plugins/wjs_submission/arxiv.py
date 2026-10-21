@@ -1,10 +1,10 @@
 import dataclasses
 import xml
 
-import defusedxml
 import requests
 from core import files as core_files
 from core.models import Account
+from defusedxml import ElementTree as DefusedET
 from django import forms
 from django.conf import settings
 from django.core.files import File
@@ -193,7 +193,7 @@ def fetch_arxiv_metadata(
         r = requests.get(url, headers=headers, timeout=30)
         r.raise_for_status()
 
-        root = defusedxml.ElementTree.fromstring(r.text)
+        root = DefusedET.fromstring(r.text)
         ns = {
             "atom": "http://www.w3.org/2005/Atom",
             "arxiv": "http://arxiv.org/schemas/atom",
@@ -220,7 +220,7 @@ def fetch_arxiv_metadata(
             and doi_elem.attrib.get("href")
         ):
             result["doi_link"] = doi_elem.attrib.get("href")
-    except (AttributeError, defusedxml.ElementTree.ParseError) as e:
+    except (AttributeError, DefusedET.ParseError) as e:
         raise ArXivCorruptedDataError from e
     except requests.exceptions.RequestException as e:
         # The following error will never be shown by the microservice because It's overriden with a message
@@ -234,7 +234,8 @@ def fetch_arxiv_metadata(
         # If exception is already a ArXivQueryError or ValidationError no need to wrap it around ArXivQueryError again
         raise
     except Exception as e:
-        raise GenericArxivError from e
+        msg = "Unexpected arxiv.org error"
+        raise GenericArxivError(msg) from e
 
     # ATM we take only the source file so we don't really need a dictionary for file and errors, on the other hand in
     # this way of handling could be helpful if in the future we want to handle multiple files
