@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.1.5] - 2026-10-21
+
+- [wjs-help#219: Validate ArXiv ID broken - Sumbission process](https://gitlab.sissamedialab.it/wjs/wjs-help/-/work_items/219) — fix(arxiv): import defusedxml.ElementTree explicitly (!181)
+
 ## [2.1.4] - 2026-10-21
 
 - [specs#3270: Math is not rendered in abstract](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3270) — fix(step8): render mathjax on the abstract summary (!176)
