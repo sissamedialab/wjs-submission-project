@@ -1,13 +1,14 @@
 """Tests for the correction (erratum/addendum) submission workflow."""
 
-from collections.abc import Callable
-from unittest.mock import MagicMock
+from collections.abc import Callable, Iterator
+from unittest.mock import MagicMock, patch
 
 import pytest
 from core.models import Account
 from submission.models import (
     Article,
     FrozenAuthor,
+    Licence,
     Section,
 )
 
@@ -15,13 +16,16 @@ from submission.models import (
 # module when the plugin is not installed in the current test environment.
 hydra_models = pytest.importorskip("plugins.hydra.models", reason="hydra plugin not installed")
 
+from plugins.wjs_submission.access_mode import (  # noqa: E402
+    get_access_mode_configuration,
+)
 from plugins.wjs_submission.correction.logic import (  # noqa: E402
     ADDENDUM,
     ERRATUM,
     SetupCorrectionStorage,
     get_correction_title,
 )
-from plugins.wjs_submission.models import ArticleSubmission  # noqa: E402
+from plugins.wjs_submission.models import AccessMode, AccessModeJournal, ArticleSubmission  # noqa: E402
 from plugins.wjs_submission.workflow import is_correction  # noqa: E402
 
 from tests.conftest import _user  # noqa: E402
@@ -294,6 +298,143 @@ def test_run_twice_does_not_corrupt_article(
     assert to_article2.title == original_title
     # Author count should not double.
     assert FrozenAuthor.objects.filter(article=to_article2).count() == original_author_count
+
+
+@pytest.fixture
+def free_to_read_correction_settings(journal) -> Iterator[AccessMode]:
+    """
+    Configure the journal under test to publish corrections as "Free to read".
+
+    Yields:
+        The "Free to read" access mode.
+
+    """
+    access_mode = AccessMode.objects.create(name="Free to read", code="free-to-read", user_selectable=False)
+    with patch(
+        "plugins.wjs_submission.access_mode.CORRECTION_ACCESS_MODE_CODE",
+        {None: "open-access", journal.code: "free-to-read"},
+    ):
+        yield access_mode
+
+
+@pytest.fixture
+def original_licence_and_rights(published_article: Article) -> tuple[Licence, str]:
+    """Give the published article a licence and rights different from the open-access preset."""
+    licence = Licence.objects.create(journal=published_article.journal, short_name="most-rights", name="most-rights")
+    published_article.license = licence
+    published_article.rights = "Publisher"
+    published_article.save()
+    return licence, "Publisher"
+
+
+@pytest.mark.django_db
+def test_correction_default_access_mode_keeps_original_licence_and_rights(
+    published_article_with_frozen_authors: Article,
+    original_licence_and_rights: tuple[Licence, str],
+    request_user: Account,
+    erratum_section: Section,
+    install_plugins: Callable,
+):
+    """Without a per-journal override the correction is open access, keeping licence and rights of the original."""
+    to_article = SetupCorrectionStorage(
+        article_id=published_article_with_frozen_authors.id,
+        relationship=ERRATUM,
+        request=MagicMock(user=request_user),
+    ).run()
+    licence, rights = original_licence_and_rights
+    preset = AccessModeJournal.objects.get(access_mode__code="open-access", journal=to_article.journal)
+    assert preset.copyright != rights, "the original rights must differ from the preset for the test to be meaningful"
+    assert to_article.submission_data.access_mode.code == "open-access", "default access mode must be open access"
+    assert to_article.license == licence, "licence must be the original one, not the open-access preset"
+    assert to_article.rights == rights, "rights must be the original ones, not the open-access preset"
+
+
+@pytest.mark.django_db
+def test_correction_free_to_read_inherits_licence_and_rights(
+    published_article_with_frozen_authors: Article,
+    original_licence_and_rights: tuple[Licence, str],
+    free_to_read_correction_settings: AccessMode,
+    request_user: Account,
+    erratum_section: Section,
+    install_plugins: Callable,
+):
+    """A correction in a "free to read" journal copies licence and rights from the original article."""
+    to_article = SetupCorrectionStorage(
+        article_id=published_article_with_frozen_authors.id,
+        relationship=ERRATUM,
+        request=MagicMock(user=request_user),
+    ).run()
+    licence, rights = original_licence_and_rights
+    assert to_article.submission_data.access_mode == free_to_read_correction_settings
+    assert to_article.license == licence
+    assert to_article.rights == rights
+
+
+@pytest.mark.django_db
+def test_correction_free_to_read_ignores_journal_preset(
+    published_article_with_frozen_authors: Article,
+    original_licence_and_rights: tuple[Licence, str],
+    free_to_read_correction_settings: AccessMode,
+    request_user: Account,
+    erratum_section: Section,
+    install_plugins: Callable,
+):
+    """The journal preset of the "free to read" access mode does not override the original article data."""
+    AccessModeJournal.objects.create(
+        access_mode=free_to_read_correction_settings,
+        journal=published_article_with_frozen_authors.journal,
+        licence=Licence.objects.get(short_name="CC BY 4.0", journal=published_article_with_frozen_authors.journal),
+        copyright="Authors",
+    )
+    to_article = SetupCorrectionStorage(
+        article_id=published_article_with_frozen_authors.id,
+        relationship=ERRATUM,
+        request=MagicMock(user=request_user),
+    ).run()
+    licence, rights = original_licence_and_rights
+    assert to_article.license == licence
+    assert to_article.rights == rights
+
+
+@pytest.mark.django_db
+def test_correction_missing_access_mode_raises(
+    published_article_with_frozen_authors: Article,
+    request_user: Account,
+    erratum_section: Section,
+    install_plugins: Callable,
+):
+    """A configured but missing access mode is an error, not silently ignored."""
+    with patch("plugins.wjs_submission.access_mode.CORRECTION_ACCESS_MODE_CODE", {None: "does-not-exist"}):
+        setup = SetupCorrectionStorage(
+            article_id=published_article_with_frozen_authors.id,
+            relationship=ERRATUM,
+            request=MagicMock(user=request_user),
+        )
+        with pytest.raises(AccessMode.DoesNotExist):
+            setup.run()
+
+
+@pytest.mark.django_db
+def test_correction_configuration_uses_correction_data(
+    published_article_with_frozen_authors: Article,
+    original_licence_and_rights: tuple[Licence, str],
+    free_to_read_correction_settings: AccessMode,
+    request_user: Account,
+    erratum_section: Section,
+    install_plugins: Callable,
+):
+    """The step 7 configuration of a correction is fixed and built from the correction itself."""
+    to_article = SetupCorrectionStorage(
+        article_id=published_article_with_frozen_authors.id,
+        relationship=ERRATUM,
+        request=MagicMock(user=request_user),
+    ).run()
+    configuration = get_access_mode_configuration(request_user, to_article)
+    licence, rights = original_licence_and_rights
+    assert configuration.access_mode == free_to_read_correction_settings
+    assert configuration.license == licence
+    assert configuration.copyright_text == rights
+    assert configuration.user_can_select_access_mode is False
 
 
 @pytest.mark.django_db

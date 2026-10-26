@@ -5,7 +5,7 @@ from django import forms
 from django.db import transaction
 from django.utils.translation import gettext_lazy as _
 from plugins.wjs_submission.workflow import is_revision_full
-from submission.models import Article, Licence
+from submission.models import Article
 
 from ..models import (
     AccessMode,
@@ -22,12 +22,10 @@ class SubmissionStep7Form(forms.ModelForm):
         widget=forms.Textarea(attrs={"rows": 3}),
         required=False,
     )
-    rights = forms.CharField(label=_("Copyright declaration"), required=False)
-    license = forms.ModelChoiceField(label=_("Article license"), queryset=Licence.objects.none(), required=False)
 
     class Meta:
         model = Article
-        fields = ["license", "rights"]
+        fields = []
 
     def __init__(self, *args, **kwargs):
         """
@@ -56,23 +54,17 @@ class SubmissionStep7Form(forms.ModelForm):
             kwargs["initial"]["special_request"] = self._get_submission_data_fields(kwargs.get("instance")).get(
                 "special_request"
             )
-        for field in (
-            (self.configuration.license, "license"),
-            (self.configuration.copyright_text, "rights"),
-            (self.configuration.access_mode, "access_mode"),
-        ):
-            if field[1] not in kwargs["initial"] or not kwargs["initial"][field[1]]:
-                kwargs["initial"][field[1]] = field[0]
-            # form data is overwritten with initial values only if calculated values are not customisable by the user
-            # in the form UI
-            if "data" in kwargs and not self.configuration.user_can_select_access_mode:
-                tmp = copy(kwargs["data"])
-                tmp[field[1]] = field[0]
-                kwargs["data"] = tmp
-            if "initial" in kwargs and not self.configuration.user_can_select_access_mode:
-                tmp = copy(kwargs["initial"])
-                tmp[field[1]] = field[0]
-                kwargs["initial"] = tmp
+        access_mode = self.configuration.access_mode
+        if "access_mode" not in kwargs["initial"] or not kwargs["initial"]["access_mode"]:
+            kwargs["initial"]["access_mode"] = access_mode
+        # form data is overwritten with the configuration only if the access mode is not customisable by the user
+        # in the form UI
+        if not self.configuration.user_can_select_access_mode:
+            if "data" in kwargs:
+                kwargs["data"] = copy(kwargs["data"])
+                kwargs["data"]["access_mode"] = access_mode
+            kwargs["initial"] = copy(kwargs["initial"])
+            kwargs["initial"]["access_mode"] = access_mode
         return kwargs
 
     @staticmethod
@@ -100,14 +92,11 @@ class SubmissionStep7Form(forms.ModelForm):
         """
         Configure fields according to access mode configuration.
         """
-        self.fields["license"].queryset = Licence.objects.filter(journal=self.journal)
         if self.configuration:
             if self.configuration.user_can_select_access_mode:
                 self.fields["access_mode"].queryset = AccessMode.objects.filter(
                     parameters__journal=self.journal, user_selectable=True
                 )
-                self.fields["license"].widget = forms.HiddenInput()
-                self.fields["rights"].widget = forms.HiddenInput()
             else:
                 if self.configuration.access_mode:
                     self.fields["access_mode"].queryset = AccessMode.objects.filter(
@@ -118,8 +107,6 @@ class SubmissionStep7Form(forms.ModelForm):
                         parameters__journal=self.journal, user_selectable=False
                     )
                 self.fields["access_mode"].widget = forms.HiddenInput()
-                self.fields["license"].widget = forms.HiddenInput()
-                self.fields["rights"].widget = forms.HiddenInput()
         else:
             self.fields["access_mode"].required = False
         for field in self.fields:
@@ -138,13 +125,6 @@ class SubmissionStep7Form(forms.ModelForm):
         instance = super().save(commit=commit)
         instance.submission_data.access_mode = self.cleaned_data["access_mode"]
         instance.submission_data.special_request = self.cleaned_data["special_request"]
-        # When the user can select the access mode, preserve their custom license/rights
-        # only when they differ from the access mode's default configuration.
-        if self.configuration and self.configuration.user_can_select_access_mode:
-            if self.cleaned_data.get("license") and self.cleaned_data["license"] != self.configuration.license:
-                instance.submission_data.license_override = True
-            if self.cleaned_data.get("rights") and self.cleaned_data["rights"] != self.configuration.copyright_text:
-                instance.submission_data.rights_override = True
         instance.submission_data.save()
         return instance
 
@@ -278,16 +258,13 @@ class CorrectionStep7Form(SubmissionStep7Form):
     """
     Form for step 7 of a correction (erratum/addendum) submission.
 
-    Only ``special_request`` is editable; ``access_mode``, ``rights``, and
-    ``license`` are pre-set during setup and must not be changed.
+    Only ``special_request`` is editable; ``access_mode`` is pre-set during setup and must not be changed.
     """
 
     def __init__(self, *args, **kwargs):
         """Initialize the correction step 7 form, disabling pre-set fields."""
         super().__init__(*args, **kwargs)
-        # Disable access_mode, rights, and license fields for corrections.
-        # These were pre-set during SetupCorrectionStorage._populate_metadata().
-        for field_name in ["access_mode", "rights", "license"]:
-            if field_name in self.fields:
-                self.fields[field_name].disabled = True
-                self.fields[field_name].widget.attrs["readonly"] = True
+        # Disable the access_mode field for corrections: it was pre-set during
+        # SetupCorrectionStorage._populate_metadata().
+        self.fields["access_mode"].disabled = True
+        self.fields["access_mode"].widget.attrs["readonly"] = True

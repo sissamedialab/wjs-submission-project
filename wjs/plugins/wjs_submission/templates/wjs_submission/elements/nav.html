@@ -22,4 +22,7 @@
     {% endif %}
   {% endfor %}
 </ol>
-{% if settings.DEBUG %}<div class="h6 text-secondary text-opacity-50">DEBUG - Last completed step: {{ article.current_step }}{% if is_revision %} - Last revision step: {{ article.revisionstorage.revision_step }}{% endif %}</div>{% endif %}
+{% if settings.DEBUG %}
+  <div class="h6 text-secondary text-opacity-50">DEBUG - Last completed step: {{ article.current_step }}{% if is_revision %} - Last revision step: {{ article.revisionstorage.revision_step }}{% endif %}</div>
+  <div class="h6 text-secondary text-opacity-50">license: {{ article.license }} - rights: {{ article.rights }} - access mode: {{ article.submission_data.access_mode }}</div>
+{% endif %}

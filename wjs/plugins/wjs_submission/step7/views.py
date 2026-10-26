@@ -1,4 +1,3 @@
-import contextlib
 from typing import Any
 
 from django.urls import reverse, reverse_lazy
@@ -10,9 +9,7 @@ from ..access_mode import (
     AccessModeConfiguration,
     get_access_mode_configuration,
     get_access_modes_with_disclaimer,
-    get_configuration,
 )
-from ..correction.links import correction_parent
 from ..mixins import AuthorFilteringView, HtmxMixin, StepCheckView
 from ..models import (
     RevisionStorage,
@@ -81,15 +78,7 @@ class SubmissionStep7View(AuthorFilteringView, StepCheckView, UpdateView):
         :raises AttributeError: If `get_access_mode_configuration` or `super().get_object` encounters an error
         """
         obj = super().get_object(queryset)
-        parent_access_mode = None
-        # For corrections the original access mode configuration is used
-        if is_correction(obj):
-            with contextlib.suppress(AttributeError):
-                parent_access_mode = correction_parent(obj).submission_data.access_mode
-        if parent_access_mode:
-            self.access_mode_configuration = get_configuration(parent_access_mode, obj.journal, user_selectable=False)
-        else:
-            self.access_mode_configuration = get_access_mode_configuration(self.request.user, obj)
+        self.access_mode_configuration = get_access_mode_configuration(self.request.user, obj)
         return obj
 
     def get_form_kwargs(self):

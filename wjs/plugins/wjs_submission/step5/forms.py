@@ -37,6 +37,11 @@ class SubmissionStep5Form(ArticleInfo):
             self._section = self.instance.section
             if "section" in self.fields:
                 self.fields.pop("section")
+            # license and rights are those of the original article and must not be changed
+            for field in ("license", "rights"):
+                self.fields.pop(field, None)
+            self._license = self.instance.license
+            self._rights = self.instance.rights
         if "language" in self.fields:
             self.fields["language"].required = True
             self.fields["language"].choices = get_article_language_choices(self.instance.journal)
@@ -114,6 +119,11 @@ class SubmissionStep5Form(ArticleInfo):
         if self._section and self._is_correction:
             self.instance.section = self._section
             self.instance.save(update_fields=["section"])
+        # the same applies to license and rights, janeway overwrites the license with the journal default
+        if self._is_correction:
+            self.instance.license = self._license
+            self.instance.rights = self._rights
+            self.instance.save(update_fields=["license", "rights"])
         for keyword in current_keywords:
             KeywordArticle.objects.create(
                 article=self.instance, keyword=keyword.keyword, order=keyword.order, weight=keyword.weight
