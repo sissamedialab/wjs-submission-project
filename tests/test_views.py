@@ -317,19 +317,19 @@ def test_submission_disabled(
 
 
 @pytest.mark.parametrize(
-    ("post_data", "expected_keywords", "expect_error"),
+    ("post_data", "expected_keywords", "expected_error"),
     [
-        ({"keyword_1_weight": ["25"], "keyword_2_weight": ["100"]}, {1: 25, 2: 100}, False),
-        ({"keyword_1_weight": ["123"]}, {}, True),
-        ({}, {}, False),
-        ({"keyword_x_weight": ["25"]}, {}, True),
-        ({"keyword_1_weight": ["abc"]}, {}, True),
-        ({"keyword_1_weight": ["25"], "keyword_2_weight": [""]}, {}, True),
-        ({"keyword_1_weight": ["25"], "alien": ["field"]}, {1: 25}, False),
+        ({"keyword_1_weight": ["25"], "keyword_2_weight": ["100"]}, {1: 25, 2: 100}, None),
+        ({"keyword_1_weight": ["123"]}, {}, "Corrupted weight data"),
+        ({}, {}, "You must select between 1 and 3 keywords."),
+        ({"keyword_x_weight": ["25"]}, {}, "Invalid keyword weight data"),
+        ({"keyword_1_weight": ["abc"]}, {}, "Invalid keyword weight data"),
+        ({"keyword_1_weight": ["25"], "keyword_2_weight": [""]}, {}, "Invalid keyword weight data"),
+        ({"keyword_1_weight": ["25"], "alien": ["field"]}, {1: 25}, None),
     ],
 )
 @pytest.mark.django_db
-def test_keyword_handling(client, article, post_data, expected_keywords, expect_error):
+def test_keyword_handling(client, article, post_data, expected_keywords, expected_error):
     settings.WJS_KEYWORD_WEIGHT_VALIDATORS = {
         "JQuant": ("plugins.wjs_submission.logic.always_pass",),
     }
@@ -340,20 +340,34 @@ def test_keyword_handling(client, article, post_data, expected_keywords, expect_
     client.force_login(article.owner)
     url = reverse("wjs_submission_3", kwargs={"article_id": article.pk})
 
-    if expect_error:
+    if expected_error:
         response = client.post(url, {**post_data})
         assert response.status_code == 200
         assert not response.context_data["form"].is_valid()
-        assert any(
-            msg in response.context_data["form"].errors["__all__"][0]
-            for msg in ["Corrupted weight data", "Invalid keyword weight data"]
-        )
+        assert expected_error in response.context_data["form"].errors["__all__"][0]
         assert not KeywordArticle.objects.filter(article=article).exists()
     else:
         response = client.post(url, {**post_data})
         assert response.status_code == 302
         weights = {ka.keyword_id: ka.weight for ka in KeywordArticle.objects.filter(article=article)}
         assert weights == expected_keywords
+
+
+@pytest.mark.django_db
+def test_keyword_validator_rejects_selection_outside_journal_interval(client, article):
+    """Step 3 rejects a JCOM selection with more keywords than the journal interval allows."""
+    for i in range(1, 5):
+        Keyword.objects.create(pk=i, word=f"kw{i}", journal=article.journal)
+    post_data = {f"keyword_{i}_weight": ["50"] for i in range(1, 5)}
+
+    client.force_login(article.owner)
+    response = client.post(reverse("wjs_submission_3", kwargs={"article_id": article.pk}), post_data)
+
+    assert response.status_code == 200, "the form is re-rendered"
+    assert "You must select between 1 and 3 keywords." in response.context_data["form"].errors["__all__"][0], (
+        "the journal validator error is shown"
+    )
+    assert not KeywordArticle.objects.filter(article=article).exists(), "no keyword is saved"
 
 
 @pytest.mark.django_db
@@ -420,14 +434,14 @@ def test_context_contains_only_journal_keywords(client, article):
 
 @pytest.mark.django_db
 def test_keyword_article_order_preserved(client, article):
-    for i in range(1, 5):
+    # JCOM accepts at most 3 keywords
+    for i in range(1, 4):
         Keyword.objects.create(word=f"kw{i}", journal=article.journal)
 
     post_data = {
         "keyword_1_weight": ["25"],
         "keyword_2_weight": ["50"],
-        "keyword_3_weight": ["75"],
-        "keyword_4_weight": ["100"],
+        "keyword_3_weight": ["100"],
     }
 
     client.force_login(article.owner)
@@ -435,8 +449,8 @@ def test_keyword_article_order_preserved(client, article):
     client.post(url, post_data)
 
     kws = list(KeywordArticle.objects.filter(article=article).order_by("order"))
-    assert [ka.keyword_id for ka in kws] == [1, 2, 3, 4]
-    assert [ka.weight for ka in kws] == [25, 50, 75, 100]
+    assert [ka.keyword_id for ka in kws] == [1, 2, 3]
+    assert [ka.weight for ka in kws] == [25, 50, 100]
     KeywordArticle.objects.all().delete()  # not usre why we need to delete them, but otherwise the test teardown fails
 
 

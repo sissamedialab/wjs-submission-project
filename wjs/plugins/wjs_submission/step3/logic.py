@@ -50,7 +50,7 @@ class HandleKeywordSelection:
         :return: True if all validators pass.
         """
         validators = submission_settings.KEYWORD_VALIDATORS.get(
-            self.article.journal,
+            self.article.journal.code,
             submission_settings.KEYWORD_VALIDATORS.get(None, []),
         )
         for validator in validators:
@@ -58,7 +58,7 @@ class HandleKeywordSelection:
                 keyword_weights, self.article.journal, self.article.submission_data.arxiv_category
             )
             if not ok:
-                return ValidationError(error)
+                raise ValidationError(error)
         return True
 
     def persist(self, keyword_weights):
