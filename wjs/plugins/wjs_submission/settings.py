@@ -164,6 +164,15 @@ OA_CODE_TA = getattr(settings, "SUBMISSION_OA_CODE_TA", "oa-transformative-agree
 OA_CERN_CODE = getattr(settings, "SUBMISSION_OA_CERN_CODE", "oa-cern")
 OA_CODE = getattr(settings, "SUBMISSION_OA_CODE", "open-access")
 
+# Access mode code applied to corrections (errata/addenda), per journal code. Journal specific values are meant to be
+# provided by the installing project through SUBMISSION_CORRECTION_ACCESS_MODE_CODE.
+DEFAULT_CORRECTION_ACCESS_MODE_CODE = {
+    None: OA_CODE,
+}
+CORRECTION_ACCESS_MODE_CODE = getattr(
+    settings, "SUBMISSION_CORRECTION_ACCESS_MODE_CODE", DEFAULT_CORRECTION_ACCESS_MODE_CODE
+)
+
 DEFAULT_OA_MESSAGE_CODES = {
     "JCAP": ["open-access-paid"],
     None: ["open-access-paid"],

@@ -27,6 +27,7 @@ from submission.models import (
     Keyword,
     KeywordArticle,
     KeywordGroup,
+    Licence,
     SubmissionConfiguration,
 )
 from utils.setting_handler import save_setting
@@ -607,6 +608,37 @@ def test_submission_step8_access_mode_verify(client: Client, article: Article, i
         response = client.get(url)
     assert response.status_code == 200
     assert response.content == b"rendered", "step 8 must be rendered once the access mode is set"
+
+
+@pytest.mark.django_db
+def test_submission_step8_shows_article_license_and_rights(
+    client: Client, article: Article, install_plugins: Callable
+):
+    """Step 8 summary shows the license and rights of the article, not the presets of its access mode."""
+    licence = Licence.objects.create(short_name="original", name="Original", journal=article.journal)
+    access_mode = AccessMode.objects.filter(parameters__journal=article.journal).first()
+    article.submission_data.access_mode = access_mode
+    article.submission_data.license_override = True
+    article.submission_data.rights_override = True
+    article.submission_data.save()
+    article.license = licence
+    article.rights = "original rights"
+    article.save()
+    preset = access_mode.parameters.get(journal=article.journal)
+    assert preset.licence != licence
+    assert preset.copyright != "original rights"
+    client.force_login(article.owner)
+
+    with patch(
+        "plugins.wjs_submission.step8.views.SubmissionStep8View.render_to_response",
+        return_value=HttpResponse("rendered"),
+    ) as render:
+        response = client.get(reverse("wjs_submission_8", kwargs={"article_id": article.pk}))
+
+    assert response.status_code == 200
+    context = render.call_args.args[0]
+    assert context["article_license"] == licence
+    assert context["article_rights"] == "original rights"
 
 
 @pytest.mark.parametrize("flow_type", RevisionStorage.RevisionFlowType.values)

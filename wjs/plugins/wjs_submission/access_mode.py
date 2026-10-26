@@ -11,12 +11,13 @@ from .settings import (
     ACCESS_MODE_CONTROL_FUNCTION,
     ACCESS_MODE_COUNTRIES,
     CERN_AFFILIATIONS,
+    CORRECTION_ACCESS_MODE_CODE,
     OA_CERN_CODE,
     OA_CODE,
     OA_CODE_TA,
     OA_MESSAGE_CODES,
 )
-from .workflow import is_revision
+from .workflow import is_correction, is_revision, is_revision_full, is_revision_metadata
 
 
 class AccessModeConfiguration(NamedTuple):
@@ -78,7 +79,13 @@ def get_access_mode_configuration(user: Account, article: Article) -> AccessMode
     """
     Determine and retrieve the access mode configuration for a given user and article.
 
-    Load control function name from settings based on current journal code.
+    The rules, in this order:
+
+    1. corrections: access mode, licence and rights are those set up when the correction was created (the access mode
+       comes from ``CORRECTION_ACCESS_MODE_CODE``), not selectable;
+    2. revisions where neither the corresponding author nor the affiliation changed: access mode, licence and rights
+       of the article are kept, not selectable;
+    3. anything else: the result of the control function of the journal (loaded from settings by the journal code).
 
     :param user: User whose access configuration needs to be determined.
     :type user: Account
@@ -92,9 +99,51 @@ def get_access_mode_configuration(user: Account, article: Article) -> AccessMode
         be imported.
     :raises AttributeError: If the control function extracted cannot be found or is invalid.
     """
+    if is_correction(article) or is_revision_access_settings_unchanged(article):
+        return get_article_access_mode_configuration(article)
     control_function_name = ACCESS_MODE_CONTROL_FUNCTION.get(article.journal.code, ACCESS_MODE_CONTROL_FUNCTION[None])
     control_function = import_string(control_function_name)
     return control_function(user, article)
+
+
+def is_revision_access_settings_unchanged(article: Article) -> bool:
+    """
+    Tell if a revision keeps the corresponding author and the affiliation the article had before the revision.
+
+    In this case the access mode, copyright and licence must not be recalculated: they are kept as they were set before
+    the revision (including the changes made by the EO).
+
+    :param article: The article, possibly being revised.
+    :return: True if the article is being revised, has an access mode and neither the corresponding author nor the
+        affiliation have been changed in the revision.
+    """
+    if not article.pk or not is_revision(article):
+        return False
+    try:
+        data = article.revisionstorage.data
+        submission_data = article.submission_data
+    except (RevisionStorage.DoesNotExist, AttributeError):
+        return False
+    if not submission_data.access_mode_id:
+        return False
+    return str(data.get("correspondence_author")) == str(article.correspondence_author_id) and str(
+        data.get("affiliation_pk")
+    ) == str(submission_data.affiliation_id)
+
+
+def get_article_access_mode_configuration(article: Article) -> AccessModeConfiguration:
+    """
+    Return the (fixed) access mode configuration built from the values currently set on the article.
+
+    :param article: The article.
+    :return: The configuration with the access mode, licence and copyright of the article, not selectable.
+    """
+    return AccessModeConfiguration(
+        access_mode=article.submission_data.access_mode,
+        license=article.license,
+        copyright_text=article.rights or "",
+        user_can_select_access_mode=False,
+    )
 
 
 def noop(user: Account, article: Article) -> AccessModeConfiguration | None:
@@ -260,3 +309,43 @@ def get_access_modes_with_disclaimer(article: Article) -> QuerySet[AccessMode]:
     """
     codes = OA_MESSAGE_CODES.get(article.journal.code, OA_MESSAGE_CODES[None])
     return AccessMode.objects.filter(code__in=codes, parameters__journal=article.journal)
+
+
+def get_correction_access_mode(journal: Journal) -> AccessMode:
+    """
+    Return the access mode used for corrections (errata/addenda) of the given journal.
+
+    The access mode code is read from ``CORRECTION_ACCESS_MODE_CODE``, falling back to its default (``None`` key).
+
+    :param journal: The journal of the article being corrected.
+    :type journal: Journal
+    :return: The access mode corrections of the journal are published with.
+    :rtype: AccessMode
+    :raises AccessMode.DoesNotExist: If the configured access mode does not exist.
+    """
+    code = CORRECTION_ACCESS_MODE_CODE.get(journal.code, CORRECTION_ACCESS_MODE_CODE[None])
+    return AccessMode.objects.get(code=code)
+
+
+def get_effective_access_settings(article: Article) -> tuple[AccessMode | None, Licence | None, str]:
+    """
+    Return the access mode, licence and rights that apply to the article, as shown in the review step.
+
+    The values are those stored on the article. While a full or metadata revision is in progress the access mode is the
+    one selected in step 7 and kept in the revision storage: if it differs from the stored one it is not applied to the
+    article until the revision is submitted, so the presets of the new access mode are returned (the override flags are
+    cleared when the revision is submitted, see ``PopulateRevisionStep7``).
+
+    :param article: The article being reviewed.
+    :return: Access mode, licence and rights (empty string if not set).
+    """
+    submission_data = article.submission_data
+    access_mode = submission_data.access_mode
+    licence, rights = article.license, article.rights or ""
+    if is_revision_full(article) or is_revision_metadata(article):
+        stored_id = article.revisionstorage.data.get("access_mode")
+        if stored_id and stored_id != submission_data.access_mode_id:
+            access_mode = AccessMode.objects.get(pk=stored_id)
+            preset = AccessModeJournal.objects.get(access_mode=access_mode, journal=article.journal)
+            licence, rights = preset.licence, preset.copyright
+    return access_mode, licence, rights

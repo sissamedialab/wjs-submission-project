@@ -22,9 +22,8 @@ from submission.models import (
     Section,
 )
 
+from ..access_mode import get_correction_access_mode
 from ..models import (
-    AccessMode,
-    AccessModeJournal,
     ArticleCollaboration,
     ArticleSubmission,
 )
@@ -173,9 +172,8 @@ class SetupCorrectionStorage:
         - keywords = from_article.keywords
         - authors = from from_article's FrozenAuthor records (copied as new FrozenAuthor rows)
         - collaborations = same as from_article
-        - access_mode = AccessMode.objects.get(code='open-access')
-        - rights = AccessModeJournal for open-access + journal
-        - license = from_article.license
+        - access_mode = the journal's correction access mode (``CORRECTION_ACCESS_MODE_CODE``)
+        - license and rights = from_article's ones, whatever the access mode
         - arxiv_category = from_article.submission_data.arxiv_category (empty if missing)
         """
         # Compute title before linking to avoid counting self.
@@ -190,6 +188,16 @@ class SetupCorrectionStorage:
 
         # Create ArticleSubmission wrapper (needed by steps 6/7).
         ArticleSubmission.objects.get_or_create(article=self.to_article)
+
+        # Set access_mode. Whatever the access mode, licence and rights are those of the original article: the override
+        # flags prevent ArticleSubmission.save() from syncing them with the access mode preset of the journal.
+        access_mode = get_correction_access_mode(self.from_article.journal)
+        self.to_article.submission_data.access_mode = access_mode
+        self.to_article.license = self.from_article.license
+        self.to_article.rights = self.from_article.rights
+        self.to_article.submission_data.license_override = True
+        self.to_article.submission_data.rights_override = True
+
         # Corrections skip the arXiv step: inherit the category shown next to the arXiv id.
         # Write through to_article.submission_data, the instance saved again below.
         self.to_article.submission_data.arxiv_category = (
@@ -199,23 +207,7 @@ class SetupCorrectionStorage:
             or ""
         )
         self.to_article.submission_data.save()
-
-        # Set access_mode and rights.
-        try:
-            access_mode = AccessMode.objects.get(code="open-access")
-            self.to_article.submission_data.access_mode = access_mode
-            self.to_article.submission_data.save()
-
-            access_mode_journal = AccessModeJournal.objects.filter(
-                access_mode=access_mode,
-                journal=self.from_article.journal,
-            ).first()
-            if access_mode_journal:
-                self.to_article.license = access_mode_journal.licence
-                self.to_article.rights = access_mode_journal.copyright
-                self.to_article.save()
-        except AccessMode.DoesNotExist:
-            pass
+        self.to_article.save()
 
         # Copy authors: create FrozenAuthor records for the correction article
         # (corrections skip step 4 which normally creates them).

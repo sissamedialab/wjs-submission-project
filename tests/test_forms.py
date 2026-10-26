@@ -14,7 +14,7 @@ from events import logic as event_logic
 from journal.models import ArticleOrdering, Issue, IssueType, Journal
 from plugins.wjs_submission import settings
 from plugins.wjs_submission.access_mode import AccessModeConfiguration, get_access_mode_configuration
-from plugins.wjs_submission.models import AccessMode, ArticleSubmission
+from plugins.wjs_submission.models import AccessMode, ArticleSubmission, RevisionStorage
 from plugins.wjs_submission.settings import OA_CODE
 from plugins.wjs_submission.step1.forms import SubmissionStep1Form
 from plugins.wjs_submission.step2.forms import SubmissionStep2Form
@@ -22,7 +22,7 @@ from plugins.wjs_submission.step3.forms import SubmissionStep3Form
 from plugins.wjs_submission.step4.forms import AddCollaborationForm
 from plugins.wjs_submission.step5.forms import SubmissionStep5Form
 from plugins.wjs_submission.step6.forms import SubmissionStep6Form
-from plugins.wjs_submission.step7.forms import SubmissionStep7Form
+from plugins.wjs_submission.step7.forms import RevisionStep7Form, SubmissionStep7Form
 from plugins.wjs_submission.step8.forms import SubmissionStep8Form
 from pytest_django.asserts import assertQuerySetEqual
 from submission.models import Article, Field, Keyword, KeywordArticle, KeywordGroup, Licence
@@ -455,28 +455,22 @@ def test_access_mode_form(
             configuration=configuration,
             initial={},
         )
+        assert "license" not in form.fields, "license follows from the access mode, the form does not handle it"
+        assert "rights" not in form.fields, "rights follow from the access mode, the form does not handle them"
+        assert form.initial["access_mode"] == configuration.access_mode
         if access_mode_fixed:
             assert not configuration.user_can_select_access_mode
-            assert isinstance(form.fields["license"].widget, forms.HiddenInput)
-            assert isinstance(form.fields["rights"].widget, forms.HiddenInput)
             assert isinstance(form.fields["access_mode"].widget, forms.HiddenInput)
             assertQuerySetEqual(
                 form.fields["access_mode"].queryset,
                 AccessMode.objects.filter(parameters__journal=article.journal, user_selectable=False),
             )
-            assert form.initial["access_mode"] == configuration.access_mode
-            assert form.initial["rights"] == configuration.copyright_text
-            assert form.initial["license"] == configuration.license
         else:
             assert configuration.user_can_select_access_mode
-            assert isinstance(form.fields["rights"].widget, forms.HiddenInput)
             assertQuerySetEqual(
                 form.fields["access_mode"].queryset,
                 AccessMode.objects.filter(parameters__journal=article.journal, user_selectable=True),
             )
-            assert form.initial["access_mode"] == configuration.access_mode
-            assert form.initial["rights"] == configuration.copyright_text
-            assert form.initial["license"] == configuration.license
 
 
 @pytest.mark.parametrize(
@@ -497,41 +491,27 @@ def test_access_mode_form_data(
     access_mode_fixed: bool | None,
 ):
     """
-    Values derived from access mode configuration are preserved on submission and stored in the submission data.
+    The access mode is forced or chosen by the user and stored in the submission data, license and rights follow.
     """
     oa = AccessMode.objects.get(code=OA_CODE)
     other = AccessMode.objects.exclude(code=OA_CODE).first()
-    licence = Licence.objects.create(short_name="random", name="Random", journal=journal)
-    journal_parameters = oa.parameters.get(journal=article.journal)
+    oa_parameters = oa.parameters.get(journal=article.journal)
+    other_parameters = other.parameters.get(journal=article.journal)
+    article.rights = "original rights"
+    article.save()
+    original_license = article.license
 
-    if access_mode_fixed is True:
-        configuration = AccessModeConfiguration(
-            access_mode=oa,
-            license=journal_parameters.licence,
-            copyright_text=journal_parameters.copyright,
-            user_can_select_access_mode=False,
-        )
-        data = {
-            "license": licence,
-            "rights": "random text",
-            "access_mode": other,
-        }
-    elif access_mode_fixed is False:
-        configuration = AccessModeConfiguration(
-            access_mode=oa,
-            license=journal_parameters.licence,
-            copyright_text=journal_parameters.copyright,
-            user_can_select_access_mode=True,
-        )
-
-        data = {
-            "license": licence,
-            "rights": "random text",
-            "access_mode": other,
-        }
-    else:
+    if access_mode_fixed is None:
         configuration = None
         data = {}
+    else:
+        configuration = AccessModeConfiguration(
+            access_mode=oa,
+            license=oa_parameters.licence,
+            copyright_text=oa_parameters.copyright,
+            user_can_select_access_mode=not access_mode_fixed,
+        )
+        data = {"access_mode": other}
     form = SubmissionStep7Form(
         data=data,
         journal=journal,
@@ -540,36 +520,166 @@ def test_access_mode_form_data(
         configuration=configuration,
         initial={},
     )
-    if access_mode_fixed is True:
-        assert form.is_valid()
-        assert form.cleaned_data["access_mode"] == configuration.access_mode
-        assert form.cleaned_data["rights"] == configuration.copyright_text
-        assert form.cleaned_data["license"] == configuration.license
-    elif access_mode_fixed is False:
-        assert form.is_valid()
-        assert form.cleaned_data["access_mode"] == other
-        assert form.cleaned_data["rights"] == "random text"
-        assert form.cleaned_data["license"] == licence
-    else:
-        assert form.is_valid()
-        assert not form.cleaned_data["access_mode"]
-        assert not form.cleaned_data["rights"]
-        assert not form.cleaned_data["license"]
+    assert form.is_valid(), form.errors
     form.save()
     article.refresh_from_db()
     article.submission_data.refresh_from_db()
     if access_mode_fixed is True:
-        assert article.submission_data.access_mode == configuration.access_mode
-        assert article.rights == configuration.copyright_text
-        assert article.license == configuration.license
+        assert article.submission_data.access_mode == oa, "the submitted access mode is ignored"
+        assert article.license == oa_parameters.licence
+        assert article.rights == oa_parameters.copyright
     elif access_mode_fixed is False:
         assert article.submission_data.access_mode == other
-        assert article.rights == "random text"
-        assert article.license == licence
+        assert article.license == other_parameters.licence
+        assert article.rights == other_parameters.copyright
     else:
         assert not article.submission_data.access_mode
-        assert not article.rights
-        assert not article.license
+        assert article.license == original_license, "without configuration license is not wiped"
+        assert article.rights == "original rights", "without configuration rights are not wiped"
+
+
+@pytest.mark.django_db
+def test_step7_form_open_access_article_is_not_treated_as_a_correction(
+    journal: Journal,
+    install_plugins: Callable,
+    user: Account,
+    article: Article,
+):
+    """
+    A normal article with the access mode used for corrections still gets the preset licence and rights.
+
+    Open access is the correction access mode of every journal without a specific setting (e.g. JCOM): being open
+    access does not make an article a correction.
+    """
+    oa = AccessMode.objects.get(code=OA_CODE)
+    preset = oa.parameters.get(journal=journal)
+    article.rights = "custom rights"
+    article.save()
+    with patch("plugins.wjs_submission.access_mode.CORRECTION_ACCESS_MODE_CODE", {None: OA_CODE}):
+        configuration = AccessModeConfiguration(
+            access_mode=oa, license=preset.licence, copyright_text=preset.copyright, user_can_select_access_mode=True
+        )
+        form = SubmissionStep7Form(
+            data={"access_mode": oa.pk},
+            journal=journal,
+            instance=article,
+            step=7,
+            configuration=configuration,
+            initial={},
+        )
+        assert form.is_valid(), form.errors
+        form.save()
+    article.refresh_from_db()
+    assert article.license == preset.licence
+    assert article.rights == preset.copyright
+    assert not article.submission_data.license_override
+    assert not article.submission_data.rights_override
+
+
+@pytest.mark.django_db
+def test_step7_form_unchanged_revision_offers_only_stored_access_mode(
+    journal: Journal,
+    install_plugins: Callable,
+    user: Account,
+    article: Article,
+):
+    """
+    A revision keeping author and affiliation offers only the stored access mode, even if authors cannot choose it.
+    """
+    stored = AccessMode.objects.exclude(code=OA_CODE).first()
+    stored.user_selectable = False
+    stored.save()
+    article.submission_data.affiliation = user.primary_affiliation()
+    article.submission_data.access_mode = stored
+    article.submission_data.save()
+    RevisionStorage.objects.create(
+        article=article,
+        revision_flow_type=RevisionStorage.RevisionFlowType.FULL,
+        data={
+            "correspondence_author": article.correspondence_author.pk,
+            "affiliation_pk": article.submission_data.affiliation_id,
+            "access_mode": stored.pk,
+        },
+    )
+    configuration = get_access_mode_configuration(user, article)
+    form = RevisionStep7Form(
+        journal=journal,
+        instance=article,
+        step=7,
+        configuration=configuration,
+        revision_full=True,
+        initial={},
+    )
+    assert not configuration.user_can_select_access_mode
+    assertQuerySetEqual(form.fields["access_mode"].queryset, AccessMode.objects.filter(pk=stored.pk))
+
+
+@pytest.mark.parametrize("affiliation_changed", [False, True])
+@pytest.mark.django_db
+def test_revision_access_mode_recalculated_only_if_author_or_affiliation_change(
+    journal: Journal,
+    install_plugins: Callable,
+    user: Account,
+    article: Article,
+    affiliation_changed: bool,
+):
+    """
+    Access mode, license and rights are preserved in a revision without author and affiliation changes.
+
+    If the corresponding author or the affiliation change, the access mode is recalculated by the standard rules.
+    """
+    oa = AccessMode.objects.get(code=OA_CODE)
+    other = AccessMode.objects.exclude(code=OA_CODE).first()
+    licence = Licence.objects.create(short_name="original", name="Original", journal=journal)
+    article.license = licence
+    article.rights = "original rights"
+    article.save()
+    article.submission_data.affiliation = user.primary_affiliation()
+    # access mode, license and rights changed by the EO
+    article.submission_data.access_mode = other
+    article.submission_data.license_override = True
+    article.submission_data.rights_override = True
+    article.submission_data.save()
+    journal_parameters = oa.parameters.get(journal=journal)
+    calculated = AccessModeConfiguration(
+        access_mode=oa,
+        license=journal_parameters.licence,
+        copyright_text=journal_parameters.copyright,
+        user_can_select_access_mode=False,
+    )
+    RevisionStorage.objects.create(
+        article=article,
+        revision_flow_type=RevisionStorage.RevisionFlowType.FULL,
+        data={
+            "correspondence_author": article.correspondence_author.pk,
+            "affiliation_pk": None if affiliation_changed else article.submission_data.affiliation_id,
+            "access_mode": other.pk,
+            "special_request": "",
+        },
+    )
+
+    with patch("plugins.wjs_submission.access_mode.import_string", return_value=lambda user, article: calculated):
+        configuration = get_access_mode_configuration(user, article)
+
+    if affiliation_changed:
+        assert configuration == calculated
+    else:
+        assert configuration.access_mode == other
+        assert configuration.license == licence
+        assert configuration.copyright_text == "original rights"
+    form = RevisionStep7Form(
+        data={"special_request": "", "access_mode": configuration.access_mode.pk},
+        journal=journal,
+        instance=article,
+        step=7,
+        configuration=configuration,
+        revision_full=True,
+        initial={},
+    )
+    assert form.is_valid(), form.errors
+    form.save()
+    article.revisionstorage.refresh_from_db()
+    assert article.revisionstorage.data["access_mode"] == (oa.pk if affiliation_changed else other.pk)
 
 
 @pytest.mark.django_db
@@ -614,6 +724,46 @@ def test_preserve_keywords_metadata_form5(
     form_5.save()
     article.refresh_from_db()
     assert article.keywords.count() == 2
+
+
+@pytest.mark.django_db
+def test_step5_form_correction_preserves_license_and_rights(
+    journal: Journal,
+    install_plugins: Callable,
+    article: Article,
+    fake_request: HttpRequest,
+):
+    """
+    License and rights set up for a correction are not changed by step 5, not even by the journal defaults.
+    """
+    default_licence = Licence.objects.create(short_name="default", name="Default", journal=journal)
+    journal.submissionconfiguration.license = False
+    journal.submissionconfiguration.default_license = default_licence
+    journal.submissionconfiguration.save()
+    licence = Licence.objects.create(short_name="original", name="Original", journal=journal)
+    article.license = licence
+    article.rights = "original rights"
+    article.save()
+    form = SubmissionStep5Form(
+        data={
+            "title": article.title,
+            "abstract": article.abstract,
+            "language": article.language,
+            "license": "",
+            "rights": "",
+        },
+        journal=journal,
+        instance=article,
+        step=5,
+        is_correction=True,
+    )
+    assert "license" not in form.fields
+    assert "rights" not in form.fields
+    assert form.is_valid(), form.errors
+    form.save(request=fake_request)
+    article.refresh_from_db()
+    assert article.license == licence
+    assert article.rights == "original rights"
 
 
 @pytest.mark.django_db
