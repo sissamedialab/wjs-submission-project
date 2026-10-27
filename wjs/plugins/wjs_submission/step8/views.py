@@ -192,7 +192,12 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
         """
         if is_revision(article):
             submission_requirements = bool(article.revisionstorage.data["submission_requirements"])
-            if article.journal.submissionconfiguration.comments_to_the_editor:
+            # Same rule as SubmissionStep1Form._cover_letter_required
+            if (
+                article.journal.submissionconfiguration.comments_to_the_editor
+                or is_revision_full(article)
+                or is_revision_confirm(article)
+            ):
                 cover_letter = bool(article.revisionstorage.data["comments_editor"]) or bool(
                     article.revisionstorage.data["cover_letter_file"]
                 )

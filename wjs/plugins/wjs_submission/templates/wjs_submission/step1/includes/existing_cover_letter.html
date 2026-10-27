@@ -1,0 +1,5 @@
+{% if article.submission_data.cover_letter_file_id %}
+  <input type="hidden" id="id_cover_letter_file_existing" name="cover_letter_file" value="{{ article.submission_data.cover_letter_file_id }}">
+{% elif article.revisionstorage.data.cover_letter_file %}
+  <input type="hidden" id="id_cover_letter_file_existing" name="cover_letter_file" value="{{ article.revisionstorage.data.cover_letter_file }}">
+{% endif %}
