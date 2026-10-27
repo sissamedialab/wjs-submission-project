@@ -6,6 +6,7 @@ from core.models import Account
 from django.conf import settings
 from django.contrib.messages import get_messages
 from django.http import HttpResponse
+from django.template.loader import render_to_string
 from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
@@ -19,6 +20,7 @@ from plugins.wjs_submission.models import (
 )
 from plugins.wjs_submission.step1 import SubmissionStep1View
 from plugins.wjs_submission.step6 import SubmissionStep6View
+from plugins.wjs_submission.step8.views import SubmissionStep8View
 from plugins.wjs_submission.views import SubmissionLastStepRedirectView
 from plugins.wjs_submission.workflow import STEPS
 from submission.models import (
@@ -33,6 +35,7 @@ from submission.models import (
 from utils.setting_handler import save_setting
 
 from .conftest import _journal_factory, _user
+from .test_step1_resubmission import _create_real_file
 
 
 @pytest.mark.parametrize("same_journal", [True, False])
@@ -286,6 +289,36 @@ def test_submission_author_only(
         assert response.status_code == 200
     else:
         assert response.status_code == 404
+
+
+@pytest.mark.parametrize("comments_to_the_editor", [True, False])
+@pytest.mark.django_db
+def test_revision_step1_existing_cover_letter_field_has_an_id(
+    article: Article, install_plugins: Callable, comments_to_the_editor: bool
+):
+    """
+    The hidden field marking an uploaded cover letter has an id, whatever the journal setting.
+
+    The required fields checklist stores the id of every required field and later looks it up: without an id the
+    browser logs "Empty string passed to getElementById()".
+    """
+    article.journal.submissionconfiguration.comments_to_the_editor = comments_to_the_editor
+    article.journal.submissionconfiguration.save()
+    cover_letter = _create_real_file(article, article.owner, filename="cover.pdf", content=b"cover letter")
+    RevisionStorage.objects.create(
+        article=article,
+        revision_flow_type=RevisionStorage.RevisionFlowType.FULL,
+        data={"cover_letter_file": cover_letter.pk},
+    )
+    # Only the fragment holding the hidden field is rendered: the whole page needs URLs of other plugins
+    html = render_to_string(
+        "wjs_submission/step1/includes/existing_cover_letter.html",
+        {"article": article, "journal": article.journal},
+    )
+
+    hidden = [line for line in html.splitlines() if 'type="hidden"' in line and 'name="cover_letter_file"' in line]
+    assert len(hidden) == 1, "the hidden field is rendered when the revision already has a cover letter file"
+    assert 'id="id_cover_letter_file_existing"' in hidden[0], hidden[0]
 
 
 @pytest.mark.parametrize("enabled", [True, False])
@@ -720,3 +753,38 @@ def test_group_with_only_deactivated_subgroup_still_offers_its_own_keywords(hier
 
     assert "direct-kw" in content, "the group's own active keyword must stay selectable"
     assert "hidden-kw" not in content, "the deactivated keyword must not be offered"
+
+
+@pytest.mark.parametrize("comments_to_the_editor", [True, False])
+@pytest.mark.parametrize(
+    "revision_flow_type",
+    [RevisionStorage.RevisionFlowType.FULL, RevisionStorage.RevisionFlowType.CONFIRM],
+)
+@pytest.mark.django_db
+def test_step8_revision_cover_letter_is_required_whatever_the_journal_setting(
+    article: Article,
+    install_plugins: Callable,
+    comments_to_the_editor: bool,
+    revision_flow_type: str,
+):
+    """Step 8 flags a full or confirm revision without cover letter text or file, like step 1 does."""
+    article.journal.submissionconfiguration.comments_to_the_editor = comments_to_the_editor
+    article.journal.submissionconfiguration.save()
+    RevisionStorage.objects.create(
+        article=article,
+        revision_flow_type=revision_flow_type,
+        data={
+            "submission_requirements": True,
+            "comments_editor": "",
+            "cover_letter_file": None,
+            "source_files": [1],
+            "manuscript_files": [1],
+        },
+    )
+
+    view = SubmissionStep8View()
+    view.object = article
+    result = view._validate_revision_data(article)  # noqa: SLF001
+
+    assert not result["cover_letter"], "a revision without cover letter must be flagged"
+    assert not result["valid"], "a revision without cover letter must not be valid"

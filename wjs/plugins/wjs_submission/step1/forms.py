@@ -127,11 +127,7 @@ class SubmissionStep1Form(forms.ModelForm):
             # Using a custom attribute to not trigger bootstrap validation as we use custom logic which checks tinymce
             self.fields["competing_interests"].widget.attrs["js_required"] = True
 
-        if (
-            self.journal.submissionconfiguration.comments_to_the_editor
-            or is_revision_full(self.instance)
-            or is_revision_confirm(self.instance)
-        ):
+        if self._cover_letter_required:
             # Using a custom attribute to not trigger bootstrap validation as we use custom logic which checks tinymce
             self.fields["comments_editor"].widget.attrs["js_required"] = True
             self.fields["comments_editor"].widget.attrs["alternate_field"] = "cover_letter_file"
@@ -177,6 +173,19 @@ class SubmissionStep1Form(forms.ModelForm):
                     except FieldAnswer.DoesNotExist:
                         pass
 
+    @property
+    def _cover_letter_required(self) -> bool:
+        """
+        Tell if the author must enter a cover letter text or upload a file.
+
+        It is required if the journal enables the comments to the editor, and always in full and confirm revisions.
+        """
+        return bool(
+            self.journal.submissionconfiguration.comments_to_the_editor
+            or is_revision_full(self.instance)
+            or is_revision_confirm(self.instance)
+        )
+
     def clean(self):
         """
         Clean the form data and performs validation for additional fields.
@@ -193,7 +202,7 @@ class SubmissionStep1Form(forms.ModelForm):
         """
         cleaned_data = super().clean()
 
-        if self.journal.submissionconfiguration.comments_to_the_editor:
+        if self._cover_letter_required:
             cover_letter_file = self.cleaned_data.get("cover_letter_file")
             comments_editor = self.cleaned_data.get("comments_editor")
 

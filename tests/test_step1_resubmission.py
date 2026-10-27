@@ -311,3 +311,32 @@ def test_revision_new_upload_replaces_the_file_and_cleans_up_the_old_one(
     new_file = File.objects.get(pk=new_file_id)
     content = pathlib.Path(new_file.self_article_path()).read_bytes()
     assert content == NEW_CONTENT, "the new file's content must be the uploaded content"
+
+
+@pytest.mark.django_db
+def test_revision_keeping_the_file_without_text_is_valid(
+    article: Article,
+    author: Account,
+    install_plugins,
+    fake_request: HttpRequest,
+):
+    """The existing cover letter file alone satisfies the revision requirement, whatever the journal setting."""
+    journal = article.journal
+    journal.submissionconfiguration.comments_to_the_editor = False
+    journal.submissionconfiguration.save()
+    existing_file = _create_real_file(article, author, filename="original.pdf", content=ORIGINAL_CONTENT)
+    _make_revision_storage(article, existing_file)
+    data = _valid_step1_data()
+    data["comments_editor"] = ""
+
+    form = RevisionFullForm(
+        data=data,
+        files=None,
+        journal=journal,
+        user=author,
+        step=1,
+        request=fake_request,
+        instance=article,
+    )
+
+    assert form.is_valid(), form.errors

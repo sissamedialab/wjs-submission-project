@@ -16,7 +16,7 @@ from plugins.wjs_submission import settings
 from plugins.wjs_submission.access_mode import AccessModeConfiguration, get_access_mode_configuration
 from plugins.wjs_submission.models import AccessMode, ArticleSubmission, RevisionStorage
 from plugins.wjs_submission.settings import OA_CODE
-from plugins.wjs_submission.step1.forms import SubmissionStep1Form
+from plugins.wjs_submission.step1.forms import RevisionConfirmForm, RevisionFullForm, SubmissionStep1Form
 from plugins.wjs_submission.step2.forms import SubmissionStep2Form
 from plugins.wjs_submission.step3.forms import SubmissionStep3Form
 from plugins.wjs_submission.step4.forms import AddCollaborationForm
@@ -209,6 +209,49 @@ def test_clean_submission_requirements(
         assert form.errors == {"submission_requirements": ["This field is required."]}
     else:
         assert form.is_valid()
+
+
+@pytest.mark.parametrize("comments_to_the_editor", [True, False])
+@pytest.mark.parametrize(
+    "revision_flow_type",
+    [RevisionStorage.RevisionFlowType.FULL, RevisionStorage.RevisionFlowType.CONFIRM],
+)
+@pytest.mark.django_db
+def test_revision_requires_cover_letter_whatever_the_journal_setting(
+    journal: Journal,
+    install_plugins: Callable,
+    user: Account,
+    article: Article,
+    fake_request: HttpRequest,
+    comments_to_the_editor: bool,
+    revision_flow_type: str,
+):
+    """
+    A full or confirm revision always needs a cover letter text or file, like the browser already requires.
+
+    The server used to check it only when the journal enables the comments to the editor in the submission.
+    """
+    journal.submissionconfiguration.comments_to_the_editor = comments_to_the_editor
+    journal.submissionconfiguration.save()
+    RevisionStorage.objects.create(article=article, revision_flow_type=revision_flow_type, data={})
+    form_class = (
+        RevisionFullForm if revision_flow_type == RevisionStorage.RevisionFlowType.FULL else RevisionConfirmForm
+    )
+    form = form_class(
+        data={
+            "copyright_notice": True,
+            "comments_editor": "",
+            "competing_interests": "XXX",
+            "submission_requirements": True,
+        },
+        journal=journal,
+        user=user,
+        step=1,
+        request=fake_request,
+        instance=article,
+    )
+    assert not form.is_valid()
+    assert set(form.errors) == {"comments_editor", "cover_letter_file"}
 
 
 @pytest.mark.parametrize(
