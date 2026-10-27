@@ -62,36 +62,37 @@ class Step:
         return self.label
 
     @staticmethod
-    def _get_incomplete_revision_step(article: Article) -> int | None:
-        try:
-            revision_storage = RevisionStorage.objects.get(article=article)
-        except RevisionStorage.DoesNotExist:
-            return None
-        else:
-            return revision_storage.revision_step
+    def _get_last_completed_step(article: Article | None) -> int:
+        """
+        Return the number of the last step saved for the given article.
 
-    @staticmethod
-    def _get_incomplete_article_step(article: Article) -> int:
+        During a revision this is the last step saved in the revision (``RevisionStorage.revision_step``), as
+        ``article.current_step`` still records the original submission; otherwise it is ``article.current_step``.
+
+        :param article: Article instance, or None if the article has not been created yet
+        :type article: Article | None
+        :return: Number of the last saved step, 0 if no step has been saved
+        :rtype: int
+        """
+        if not article or not article.pk:
+            return 0
+        revision_step = RevisionStorage.objects.filter(article=article).values_list("revision_step", flat=True).first()
+        if revision_step is not None:
+            return revision_step
         return article.current_step
 
-    def get_incomplete_step_url(self, article: Article) -> str:
+    def get_incomplete_step_url(self, article: Article | None) -> str:
         """
         Return the url of the next step for the given article.
 
-        :param article: Article instance
-        :type article: Article
+        :param article: Article instance, or None if the article has not been created yet
+        :type article: Article | None
         :return: URL of the next step
         :rtype: str
         """
-        try:
-            revision_step = self._get_incomplete_revision_step(article)
-            article_step = self._get_incomplete_article_step(article)
-            if revision_step is not None:
-                next_step = max(revision_step, self.step_number) + 1
-            else:
-                next_step = max(article_step, self.step_number) + 1
-        except AttributeError:
+        if not article or not article.pk:
             return reverse("wjs_submission_1")
+        next_step = max(self._get_last_completed_step(article), self.step_number) + 1
         if next_step in STEPS:
             return reverse(
                 f"{STEPS[next_step].step_view_name}",
@@ -135,8 +136,8 @@ class Step:
         Return a dictionary with the active/available steps for the given journal / article.
 
         Active steps are those whose Step.check_function returns True.
-        Available steps are those whose Step.step_number is less than or equal to the current step of the article or
-            the first active step after the last completed one.
+        Available steps are those whose Step.step_number is less than or equal to the last completed step (the
+            revision step during a revision, the article current step otherwise) or the first active step after it.
 
         :param journal: Journal instance
         :type journal: Journal
@@ -149,11 +150,12 @@ class Step:
         """
         states = {}
         next_selected = False
+        last_completed = cls._get_last_completed_step(article)
         for step in STEPS.values():
             # active state depends on the check_function and journal configuration
             active = step.is_active(journal, article, user)
             # submitted steps are available
-            available = active and article and step.step_number <= article.current_step
+            available = active and step.step_number <= last_completed
             # the first active step after the last completed one is also available
             if not available and not next_selected and active:
                 next_selected = True
