@@ -4,9 +4,9 @@ from unittest.mock import patch
 import pytest
 from django.urls import reverse
 from journal.models import Journal
-from plugins.wjs_submission.models import AccessMode, AccessModeJournal
-from plugins.wjs_submission.workflow import STEPS, Step
-from submission.models import Article, Licence
+from plugins.wjs_submission.models import AccessMode, AccessModeJournal, RevisionStorage
+from plugins.wjs_submission.workflow import STEPS, Step, StepState
+from submission.models import STAGE_UNDER_REVISION, Article, Licence
 
 
 @pytest.mark.parametrize(
@@ -374,3 +374,87 @@ def test_step_state_mapping_skipped_step_no_lookahead_drift(
         assert states[number].available is expected, (
             f"step {number}: expected available={expected}, got {states[number].available}"
         )
+
+
+def _start_revision(article: Article, flow_type: str, revision_step: int = 0) -> RevisionStorage:
+    """Put an already submitted article (``current_step`` 8) under revision, at the given revision step."""
+    article.current_step = 8
+    article.stage = STAGE_UNDER_REVISION
+    article.save()
+    return RevisionStorage.objects.create(article=article, revision_flow_type=flow_type, revision_step=revision_step)
+
+
+def _available(states: dict[int, StepState]) -> set[int]:
+    """Return the numbers of the steps marked as available."""
+    return {number for number, state in states.items() if state.available}
+
+
+@pytest.mark.parametrize(
+    ("flow_type", "revision_step", "expected"),
+    [
+        (RevisionStorage.RevisionFlowType.CONFIRM, 0, {1}),
+        (RevisionStorage.RevisionFlowType.CONFIRM, 1, {1, 8}),
+        (RevisionStorage.RevisionFlowType.METADATA, 0, {1}),
+        (RevisionStorage.RevisionFlowType.METADATA, 1, {1, 4}),
+        (RevisionStorage.RevisionFlowType.METADATA, 5, {1, 4, 5, 7}),
+        (RevisionStorage.RevisionFlowType.FULL, 0, {1}),
+        (RevisionStorage.RevisionFlowType.FULL, 1, {1, 4}),
+        (RevisionStorage.RevisionFlowType.FULL, 5, {1, 4, 5, 6}),
+        (RevisionStorage.RevisionFlowType.FULL, 7, {1, 4, 5, 6, 7, 8}),
+    ],
+)
+@pytest.mark.django_db
+def test_revision_steps_states(
+    article: Article,
+    install_plugins: Callable,
+    flow_type: str,
+    revision_step: int,
+    expected: set[int],
+):
+    """
+    During a revision a step is available only once the previous active step has been saved.
+
+    Availability follows ``RevisionStorage.revision_step``, not ``article.current_step`` (8 for any submitted article).
+    """
+    _start_revision(article, flow_type, revision_step)
+
+    states = Step.get_steps_states(article.journal, article)
+
+    available = _available(states)
+    assert available == expected, f"{flow_type} revision at step {revision_step}: available steps {available}"
+
+
+@pytest.mark.django_db
+def test_incomplete_step_url_uses_revision_step(article: Article, install_plugins: Callable):
+    """After saving a step during a revision, the author is sent after the last saved revision step."""
+    _start_revision(article, RevisionStorage.RevisionFlowType.FULL, revision_step=4)
+
+    url = STEPS[1].get_incomplete_step_url(article)
+
+    assert url == reverse("wjs_submission_5", kwargs={"article_id": article.pk}), f"unexpected redirect {url}"
+
+
+@pytest.mark.django_db
+def test_steps_states_without_article_unchanged(journal: Journal, install_plugins: Callable):
+    """Without an article (new submission) only the first step is available."""
+    states = Step.get_steps_states(journal)
+
+    assert _available(states) == {1}, f"available steps {_available(states)}"
+
+
+@pytest.mark.django_db
+def test_submission_ignores_missing_revision_storage(article: Article, install_plugins: Callable):
+    """A first submission (no RevisionStorage) still follows ``article.current_step``."""
+    article.current_step = 4
+    with patch.object(STEPS[2], "check_function", return_value=False):
+        states = Step.get_steps_states(article.journal, article)
+
+    assert _available(states) == {1, 3, 4, 5}, f"available steps {_available(states)}"
+
+
+@pytest.mark.django_db
+def test_last_completed_step_unsaved_article(journal: Journal, install_plugins: Callable):
+    """An article not yet saved has no saved step, and no RevisionStorage lookup is attempted for it."""
+    last_completed = Step._get_last_completed_step(Article(journal=journal))  # noqa: SLF001
+
+    assert last_completed == 0, f"unexpected last completed step {last_completed}"
