@@ -7,6 +7,7 @@ from django.utils.translation import gettext_lazy as _
 from plugins.wjs_submission.workflow import is_revision_full
 from submission.models import Article
 
+from ..helpers.forms import required_help_text
 from ..models import (
     AccessMode,
     RevisionStorage,
@@ -112,7 +113,7 @@ class SubmissionStep7Form(forms.ModelForm):
         for field in self.fields:
             if self.fields[field].required:
                 self.fields[field].widget.attrs["required"] = True
-                self.fields[field].help_text = _("Required")
+                self.fields[field].help_text = required_help_text()
 
     def save(self, commit=True):
         """

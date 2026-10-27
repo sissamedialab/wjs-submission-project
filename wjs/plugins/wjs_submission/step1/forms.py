@@ -8,6 +8,7 @@ from django.forms import ModelForm
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 from events import logic as events_logic
+from plugins.wjs_submission.helpers.forms import required_help_text
 from plugins.wjs_submission.workflow import is_revision_confirm, is_revision_full
 from submission.models import Article, Field, FieldAnswer
 from utils.setting_handler import get_setting
@@ -149,8 +150,9 @@ class SubmissionStep1Form(forms.ModelForm):
             for element in self._additional_fields:
                 # Add any missing element kinds if necessary
                 if element.kind == "text":
+                    # The help text is shown as placeholder, so it is not repeated below the field
                     self.fields[element.name] = forms.CharField(
-                        widget=forms.TextInput(attrs={"div_class": element.width}),
+                        widget=forms.TextInput(attrs={"div_class": element.width, "placeholder": element.help_text}),
                         required=element.required,
                     )
                 elif element.kind == "textarea":
@@ -163,15 +165,10 @@ class SubmissionStep1Form(forms.ModelForm):
                         required=element.required,
                     )
 
-                self.fields[element.name].help_text = element.help_text
+                self.fields[element.name].help_text = "" if element.kind == "text" else element.help_text
                 self.fields[element.name].label = element.name
                 if element.required:
-                    if self.fields[element.name].help_text:
-                        self.fields[
-                            element.name
-                        ].help_text = f"{_('Required')} - {self.fields[element.name].help_text}"
-                    else:
-                        self.fields[element.name].help_text = _("Required")
+                    self.fields[element.name].help_text = required_help_text(self.fields[element.name].help_text)
 
                 if self.instance and self.instance.pk:
                     try:
