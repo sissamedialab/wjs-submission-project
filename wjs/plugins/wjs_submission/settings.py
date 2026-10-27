@@ -200,7 +200,7 @@ RESET_ARTICLE_CURRENT_STEP = getattr(settings, "REVISION_RESET_ARTICLE_CURRENT_S
 DEFAULT_USE_OF_AI_FIELD_LABEL = getattr(
     settings,
     "SUBMISSION_DEFAULT_USE_OF_AI_FIELD_LABEL",
-    "Author(s) take full responsibility for any use of Artificial Intelligence made in preparing this paper",
+    "Artificial Intelligence",
 )
 USE_OF_AI_FIELD_LABEL = getattr(settings, "SUBMISSION_USE_OF_AI_FIELD_LABEL", DEFAULT_USE_OF_AI_FIELD_LABEL)
 

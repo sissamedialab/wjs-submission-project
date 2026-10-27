@@ -8,6 +8,7 @@ from submission.models import Article
 from utils.setting_handler import get_setting
 
 from ..conversion import start_source_conversion
+from ..helpers.forms import required_help_text
 from ..models import ArticleSubmission, RevisionStorage
 from ..settings import SUBMISSION_FILE_TYPES
 
@@ -20,13 +21,13 @@ class SubmissionStep6Form(forms.ModelForm):
         widget=forms.RadioSelect(attrs={"data-name": "das", "data-type": "radio-select"}),
         required=True,
     )
-    das_url = forms.URLField(required=False, label="Please insert complete URL", help_text=_("Required"))
+    das_url = forms.URLField(required=False, label="Please insert complete URL", help_text=required_help_text())
     cas = forms.ChoiceField(
         choices=ArticleSubmission.CasDeclaration.choices,
         widget=forms.RadioSelect(attrs={"data-name": "cas", "data-type": "radio-select"}),
         required=True,
     )
-    cas_url = forms.URLField(required=False, label="Please insert complete URL", help_text=_("Required"))
+    cas_url = forms.URLField(required=False, label="Please insert complete URL", help_text=required_help_text())
 
     class Meta:
         model = Article
@@ -147,7 +148,7 @@ class UploadArticleForm(forms.Form):
         for field in self.fields:
             if self.fields[field].required:
                 self.fields[field].widget.attrs["required"] = True
-                self.fields[field].help_text = _("Required")
+                self.fields[field].help_text = required_help_text()
 
     @property
     def supported_file_types(self):
