@@ -81,12 +81,34 @@ class HandleKeywordSelection:
             ]
         )
 
+    @property
+    def hierarchical(self) -> bool:
+        """Tell whether the article's journal uses weighted, hierarchical keywords."""
+        return self.article.journal.submissionconfiguration.hierarchical_keywords
+
+    def get_keyword_weights(self) -> dict:
+        """
+        Return the keyword selection to validate, as a dictionary of keyword_id -> weight.
+
+        Hierarchical journals post a weight for each keyword. Other journals post no weights: their keywords are
+        already stored on the article by the form, so they are returned with no weight.
+
+        :raises ValidationError: If the posted weights are malformed.
+        """
+        if self.hierarchical:
+            return self.parse_keyword_weights()
+        return dict.fromkeys(self.article.keywords.values_list("pk", flat=True))
+
     def run(self):
         """
-        Execute the full flow: parse keyword weights, validate them, and persist the results.
+        Execute the full flow: get the keyword selection, validate it, and persist the weights.
+
+        Weights are persisted only for hierarchical journals; the other journals are validated on the keywords
+        already stored by the form.
 
         :raises ValidationError: If parsing or validation fails.
         """
-        keyword_weights = self.parse_keyword_weights()
+        keyword_weights = self.get_keyword_weights()
         self.run_validator(keyword_weights)
-        self.persist(keyword_weights)
+        if self.hierarchical:
+            self.persist(keyword_weights)

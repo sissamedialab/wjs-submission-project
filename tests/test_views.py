@@ -363,7 +363,7 @@ def test_submission_disabled(
     ],
 )
 @pytest.mark.django_db
-def test_keyword_handling(client, article, post_data, expected_keywords, expected_error):
+def test_keyword_handling(hierarchical_keywords, client, article, post_data, expected_keywords, expected_error):
     settings.WJS_KEYWORD_WEIGHT_VALIDATORS = {
         "JQuant": ("plugins.wjs_submission.logic.always_pass",),
     }
@@ -388,7 +388,7 @@ def test_keyword_handling(client, article, post_data, expected_keywords, expecte
 
 
 @pytest.mark.django_db
-def test_keyword_validator_rejects_selection_outside_journal_interval(client, article):
+def test_keyword_validator_rejects_selection_outside_journal_interval(hierarchical_keywords, client, article):
     """Step 3 rejects a JCOM selection with more keywords than the journal interval allows."""
     for i in range(1, 5):
         Keyword.objects.create(pk=i, word=f"kw{i}", journal=article.journal)
@@ -402,6 +402,45 @@ def test_keyword_validator_rejects_selection_outside_journal_interval(client, ar
         "the journal validator error is shown"
     )
     assert not KeywordArticle.objects.filter(article=article).exists(), "no keyword is saved"
+
+
+@pytest.mark.parametrize(
+    ("keywords", "expected_error"),
+    [
+        ("one", None),
+        ("one,two,three", None),
+        ("", "You must select between 1 and 3 keywords."),
+        ("one,two,three,four", "You must select between 1 and 3 keywords."),
+    ],
+)
+@pytest.mark.django_db
+def test_flat_journal_keyword_count_enforced(client, article, keywords, expected_error):
+    """Step 3 enforces the journal keyword count without weights when keywords are not hierarchical."""
+    assert not article.journal.submissionconfiguration.hierarchical_keywords, "the journal has flat keywords"
+
+    client.force_login(article.owner)
+    response = client.post(reverse("wjs_submission_3", kwargs={"article_id": article.pk}), {"keywords": keywords})
+
+    if expected_error:
+        assert response.status_code == 200, "the form is re-rendered"
+        assert expected_error in response.context_data["form"].errors["__all__"][0], "the interval error is shown"
+        assert not article.keywords.exists(), "the keyword save is rolled back"
+    else:
+        assert response.status_code == 302, "step 3 passes"
+        assert article.keywords.count() == len(keywords.split(",")), "all the keywords are saved"
+
+
+@pytest.mark.django_db
+def test_flat_journal_resubmit_counts_new_selection(client, article):
+    """Re-submitting step 3 on a flat journal validates the new selection, not the stored one."""
+    client.force_login(article.owner)
+    url = reverse("wjs_submission_3", kwargs={"article_id": article.pk})
+
+    assert client.post(url, {"keywords": "one,two,three"}).status_code == 302, "first selection is valid"
+    response = client.post(url, {"keywords": "one,two,three,four"})
+
+    assert response.status_code == 200, "the oversized selection is rejected"
+    assert article.keywords.count() == 3, "the previous selection is kept"
 
 
 @pytest.mark.django_db
@@ -467,7 +506,7 @@ def test_context_contains_only_journal_keywords(client, article):
 
 
 @pytest.mark.django_db
-def test_keyword_article_order_preserved(client, article):
+def test_keyword_article_order_preserved(hierarchical_keywords, client, article):
     # JCOM accepts at most 3 keywords
     for i in range(1, 4):
         Keyword.objects.create(word=f"kw{i}", journal=article.journal)
@@ -493,6 +532,7 @@ def test_free_text_keywords(client, article):
     journal = article.journal
     configuration = SubmissionConfiguration.objects.get(journal=journal)
     configuration.autocomplete_keywords = True
+    configuration.hierarchical_keywords = True
     configuration.save()
 
     g1 = KeywordGroup.objects.create(name="group1")
