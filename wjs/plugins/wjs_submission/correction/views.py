@@ -5,7 +5,7 @@ from django.urls import reverse_lazy
 from django.views.generic import RedirectView
 
 from ..mixins import AuthorFilteringView
-from .logic import CORRECTION_RELATIONSHIPS, SetupCorrectionStorage
+from .logic import CORRECTION_RELATIONSHIPS, SECTION_NAME_BY_RELATIONSHIP, SetupCorrectionStorage
 
 
 class CorrectionStartView(AuthorFilteringView, RedirectView):
@@ -27,6 +27,7 @@ class CorrectionStartView(AuthorFilteringView, RedirectView):
                 request,
                 "wjs_submission/correction/error.html",
                 context={
+                    "correction_label": SECTION_NAME_BY_RELATIONSHIP[relationship],
                     "error": f"Invalid relationship: {relationship}",
                     "article_id": article_id,
                 },
@@ -38,13 +39,14 @@ class CorrectionStartView(AuthorFilteringView, RedirectView):
                 request=request,
             )
             to_article = setup.run()
-            kwargs["article_id"] = to_article.id
+            kwargs["article_id"] = to_article.pk
             return super().get(request, *args, **kwargs)
         except ValueError as e:
             return render(
                 request,
                 "wjs_submission/correction/error.html",
                 context={
+                    "correction_label": SECTION_NAME_BY_RELATIONSHIP[relationship],
                     "error": str(e),
                     "article_id": article_id,
                 },
