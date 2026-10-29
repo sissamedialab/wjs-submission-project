@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.1.6] - 2026-10-29
+
+- [specs#3280: Step 3 keyword validators never reject invalid selections](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3280) — fix(step3): validate keyword count for journals without hierarchical keywords (!186)
+- [specs#3205: 25.9 feedback general tests JCAP](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3205) — fix(step1): require the cover letter in revisions whatever the journal setting (!175)
+- [specs#3205: 25.9 feedback general tests JCAP](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3205) — fix: remove check in template hiding cover letter file from detect required (!171)
+- [wjs-help#193: Revision: do not skip step](https://gitlab.sissamedialab.it/wjs/wjs-help/-/work_items/193) — fix(revision): make revision steps available only after the previous one is saved (!184)
+- [wjs-help#190: revision submission errror (dev - 4220)](https://gitlab.sissamedialab.it/wjs/wjs-help/-/work_items/190) — fix(revision): make revision steps available only after the previous one is saved (!184)
+- [specs#3258: Improve rendering of required fields in form](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3258) — Rename "Use of AI" field to "Artificial Intelligence" and bold "Required" help text (!177)
+- [specs#3330: Review design of additional submission fields](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3330) — Rename "Use of AI" field to "Artificial Intelligence" and bold "Required" help text (!177)
+- [specs#3204: Add support for free to read access mode](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3204) — feat(correction): free to read errata/addenda and a single access mode / licence / rights policy (!167)
+- [specs#3248: Access should not be changed if corresponding author and affiliation are not changed](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3248) — feat(correction): free to read errata/addenda and a single access mode / licence / rights policy (!167)
+- [specs#3195: Errata / Addenda access mode special requirement](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3195) — feat(correction): free to read errata/addenda and a single access mode / licence / rights policy (!167)
+- [specs#3280: Step 3 keyword validators never reject invalid selections](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3280) — fix(step3): enforce the per-journal keyword validators (!173)
+
 ## [2.1.5] - 2026-10-21
 
 - [wjs-help#219: Validate ArXiv ID broken - Sumbission process](https://gitlab.sissamedialab.it/wjs/wjs-help/-/work_items/219) — fix(arxiv): import defusedxml.ElementTree explicitly (!181)
