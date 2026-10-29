@@ -6,6 +6,7 @@ from core.models import Account
 from django.conf import settings
 from django.contrib.messages import get_messages
 from django.http import HttpResponse
+from django.template.loader import render_to_string
 from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
@@ -19,6 +20,7 @@ from plugins.wjs_submission.models import (
 )
 from plugins.wjs_submission.step1 import SubmissionStep1View
 from plugins.wjs_submission.step6 import SubmissionStep6View
+from plugins.wjs_submission.step8.views import SubmissionStep8View
 from plugins.wjs_submission.views import SubmissionLastStepRedirectView
 from plugins.wjs_submission.workflow import STEPS
 from submission.models import (
@@ -27,11 +29,13 @@ from submission.models import (
     Keyword,
     KeywordArticle,
     KeywordGroup,
+    Licence,
     SubmissionConfiguration,
 )
 from utils.setting_handler import save_setting
 
 from .conftest import _journal_factory, _user
+from .test_step1_resubmission import _create_real_file
 
 
 @pytest.mark.parametrize("same_journal", [True, False])
@@ -287,6 +291,36 @@ def test_submission_author_only(
         assert response.status_code == 404
 
 
+@pytest.mark.parametrize("comments_to_the_editor", [True, False])
+@pytest.mark.django_db
+def test_revision_step1_existing_cover_letter_field_has_an_id(
+    article: Article, install_plugins: Callable, comments_to_the_editor: bool
+):
+    """
+    The hidden field marking an uploaded cover letter has an id, whatever the journal setting.
+
+    The required fields checklist stores the id of every required field and later looks it up: without an id the
+    browser logs "Empty string passed to getElementById()".
+    """
+    article.journal.submissionconfiguration.comments_to_the_editor = comments_to_the_editor
+    article.journal.submissionconfiguration.save()
+    cover_letter = _create_real_file(article, article.owner, filename="cover.pdf", content=b"cover letter")
+    RevisionStorage.objects.create(
+        article=article,
+        revision_flow_type=RevisionStorage.RevisionFlowType.FULL,
+        data={"cover_letter_file": cover_letter.pk},
+    )
+    # Only the fragment holding the hidden field is rendered: the whole page needs URLs of other plugins
+    html = render_to_string(
+        "wjs_submission/step1/includes/existing_cover_letter.html",
+        {"article": article, "journal": article.journal},
+    )
+
+    hidden = [line for line in html.splitlines() if 'type="hidden"' in line and 'name="cover_letter_file"' in line]
+    assert len(hidden) == 1, "the hidden field is rendered when the revision already has a cover letter file"
+    assert 'id="id_cover_letter_file_existing"' in hidden[0], hidden[0]
+
+
 @pytest.mark.parametrize("enabled", [True, False])
 @pytest.mark.django_db
 def test_submission_disabled(
@@ -317,19 +351,19 @@ def test_submission_disabled(
 
 
 @pytest.mark.parametrize(
-    ("post_data", "expected_keywords", "expect_error"),
+    ("post_data", "expected_keywords", "expected_error"),
     [
-        ({"keyword_1_weight": ["25"], "keyword_2_weight": ["100"]}, {1: 25, 2: 100}, False),
-        ({"keyword_1_weight": ["123"]}, {}, True),
-        ({}, {}, False),
-        ({"keyword_x_weight": ["25"]}, {}, True),
-        ({"keyword_1_weight": ["abc"]}, {}, True),
-        ({"keyword_1_weight": ["25"], "keyword_2_weight": [""]}, {}, True),
-        ({"keyword_1_weight": ["25"], "alien": ["field"]}, {1: 25}, False),
+        ({"keyword_1_weight": ["25"], "keyword_2_weight": ["100"]}, {1: 25, 2: 100}, None),
+        ({"keyword_1_weight": ["123"]}, {}, "Corrupted weight data"),
+        ({}, {}, "You must select between 1 and 3 keywords."),
+        ({"keyword_x_weight": ["25"]}, {}, "Invalid keyword weight data"),
+        ({"keyword_1_weight": ["abc"]}, {}, "Invalid keyword weight data"),
+        ({"keyword_1_weight": ["25"], "keyword_2_weight": [""]}, {}, "Invalid keyword weight data"),
+        ({"keyword_1_weight": ["25"], "alien": ["field"]}, {1: 25}, None),
     ],
 )
 @pytest.mark.django_db
-def test_keyword_handling(client, article, post_data, expected_keywords, expect_error):
+def test_keyword_handling(hierarchical_keywords, client, article, post_data, expected_keywords, expected_error):
     settings.WJS_KEYWORD_WEIGHT_VALIDATORS = {
         "JQuant": ("plugins.wjs_submission.logic.always_pass",),
     }
@@ -340,20 +374,73 @@ def test_keyword_handling(client, article, post_data, expected_keywords, expect_
     client.force_login(article.owner)
     url = reverse("wjs_submission_3", kwargs={"article_id": article.pk})
 
-    if expect_error:
+    if expected_error:
         response = client.post(url, {**post_data})
         assert response.status_code == 200
         assert not response.context_data["form"].is_valid()
-        assert any(
-            msg in response.context_data["form"].errors["__all__"][0]
-            for msg in ["Corrupted weight data", "Invalid keyword weight data"]
-        )
+        assert expected_error in response.context_data["form"].errors["__all__"][0]
         assert not KeywordArticle.objects.filter(article=article).exists()
     else:
         response = client.post(url, {**post_data})
         assert response.status_code == 302
         weights = {ka.keyword_id: ka.weight for ka in KeywordArticle.objects.filter(article=article)}
         assert weights == expected_keywords
+
+
+@pytest.mark.django_db
+def test_keyword_validator_rejects_selection_outside_journal_interval(hierarchical_keywords, client, article):
+    """Step 3 rejects a JCOM selection with more keywords than the journal interval allows."""
+    for i in range(1, 5):
+        Keyword.objects.create(pk=i, word=f"kw{i}", journal=article.journal)
+    post_data = {f"keyword_{i}_weight": ["50"] for i in range(1, 5)}
+
+    client.force_login(article.owner)
+    response = client.post(reverse("wjs_submission_3", kwargs={"article_id": article.pk}), post_data)
+
+    assert response.status_code == 200, "the form is re-rendered"
+    assert "You must select between 1 and 3 keywords." in response.context_data["form"].errors["__all__"][0], (
+        "the journal validator error is shown"
+    )
+    assert not KeywordArticle.objects.filter(article=article).exists(), "no keyword is saved"
+
+
+@pytest.mark.parametrize(
+    ("keywords", "expected_error"),
+    [
+        ("one", None),
+        ("one,two,three", None),
+        ("", "You must select between 1 and 3 keywords."),
+        ("one,two,three,four", "You must select between 1 and 3 keywords."),
+    ],
+)
+@pytest.mark.django_db
+def test_flat_journal_keyword_count_enforced(client, article, keywords, expected_error):
+    """Step 3 enforces the journal keyword count without weights when keywords are not hierarchical."""
+    assert not article.journal.submissionconfiguration.hierarchical_keywords, "the journal has flat keywords"
+
+    client.force_login(article.owner)
+    response = client.post(reverse("wjs_submission_3", kwargs={"article_id": article.pk}), {"keywords": keywords})
+
+    if expected_error:
+        assert response.status_code == 200, "the form is re-rendered"
+        assert expected_error in response.context_data["form"].errors["__all__"][0], "the interval error is shown"
+        assert not article.keywords.exists(), "the keyword save is rolled back"
+    else:
+        assert response.status_code == 302, "step 3 passes"
+        assert article.keywords.count() == len(keywords.split(",")), "all the keywords are saved"
+
+
+@pytest.mark.django_db
+def test_flat_journal_resubmit_counts_new_selection(client, article):
+    """Re-submitting step 3 on a flat journal validates the new selection, not the stored one."""
+    client.force_login(article.owner)
+    url = reverse("wjs_submission_3", kwargs={"article_id": article.pk})
+
+    assert client.post(url, {"keywords": "one,two,three"}).status_code == 302, "first selection is valid"
+    response = client.post(url, {"keywords": "one,two,three,four"})
+
+    assert response.status_code == 200, "the oversized selection is rejected"
+    assert article.keywords.count() == 3, "the previous selection is kept"
 
 
 @pytest.mark.django_db
@@ -419,15 +506,15 @@ def test_context_contains_only_journal_keywords(client, article):
 
 
 @pytest.mark.django_db
-def test_keyword_article_order_preserved(client, article):
-    for i in range(1, 5):
+def test_keyword_article_order_preserved(hierarchical_keywords, client, article):
+    # JCOM accepts at most 3 keywords
+    for i in range(1, 4):
         Keyword.objects.create(word=f"kw{i}", journal=article.journal)
 
     post_data = {
         "keyword_1_weight": ["25"],
         "keyword_2_weight": ["50"],
-        "keyword_3_weight": ["75"],
-        "keyword_4_weight": ["100"],
+        "keyword_3_weight": ["100"],
     }
 
     client.force_login(article.owner)
@@ -435,8 +522,8 @@ def test_keyword_article_order_preserved(client, article):
     client.post(url, post_data)
 
     kws = list(KeywordArticle.objects.filter(article=article).order_by("order"))
-    assert [ka.keyword_id for ka in kws] == [1, 2, 3, 4]
-    assert [ka.weight for ka in kws] == [25, 50, 75, 100]
+    assert [ka.keyword_id for ka in kws] == [1, 2, 3]
+    assert [ka.weight for ka in kws] == [25, 50, 100]
     KeywordArticle.objects.all().delete()  # not usre why we need to delete them, but otherwise the test teardown fails
 
 
@@ -445,6 +532,7 @@ def test_free_text_keywords(client, article):
     journal = article.journal
     configuration = SubmissionConfiguration.objects.get(journal=journal)
     configuration.autocomplete_keywords = True
+    configuration.hierarchical_keywords = True
     configuration.save()
 
     g1 = KeywordGroup.objects.create(name="group1")
@@ -595,6 +683,37 @@ def test_submission_step8_access_mode_verify(client: Client, article: Article, i
     assert response.content == b"rendered", "step 8 must be rendered once the access mode is set"
 
 
+@pytest.mark.django_db
+def test_submission_step8_shows_article_license_and_rights(
+    client: Client, article: Article, install_plugins: Callable
+):
+    """Step 8 summary shows the license and rights of the article, not the presets of its access mode."""
+    licence = Licence.objects.create(short_name="original", name="Original", journal=article.journal)
+    access_mode = AccessMode.objects.filter(parameters__journal=article.journal).first()
+    article.submission_data.access_mode = access_mode
+    article.submission_data.license_override = True
+    article.submission_data.rights_override = True
+    article.submission_data.save()
+    article.license = licence
+    article.rights = "original rights"
+    article.save()
+    preset = access_mode.parameters.get(journal=article.journal)
+    assert preset.licence != licence
+    assert preset.copyright != "original rights"
+    client.force_login(article.owner)
+
+    with patch(
+        "plugins.wjs_submission.step8.views.SubmissionStep8View.render_to_response",
+        return_value=HttpResponse("rendered"),
+    ) as render:
+        response = client.get(reverse("wjs_submission_8", kwargs={"article_id": article.pk}))
+
+    assert response.status_code == 200
+    context = render.call_args.args[0]
+    assert context["article_license"] == licence
+    assert context["article_rights"] == "original rights"
+
+
 @pytest.mark.parametrize("flow_type", RevisionStorage.RevisionFlowType.values)
 @pytest.mark.django_db
 def test_submission_step8_revision_without_access_mode_redirects(
@@ -674,3 +793,38 @@ def test_group_with_only_deactivated_subgroup_still_offers_its_own_keywords(hier
 
     assert "direct-kw" in content, "the group's own active keyword must stay selectable"
     assert "hidden-kw" not in content, "the deactivated keyword must not be offered"
+
+
+@pytest.mark.parametrize("comments_to_the_editor", [True, False])
+@pytest.mark.parametrize(
+    "revision_flow_type",
+    [RevisionStorage.RevisionFlowType.FULL, RevisionStorage.RevisionFlowType.CONFIRM],
+)
+@pytest.mark.django_db
+def test_step8_revision_cover_letter_is_required_whatever_the_journal_setting(
+    article: Article,
+    install_plugins: Callable,
+    comments_to_the_editor: bool,
+    revision_flow_type: str,
+):
+    """Step 8 flags a full or confirm revision without cover letter text or file, like step 1 does."""
+    article.journal.submissionconfiguration.comments_to_the_editor = comments_to_the_editor
+    article.journal.submissionconfiguration.save()
+    RevisionStorage.objects.create(
+        article=article,
+        revision_flow_type=revision_flow_type,
+        data={
+            "submission_requirements": True,
+            "comments_editor": "",
+            "cover_letter_file": None,
+            "source_files": [1],
+            "manuscript_files": [1],
+        },
+    )
+
+    view = SubmissionStep8View()
+    view.object = article
+    result = view._validate_revision_data(article)  # noqa: SLF001
+
+    assert not result["cover_letter"], "a revision without cover letter must be flagged"
+    assert not result["valid"], "a revision without cover letter must not be valid"

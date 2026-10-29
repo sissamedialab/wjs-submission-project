@@ -101,13 +101,7 @@
         Opportunistic file field used to mark the field as required only if populated.
         After the file is uploaded this is rendered to satisfy the alternate_field attribute for comments_editor. If file is not set this is not rendered, making comments_editor required
       {% endcomment %}
-        {% if journal.submissionconfiguration.comments_to_the_editor %}
-          {% if article.submission_data.cover_letter_file_id %}
-            <input type="hidden" name="cover_letter_file" value="{{ article.submission_data.cover_letter_file_id }}" required="">
-          {% elif article.revisionstorage.data.cover_letter_file %}
-            <input type="hidden" name="cover_letter_file" value="{{ article.revisionstorage.data.cover_letter_file }}" required="">
-          {% endif %}
-        {% endif %}
+        {% include "wjs_submission/step1/includes/existing_cover_letter.html" %}
         {% bootstrap_field form.cover_letter_file show_help=False show_label=False required=True %}
       </div>
     </div>
@@ -116,12 +110,10 @@
 
 {% block js %}
   {{ block.super }}
-  <script src="{% static "js/ai_field.js" %}"></script>
   <script src="{% static "js/arxiv.js" %}"></script>
   <script>
     document.addEventListener("DOMContentLoaded", function () {
       setupArxivValidation();
-      handleUseAiToggle();
     });
   </script>
 {% endblock js %}

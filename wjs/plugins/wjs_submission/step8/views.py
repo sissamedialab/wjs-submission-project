@@ -10,6 +10,7 @@ from repository.models import Author
 from submission.models import LANGUAGE_CHOICES, Article, FrozenAuthor, Section
 from utils.setting_handler import get_setting
 
+from ..access_mode import get_effective_access_settings
 from ..data import RevisionValidationData
 from ..mixins import AuthorFilteringView, StepCheckView
 from ..models import (
@@ -191,7 +192,12 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
         """
         if is_revision(article):
             submission_requirements = bool(article.revisionstorage.data["submission_requirements"])
-            if article.journal.submissionconfiguration.comments_to_the_editor:
+            # Same rule as SubmissionStep1Form._cover_letter_required
+            if (
+                article.journal.submissionconfiguration.comments_to_the_editor
+                or is_revision_full(article)
+                or is_revision_confirm(article)
+            ):
                 cover_letter = bool(article.revisionstorage.data["comments_editor"]) or bool(
                     article.revisionstorage.data["cover_letter_file"]
                 )
@@ -288,9 +294,6 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                     context["article_data"]["language"] = dict(LANGUAGE_CHOICES)[context["article_data"]["language"]]
                 if context["article_data"].get("section"):
                     context["article_data"]["section"] = Section.objects.get(pk=context["article_data"]["section"])
-                context["access_mode"] = AccessModeJournal.objects.get(
-                    journal=self.object.journal, access_mode_id=context["article_data"].get("access_mode", None)
-                )
                 context["correspondence_author"] = Account.objects.get(
                     pk=context["article_data"]["correspondence_author"]
                 )
@@ -310,9 +313,6 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                 context["article_data"]["abstract"] = self.object.abstract
                 context["article_data"]["language"] = self.object.get_language_display()
                 context["article_data"]["section"] = self.object.section
-                context["access_mode"] = AccessModeJournal.objects.get(
-                    journal=self.object.journal, access_mode_id=self.object.submission_data.access_mode.pk
-                )
                 context["correspondence_author"] = self.object.correspondence_author
                 context["affiliation"] = self.object.submission_data.affiliation
                 context["article_data"]["special_request"] = self.object.submission_data.special_request
@@ -343,15 +343,16 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                         == self.object.submission_data.DasDeclaration.URL.value,
                     }
                 )
-            context["access_mode"] = AccessModeJournal.objects.get(
-                journal=self.object.journal, access_mode_id=self.object.submission_data.access_mode.pk
-            )
             context["correspondence_author"] = self.object.correspondence_author
             context["affiliation"] = self.object.submission_data.affiliation
             context["article_data"].language = self.object.get_language_display()
             context["article_data"].special_request = self.object.submission_data.special_request
             context["article_data"].cover_letter_file = self.object.submission_data.cover_letter_file
             context["validate_revision_data"] = self._validate_revision_data(self.object)
+
+        # access mode, licence and rights come from the same source, so the summary is always consistent
+        access_mode, context["article_license"], context["article_rights"] = get_effective_access_settings(self.object)
+        context["access_mode"] = AccessModeJournal.objects.get(journal=self.object.journal, access_mode=access_mode)
 
         # Include files (manuscript_files, data_figure_files, etc.)
         context.update(get_files(article=self.object))

@@ -10,6 +10,7 @@ from ..account_validation import (
     ProfileCompletionStatus,
 )
 from ..fields import WjsMiniHTMLFormField
+from ..helpers.forms import required_help_text
 from ..models import (
     ArticleCollaboration,
     Collaboration,
@@ -77,7 +78,7 @@ class SubmissionStep4Form(forms.ModelForm):
             self.fields["affiliation"].queryset = self.initial["correspondence_author"].affiliations
         for field in self.fields:
             if self.fields[field].required:
-                self.fields[field].help_text = _("Required")
+                self.fields[field].help_text = required_help_text()
 
     def _get_correspondence_author_list(self, article: Article) -> QuerySet:  # noqa: PLR6301
         """
@@ -197,7 +198,7 @@ class AddAuthorForm(forms.ModelForm):
         self.fields["email"].required = True
         for field in self.fields:
             if self.fields[field].required:
-                self.fields[field].help_text = _("Required")
+                self.fields[field].help_text = required_help_text()
 
     def save(self, commit: bool = True) -> Account:
         """
@@ -410,7 +411,7 @@ class AddCollaborationForm(forms.ModelForm):
         self.fields["collaboration_relation"].initial = self.collaboration_relation
         for field in self.fields:
             if self.fields[field].required:
-                self.fields[field].help_text = _("Required")
+                self.fields[field].help_text = required_help_text()
 
     def save(self, commit: bool = True) -> Account:
         """
@@ -482,7 +483,7 @@ class RevisionStep4Form(SubmissionStep4Form):
         self.fields["authors_contributions"].widget.attrs["js_required"] = self.has_author_list_changed
         for field in self.fields:
             if self.fields[field].required:
-                self.fields[field].help_text = _("Required")
+                self.fields[field].help_text = required_help_text()
 
     def _get_default_correspondence_author(self, instance: Article) -> Account | None:
         """

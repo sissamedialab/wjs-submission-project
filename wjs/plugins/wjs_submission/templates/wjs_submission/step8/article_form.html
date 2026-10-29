@@ -417,8 +417,8 @@
     <div class="wjs-submission-form__section-content">
       <p>
         <label class="fw-bold">Access Mode</label>: {{ access_mode.access_mode }}<br>
-        <label class="fw-bold">Copyright</label>: {{ access_mode.copyright }}<br>
-        <label class="fw-bold">License</label>: {{ access_mode.licence.name }}
+        <label class="fw-bold">Copyright</label>: {{ article_rights }}<br>
+        <label class="fw-bold">License</label>: {{ article_license.name }}
       </p>
     </div>
     {% if article_data.special_request %}
