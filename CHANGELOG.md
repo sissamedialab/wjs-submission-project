@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.1.7] - 2026-10-30
+
+- No linked issue — fix: fix correction init error template (!188)
+- [specs#3352: upgrade msgpack to 1.2.3](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3352) — upgrade msgpack to 1.2.3 (!189)
+
 ## [2.1.6] - 2026-10-29
 
 - [specs#3280: Step 3 keyword validators never reject invalid selections](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3280) — fix(step3): validate keyword count for journals without hierarchical keywords (!186)
