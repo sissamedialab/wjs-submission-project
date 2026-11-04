@@ -1,3 +1,4 @@
+import re
 from urllib.parse import urlencode
 
 from django.contrib import admin, messages
@@ -162,7 +163,17 @@ class ArticleSubmissionAdmin(admin.ModelAdmin):
     list_display = ["article_title", "pubid", "article_journal", "state"]
     list_filter = ["article__journal"]
     ordering = ("-pk",)
-    search_fields = ("article__identifier__identifier",)
+    search_fields = ("article__identifier__identifier", "article__title", "=article__id")
+
+    def get_search_results(self, request, queryset, search_term):
+        """
+        Accept the "<journal code>_<pk>" label shown in wjs-review (e.g. "JQuant_4050") as an article pk.
+
+        The label's numeric part is searched instead, so it hits the exact ``=article__id`` lookup.
+        """
+        if match := re.fullmatch(r"\w+?_(\d+)", search_term.strip()):
+            search_term = match.group(1)
+        return super().get_search_results(request, queryset, search_term)
 
     def formfield_for_dbfield(self, db_field, request, **kwargs):
         """
