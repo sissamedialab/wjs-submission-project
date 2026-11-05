@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.1.8] - 2026-11-05
+
+- [specs#3198: Problems in advanced admin](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3198) — fix(advanced_admin): search article submissions by article title and pk (!185)
+- [specs#3329: Share filters between articlesubmission, article and articleworkflow](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3329) — fix(advanced_admin): search article submissions by article title and pk (!185)
+
 ## [2.1.7] - 2026-10-30
 
 - No linked issue — fix: fix correction init error template (!188)
