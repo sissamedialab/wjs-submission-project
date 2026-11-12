@@ -592,7 +592,7 @@ class WhitelistedCorrespondenceAuthors(models.Model):
 
     This model is used to store information about authors who are allowed
     to be set as corresponding author bypassing validation logic in
-    :py:func:`wjs.plugins.wjs_submission.account_validation.wjs.plugins.wjs_submission.account_validation.is_user_eligible_for_correspondence_author
+    :py:func:`plugins.wjs_submission.account_validation.is_user_eligible_for_correspondence_author`
 
     :ivar user: The account associated with the whitelisted author.
     :type user: Account

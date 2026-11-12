@@ -18,7 +18,12 @@ from plugins.wjs_submission.models import (
     Collaboration,
     RevisionStorage,
 )
+from plugins.wjs_submission.settings import (
+    DEFAULT_CORRESPONDENCE_AUTHOR_REQUIRED_FIELDS,
+    DEFAULT_CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION,
+)
 from plugins.wjs_submission.step1 import SubmissionStep1View
+from plugins.wjs_submission.step4.views import SubmissionStep4View
 from plugins.wjs_submission.step6 import SubmissionStep6View
 from plugins.wjs_submission.step8.views import SubmissionStep8View
 from plugins.wjs_submission.views import SubmissionLastStepRedirectView
@@ -828,3 +833,51 @@ def test_step8_revision_cover_letter_is_required_whatever_the_journal_setting(
 
     assert not result["cover_letter"], "a revision without cover letter must be flagged"
     assert not result["valid"], "a revision without cover letter must not be valid"
+
+
+@pytest.mark.django_db
+def test_submission_step4_incomplete_correspondence_author_lists_missing_fields(client, article):
+    """The step 4 context tells exactly which profile fields of the correspondence author are missing."""
+    owner = _user("owner")
+    owner.affiliations.all().delete()
+    article.owner = owner
+    article.correspondence_author = owner
+    article.save()
+    FrozenAuthor.objects.create(article=article, author=owner, order=1)
+
+    captured = {}
+
+    def fake_render(view, context, **response_kwargs):
+        # The full page needs URLs of other plugins (e.g. search-typeahead) that are not available in this repo
+        captured.update(context)
+        return HttpResponse()
+
+    client.force_login(owner)
+    # Pin the default rules: installing projects may override them per journal (e.g. wjs-profile-project)
+    with (
+        patch.object(SubmissionStep4View, "render_to_response", fake_render),
+        patch(
+            "plugins.wjs_submission.account_validation.CORRESPONDENCE_AUTHOR_REQUIRED_FIELDS",
+            DEFAULT_CORRESPONDENCE_AUTHOR_REQUIRED_FIELDS,
+        ),
+        patch(
+            "plugins.wjs_submission.account_validation.CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION",
+            DEFAULT_CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION,
+        ),
+    ):
+        response = client.get(reverse("wjs_submission_4", kwargs={"article_id": article.pk}))
+
+    assert response.status_code == 200
+    assert [str(field) for field in captured["correspondence_author_missing_fields"]] == ["Affiliation"]
+
+
+@pytest.mark.django_db
+def test_step4_missing_fields_template_lists_fields():
+    html = render_to_string(
+        "wjs_submission/step4/includes/missing_fields.html",
+        {"correspondence_author_missing_fields": ["institution", "email"]},
+    )
+    assert "<strong>Missing:</strong> institution, email." in html
+    assert not render_to_string(
+        "wjs_submission/step4/includes/missing_fields.html", {"correspondence_author_missing_fields": []}
+    ).strip()
