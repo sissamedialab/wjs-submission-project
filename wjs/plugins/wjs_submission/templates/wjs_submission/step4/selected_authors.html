@@ -107,9 +107,10 @@
         </div>
 
         <div class="col-6">
-        {% bootstrap_field step_form.affiliation %}
+        {% bootstrap_field step_form.affiliation placeholder="" %}
         </div>
       </div>
+      <div class="mb-1"><strong>Required</strong></div>
       {% if correspondence_author_error %}
         {% url 'wjs_submission_4' article.pk as step_url %}
         <div

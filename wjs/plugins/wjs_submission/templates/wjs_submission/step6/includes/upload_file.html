@@ -1,4 +1,4 @@
-{% load django_bootstrap5 static wjs_review %}
+{% load django_bootstrap5 static %}
 <div class="modal-header">
   <h2 class="modal-title" id="htmxModalLabel">{% translate "Upload file" %}</h2>
   {% bootstrap_button button_class="btn-close" data_bs_dismiss="modal" button_type="submit" aria_label=close_label content="" %}
@@ -8,15 +8,15 @@
   <form enctype="multipart/form-data" hx-post="{{ upload_files }}" hx-target="#htmxModalContent">
     {% csrf_token %}
     <div class="mb-3">
-      {% bootstrap_field form.label show_help=True %}
-      {% bootstrap_field form.file show_help=True %}
-      {% bootstrap_field form.source_format show_help=True %}
+      {% bootstrap_field form.label show_help=True placeholder="" %}
+      {% bootstrap_field form.file show_help=True placeholder="" %}
+      {% bootstrap_field form.source_format show_help=True placeholder="" %}
       {% if form.source_format.is_hidden %}
-        {% bootstrap_field form.tex_engine wrapper_class="wjs-submission-form__form-label-wrapper" %}
-        {% bootstrap_field form.tex_master wrapper_class="wjs-submission-form__form-label-wrapper" %}
+        {% bootstrap_field form.tex_engine wrapper_class="wjs-submission-form__form-label-wrapper" placeholder="" %}
+        {% bootstrap_field form.tex_master wrapper_class="wjs-submission-form__form-label-wrapper" placeholder="" %}
       {% else %}
-        {% bootstrap_field form.tex_engine wrapper_class="wjs-submission-form__form-label-wrapper d-none" %}
-        {% bootstrap_field form.tex_master wrapper_class="wjs-submission-form__form-label-wrapper d-none" %}
+        {% bootstrap_field form.tex_engine wrapper_class="wjs-submission-form__form-label-wrapper d-none" placeholder="" %}
+        {% bootstrap_field form.tex_master wrapper_class="wjs-submission-form__form-label-wrapper d-none" placeholder="" %}
       {% endif %}
     </div>
     <div class="mb-3">

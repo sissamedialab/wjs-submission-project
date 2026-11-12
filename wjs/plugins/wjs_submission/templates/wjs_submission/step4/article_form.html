@@ -1,7 +1,6 @@
 {% extends "wjs_submission/base.html" %}
 {% load django_bootstrap5 i18n settings static field %}
 
-
 {% block bootstrap5_extra_head %}
   {{ block.super }}
   {{ form.media.css }}
@@ -122,7 +121,7 @@
           <p class="wjs-submission-form__authors-intro-text">
             Please state how each selected author participated to the work.
           </p>
-          {% bootstrap_field form.authors_contributions show_help=False show_label=False placeholder="Sample text: John Smith: Conceptualization, Methodology.  Priya Singh.: Data curation, Writing- Original draft preparation. Wang Wu: Visualization, Investigation. Jan Jansen: Supervision.: Ajay Kumar: Validation.: Sun Qi: Writing." %}
+          {% bootstrap_field form.authors_contributions show_help=False show_label=False placeholder="Sample text: John Smith: Conceptualization, Methodology.  Priya Singh.: Data curation, Writing- Original draft preparation. Wang Wu: Visualization, Investigation. Jan Jansen: Supervision.: Ajay Kumar: Validation.: Sun Qi: Writing." %}
         </div>
       </div>
     </div>
