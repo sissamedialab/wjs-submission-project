@@ -2,12 +2,21 @@ from core.models import Account, ControlledAffiliation
 from core.models import File as CoreFile
 from django.contrib import messages
 from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.urls import reverse, reverse_lazy
 from django.utils.translation import gettext_lazy as _
 from django.views.generic import UpdateView
 from repository.models import Author
-from submission.models import LANGUAGE_CHOICES, Article, FrozenAuthor, Section
+from submission.models import (
+    LANGUAGE_CHOICES,
+    STAGE_UNDER_REVISION,
+    STAGE_UNSUBMITTED,
+    Article,
+    FrozenAuthor,
+    Section,
+)
 from utils.setting_handler import get_setting
 
 from ..access_mode import get_effective_access_settings
@@ -80,6 +89,35 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
             )
             return HttpResponseRedirect(reverse("wjs_submission_7", kwargs={"article_id": self.object.pk}))
         return None
+
+    def _is_already_submitted(self) -> bool:
+        """Tell if the article of the request belongs to the user and has already been submitted."""
+        return (
+            Article.objects.filter(
+                Q(owner=self.request.user) | Q(correspondence_author=self.request.user),
+                pk=self.kwargs[self.pk_url_kwarg],
+                journal=self.request.journal,
+            )
+            .exclude(stage__in=(STAGE_UNSUBMITTED, STAGE_UNDER_REVISION))
+            .exists()
+        )
+
+    def post(self, request, *args, **kwargs):
+        """
+        Submit the article, serializing concurrent submissions of the same article.
+
+        Two overlapping POSTs (e.g. a double click on "Submit") would both complete the submission, the second one
+        working on stale data (specs#3233): the article row is locked for the whole request, so the second request
+        reads the article only after the first one has committed, finds it no longer submittable and is sent to the
+        article status page instead.
+        """
+        with transaction.atomic():
+            article_id = self.kwargs[self.pk_url_kwarg]
+            locked = self.get_queryset().select_for_update().filter(pk=article_id).first()
+            if locked is None and self._is_already_submitted():
+                messages.add_message(request, messages.INFO, _("This submission has already been completed."))
+                return HttpResponseRedirect(reverse("wjs_submission_0", kwargs={"article_id": article_id}))
+            return super().post(request, *args, **kwargs)
 
     def get_success_url(self):
         """
