@@ -120,14 +120,17 @@
             <input type="hidden" id="authors-blocker" name="authors-blocker" required="required">
             {% if correspondence_author == request.user %}
               Please <a class="link-light" href="{% url 'core_edit_profile' %}?next={{ step_url }}">complete your profile</a> before continuing.
+              {% include "wjs_submission/step4/includes/missing_fields.html" %}
             {% else %}
               {# With current backend user filetering, this cannot appear, but tracking the option anyway in case some journal have different UX requirements. hidden field above ensure form cannot proceed #}
               Correspondence author must complete the profile before continuing.
+              {% include "wjs_submission/step4/includes/missing_fields.html" %}
             {% endif %}
           {% elif correspondence_author_error == "ineligible_account" %}
             {# fake field to block submission in case of error condition #}
             <input type="hidden" id="authors-blocker" name="authors-blocker" required="required">
             Correspondence author account is not complete.
+            {% include "wjs_submission/step4/includes/missing_fields.html" %}
           {% elif correspondence_author_error == "orcid_missing_account" %}
             {% if correspondence_author == request.user %}
               Authors need to associate their Orcid id to their <a class="link-light" href="{% url 'core_edit_profile' %}?next={{ step_url }}">profile</a> as soon as possible and in any case before publication of manuscripts.

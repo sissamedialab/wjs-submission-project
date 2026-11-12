@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
+from .required_fields_types import RequiredFieldsByJournal
+
 DEFAULT_KEYWORDS_INTERVAL_PER_JOURNAL = {
     None: (1, 3),
     "JCAP": (2, 4),
@@ -44,10 +46,25 @@ DEFAULT_ACCESS_MODE_CONTROL_FUNCTION = {
 }
 
 
-# JCOM/JCOMAL/JCAP validators moved to wjs.jcom_profile.account_validation (see
-# wjs-submission-project#30): wjs-submission must not depend on wjs.jcom_profile. Journals that
-# need JCOMProfile-aware validation get it via a SUBMISSION_CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION
-# override in the installing project's settings (e.g. wjs-profile-project's wjs/defaults/settings.py).
+# JCOM/JCOMAL/JCAP rules moved to wjs-profile-project (see wjs-submission-project#30): wjs-submission must not
+# depend on wjs.jcom_profile. Installing projects override SUBMISSION_CORRESPONDENCE_AUTHOR_REQUIRED_FIELDS in
+# their settings (the override replaces this dict entirely, so it must repeat the `None` fallback key).
+#
+# Per-journal required profile fields of a correspondence author, with their public labels (shown in step 4).
+# The entry format and its evaluation rules are documented in `required_fields_types.RequiredFieldEntry`.
+# Unsatisfied entries contribute their label, in this order.
+DEFAULT_CORRESPONDENCE_AUTHOR_REQUIRED_FIELDS: RequiredFieldsByJournal = {
+    None: [
+        {"label": _("Active account"), "paths": ["is_active"]},
+        {"label": _("Name"), "paths": ["last_name", "first_name"]},
+        {"label": _("Email"), "paths": ["email"]},
+        {"label": _("Affiliation"), "paths": ["institution"]},
+    ],
+}
+
+# Injection point: journals needing logic that the dict cannot express point to their own function here.
+# Signature: `validation(user: Account, journal: Journal) -> bool`. The default reads the dict above.
+# Step 4 always lists the fields of the dict: a journal injecting its own logic should override its dict entry too.
 DEFAULT_CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION = {
     None: "plugins.wjs_submission.account_validation.default_correspondence_author_validation",
 }
@@ -181,6 +198,12 @@ OA_MESSAGE_CODES = getattr(settings, "SUBMISSION_OA_MESSAGE_CODES", DEFAULT_OA_M
 
 CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION = getattr(
     settings, "SUBMISSION_CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION", DEFAULT_CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION
+)
+
+CORRESPONDENCE_AUTHOR_REQUIRED_FIELDS = getattr(
+    settings,
+    "SUBMISSION_CORRESPONDENCE_AUTHOR_REQUIRED_FIELDS",
+    DEFAULT_CORRESPONDENCE_AUTHOR_REQUIRED_FIELDS,
 )
 
 CORRESPONDENCE_AUTHOR_COMPLETION_FUNCTION = getattr(

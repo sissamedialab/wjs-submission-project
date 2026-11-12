@@ -5,6 +5,8 @@ from django.views.generic import CreateView, DetailView, UpdateView
 from submission.models import Article, FrozenAuthor
 
 from ..account_validation import (
+    ProfileCompletionStatus,
+    get_correspondence_author_missing_fields,
     is_user_eligible_for_correspondence_author,
     verify_profile_completion,
 )
@@ -98,6 +100,13 @@ class AuthorsTableRenderingMixin(HtmxMixin):
             disabled_users=disabled_accounts,
             user=context["correspondence_author"],
             is_owner=context["correspondence_author"] == self.article.owner,
+        )
+        # Tell the user exactly what is missing, instead of a generic "complete your profile"
+        context["correspondence_author_missing_fields"] = (
+            get_correspondence_author_missing_fields(self.article.journal, context["correspondence_author"])
+            if context["correspondence_author_error"]
+            in (ProfileCompletionStatus.INCOMPLETE_ACCOUNT, ProfileCompletionStatus.INELIGIBLE_ACCOUNT)
+            else []
         )
         context["disabled_accounts"] = disabled_accounts
         context["is_htmx"] = self.htmx

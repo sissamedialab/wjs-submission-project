@@ -8,8 +8,10 @@ from django.utils.module_loading import import_string
 from journal.models import Journal
 
 from .models import WhitelistedCorrespondenceAuthors
+from .required_fields_types import RequiredFieldEntry
 from .settings import (
     CORRESPONDENCE_AUTHOR_COMPLETION_FUNCTION,
+    CORRESPONDENCE_AUTHOR_REQUIRED_FIELDS,
     CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION,
 )
 
@@ -70,19 +72,104 @@ def default_correspondence_author_completion(
     return None
 
 
-def default_correspondence_author_validation(user: Account) -> bool:
+def _resolve_path(user: Account, path: str):
     """
-    Validate whether a user meets the default criteria to be a correspondence author.
+    Resolve a dotted attribute path on the user, calling the final value if it is callable.
+
+    Paths must end on a field, a property or a no-argument method (not on a related manager).
+    """
+    value = user
+    for attribute in path.split("."):
+        value = getattr(value, attribute)
+    return value() if callable(value) else value
+
+
+def is_required_field_entry_satisfied(user: Account, entry: RequiredFieldEntry) -> bool:
+    """
+    Tell whether the user satisfies one entry of the required-fields dict.
+
+    Without `allowed`, any of the entry's paths having a truthy value is enough; with `allowed`, any path value
+    being in `allowed` is enough (no truthiness test).
+
+    Known limitation: the paths are read from the account data whatever the profile pages show. If a journal does
+    not show a field listed in the paths (e.g. a SciX record on a journal without it), a value left from an import or
+    from another journal still satisfies the entry, and the author cannot see or edit that field. Keep the paths of
+    an entry aligned with the fields the journal shows when the journal's fields change.
+
+    :param user: The user account to check
+    :type user: Account
+    :param entry: An entry of `CORRESPONDENCE_AUTHOR_REQUIRED_FIELDS`
+    :type entry: RequiredFieldEntry
+    :return: True if the entry is satisfied
+    :rtype: bool
+    """
+    values = (_resolve_path(user, path) for path in entry["paths"])
+    allowed = entry.get("allowed")
+    if allowed is None:
+        return any(values)
+    return any(value in allowed for value in values)
+
+
+def get_required_field_entries(journal: Journal) -> list[RequiredFieldEntry]:
+    """
+    Return the required-fields entries of the journal (the `None` entry for journals without their own).
+
+    :param journal: The journal whose rules apply
+    :type journal: Journal
+    :return: Entries with `label`, `paths` and optionally `allowed` (and any extra key set by the installing project)
+    :rtype: list[RequiredFieldEntry]
+    """
+    return CORRESPONDENCE_AUTHOR_REQUIRED_FIELDS.get(journal.code, CORRESPONDENCE_AUTHOR_REQUIRED_FIELDS[None])
+
+
+def missing_required_fields(user: Account, journal: Journal) -> list[str]:
+    """
+    Return the labels of the profile fields that the user still has to fill in to be a correspondence author.
+
+    The rules are the journal's entry of `CORRESPONDENCE_AUTHOR_REQUIRED_FIELDS` (the `None` entry for journals
+    without their own). This is the single source of truth of the default validation: the user is valid if
+    the list is empty. Labels are human-readable (translatable), suitable to be shown to the user.
+
+    :param user: The user account to check
+    :type user: Account
+    :param journal: The journal whose rules apply
+    :type journal: Journal
+    :return: Labels of the missing fields, in the order of the rules; empty if the account is valid.
+    :rtype: list[str]
+    """
+    return [
+        entry["label"]
+        for entry in get_required_field_entries(journal)
+        if not is_required_field_entry_satisfied(user, entry)
+    ]
+
+
+def default_correspondence_author_validation(user: Account, journal: Journal) -> bool:
+    """
+    Validate whether a user meets the journal's required-fields rules to be a correspondence author.
+
+    This is the default of the `CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION` injection point: a journal that needs
+    different logic points that setting to its own function with the same signature.
 
     :param user: The user account to validate
     :type user: Account
+    :param journal: The journal whose rules apply
+    :type journal: Journal
     :return: True if the user is valid as a correspondence author, False otherwise
     :rtype: bool
     """
-    is_active = user.is_active
-    personal_data = (user.last_name or user.first_name) and user.email
-    professional_data = user.institution
-    return is_active and personal_data and professional_data
+    return not missing_required_fields(user, journal)
+
+
+def is_whitelisted_correspondence_author(journal: Journal, user: Account) -> bool:
+    """Return True if the user is in the (currently valid) per-journal whitelist."""
+    today = timezone.localtime(timezone.now()).date()
+    user_qs = WhitelistedCorrespondenceAuthors.objects.filter(user=user, journal=journal)
+    user_qs = user_qs.filter(
+        Q(Q(validity_start_date__lte=today) | Q(validity_start_date__isnull=True))
+        & Q(Q(validity_stop_date__gte=today) | Q(validity_stop_date__isnull=True))
+    )
+    return user_qs.exists()
 
 
 def is_user_eligible_for_correspondence_author(journal: Journal, user: Account) -> bool:
@@ -104,19 +191,14 @@ def is_user_eligible_for_correspondence_author(journal: Journal, user: Account) 
     :raises ImportError: If the control function cannot be imported
     :raises TypeError: If the validation function is not callable
     """
-    user_qs = WhitelistedCorrespondenceAuthors.objects.filter(user=user, journal=journal)
-    user_qs = user_qs.filter(
-        Q(Q(validity_start_date__lte=timezone.localtime(timezone.now()).date()) | Q(validity_start_date__isnull=True))
-        & Q(Q(validity_stop_date__gte=timezone.localtime(timezone.now()).date()) | Q(validity_stop_date__isnull=True))
-    )
-    if user_qs.exists():
+    if is_whitelisted_correspondence_author(journal, user):
         return True
 
     control_function_name = CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION.get(
         journal.code, CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION[None]
     )
     control_function = import_string(control_function_name)
-    return control_function(user)
+    return control_function(user, journal)
 
 
 def verify_profile_completion(
@@ -146,3 +228,22 @@ def verify_profile_completion(
     )
     control_function = import_string(control_function_name)
     return control_function(disabled_users, user, is_owner)
+
+
+def get_correspondence_author_missing_fields(journal: Journal, user: Account) -> list[str]:
+    """
+    Return the profile fields that the user still has to fill in to be eligible as correspondence author.
+
+    The journal's rules are read from `CORRESPONDENCE_AUTHOR_REQUIRED_FIELDS`. Whitelisted users are eligible, so
+    nothing is missing for them.
+
+    :param journal: The journal for which correspondence author eligibility is checked
+    :type journal: Journal
+    :param user: The account of the user whose profile is being checked
+    :type user: Account
+    :return: Labels of the missing fields; empty if the user is eligible.
+    :rtype: list[str]
+    """
+    if is_whitelisted_correspondence_author(journal, user):
+        return []
+    return missing_required_fields(user, journal)
