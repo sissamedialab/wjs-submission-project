@@ -15,11 +15,11 @@
     <div class="wjs-submission-form__section-content">
       {% if settings.DEBUG %}{{ form.errors }}{% endif %}
       {% if is_revision %}{{ journal_settings.general.revision_checklist|safe }}{% else %}{{ journal_settings.general.submission_checklist|safe }}{% endif %}
-      {% bootstrap_field form.submission_requirements checkbox_style="switch" %}
-      {% if form.copyright_notice %}{% bootstrap_field form.copyright_notice checkbox_style="switch" %}{% endif %}
+      {% bootstrap_field form.submission_requirements checkbox_style="switch" placeholder="" %}
+      {% if form.copyright_notice %}{% bootstrap_field form.copyright_notice checkbox_style="switch" placeholder="" %}{% endif %}
       {% for bound_field in form.visible_fields %}
         {% if bound_field.name not in form.Meta.fields %}
-          {% bootstrap_field bound_field checkbox_style="switch" show_help=True %}
+          {% bootstrap_field bound_field checkbox_style="switch" show_help=True placeholder="" %}
         {% endif %}
       {% endfor %}
     </div>
@@ -40,7 +40,7 @@
         {% endif %}
         <div class="wjs-submission-form__arxiv-validation-wrapper">
           <label class="visually-hidden" for="id_arxiv_id">archive ID</label>
-          {% bootstrap_field form.arxiv_id show_help=False show_label="skip" wrapper_class="" %}
+          {% bootstrap_field form.arxiv_id show_help=False show_label="skip" wrapper_class="" placeholder="" %}
           {{ form.arxiv_article_id }}
 
           {% if not is_revision %}
@@ -54,7 +54,7 @@
               aria-label="Validate archive ID"
               type="button"
             >
-            Validate <span class="visually-hidden">archive</span><span aria-hidden="true">ArXiv</span> ID
+              Validate <span class="visually-hidden">archive</span><span aria-hidden="true">ArXiv</span> ID
             </button>
           {% endif %}
         </div>
@@ -81,7 +81,8 @@
       <div class="mb-3">
         {{ form.competing_interests.help_text|safe }}
       </div>
-      {% bootstrap_field form.competing_interests show_help=False show_label=False %}
+      {% bootstrap_field form.competing_interests show_help=False show_label=False placeholder="" %}
+      {% if form.competing_interests.field.required %}<div class="mb-5"><strong>Required</strong></div>{% endif %}
     </div>
   </div>
 
@@ -96,13 +97,14 @@
             You may enter a text and/or upload a file as cover letter for the Editor-in-charge. The Editor may decide to share it with any selected reviewers.
           {% endif %}
         </div>
-        {% bootstrap_field form.comments_editor show_help=False show_label=False %}
+        {% bootstrap_field form.comments_editor show_help=False show_label=False placeholder="" %}
         {% comment %}
         Opportunistic file field used to mark the field as required only if populated.
         After the file is uploaded this is rendered to satisfy the alternate_field attribute for comments_editor. If file is not set this is not rendered, making comments_editor required
       {% endcomment %}
         {% include "wjs_submission/step1/includes/existing_cover_letter.html" %}
-        {% bootstrap_field form.cover_letter_file show_help=False show_label=False required=True %}
+        {% bootstrap_field form.cover_letter_file show_help=False show_label=False required=True placeholder="" %}
+        {% if form.comments_editor.field.required %}<div class="mb-5"><strong>Required</strong></div>{% endif %}
       </div>
     </div>
   {% endif %}

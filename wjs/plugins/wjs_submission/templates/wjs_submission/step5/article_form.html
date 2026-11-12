@@ -17,9 +17,9 @@
     <div class="wjs-submission-form__section-content">
       {% bootstrap_form_errors form %}
       {% if form.title.field.required %}
-        {% bootstrap_field form.title label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" %}
+        {% bootstrap_field form.title label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" placeholder="" %}
       {% else %}
-        {% bootstrap_field form.title label_class="wjs-submission-form__form-label" %}
+        {% bootstrap_field form.title label_class="wjs-submission-form__form-label" placeholder="" %}
       {% endif %}
     </div>
   </div>
@@ -27,9 +27,9 @@
     <div class="wjs-submission-form__section mb-5">
       <div class="wjs-submission-form__section-content">
       {% if form.abstract.field.required %}
-        {% bootstrap_field form.abstract label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" %}
+        {% bootstrap_field form.abstract label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" placeholder="" %}
       {% else %}
-        {% bootstrap_field form.abstract label_class="wjs-submission-form__form-label" %}
+        {% bootstrap_field form.abstract label_class="wjs-submission-form__form-label" placeholder="" %}
       {% endif %}
       </div>
     </div>
@@ -40,7 +40,7 @@
         <div class="row">
           {% if form.section %}
             <div class="col-6">
-              {% bootstrap_field form.section label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" %}
+              {% bootstrap_field form.section label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" placeholder="" %}
               <div class="small">
                 {% hook 'extra_article_metadata' %}
               </div>
@@ -48,7 +48,7 @@
           {% endif %}
           {% if form.language %}
             <div class="col-6">
-              {% bootstrap_field form.language label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" %}
+              {% bootstrap_field form.language label_class="wjs-submission-form__form-label wjs-submission-form__form-label--required" placeholder="" %}
             </div>
           {% endif %}
         </div>
