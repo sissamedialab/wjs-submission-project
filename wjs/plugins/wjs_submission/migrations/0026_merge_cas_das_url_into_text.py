@@ -53,12 +53,4 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunPython(copy_url_into_text, restore_url_from_text),
-        migrations.RemoveField(
-            model_name="articlesubmission",
-            name="cas_url",
-        ),
-        migrations.RemoveField(
-            model_name="articlesubmission",
-            name="das_url",
-        ),
     ]
