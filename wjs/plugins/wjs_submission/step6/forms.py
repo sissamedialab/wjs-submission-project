@@ -3,6 +3,7 @@ import logging
 from core import files
 from core.models import SupplementaryFile
 from django import forms
+from django.core.validators import URLValidator
 from django.utils.translation import gettext_lazy as _
 from submission.models import Article
 from utils.setting_handler import get_setting
@@ -21,13 +22,23 @@ class SubmissionStep6Form(forms.ModelForm):
         widget=forms.RadioSelect(attrs={"data-name": "das", "data-type": "radio-select"}),
         required=True,
     )
-    das_url = forms.URLField(required=False, label="Please insert complete URL", help_text=required_help_text())
+    das_text = forms.CharField(
+        required=False,
+        label="Please provide a statement or a URL",
+        help_text=_("Please provide a statement or a URL"),
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )
     cas = forms.ChoiceField(
         choices=ArticleSubmission.CasDeclaration.choices,
         widget=forms.RadioSelect(attrs={"data-name": "cas", "data-type": "radio-select"}),
         required=True,
     )
-    cas_url = forms.URLField(required=False, label="Please insert complete URL", help_text=required_help_text())
+    cas_text = forms.CharField(
+        required=False,
+        label="Please provide a statement or a URL",
+        help_text=_("Please provide a statement or a URL"),
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )
 
     class Meta:
         model = Article
@@ -54,17 +65,30 @@ class SubmissionStep6Form(forms.ModelForm):
         if not enable_cas:
             self.fields["cas"].widget = forms.HiddenInput()
 
-    def clean_cas_url(self):
-        """Check cas_url field when cas required URL."""
-        if self.data.get("cas") == "url" and not self.data.get("cas_url"):
-            raise forms.ValidationError(_("Please insert complete URL"))
-        return self.cleaned_data["cas_url"]
+    def _clean_statement_text(self, field: str) -> str:
+        """
+        Check the shared url/free-text field of ``field`` ("cas" or "das").
 
-    def clean_das_url(self):
-        """Check das_url field when cas required URL."""
-        if self.data.get("das") == "url" and not self.data.get("das_url"):
+        The value is required when the declaration is "url" or "other"; when it is "url", it must
+        also be a valid URL.
+        """
+        value = self.data.get(field)
+        text = self.data.get(f"{field}_text")
+        if value == "url" and not text:
             raise forms.ValidationError(_("Please insert complete URL"))
-        return self.cleaned_data["das_url"]
+        if value == "other" and not text:
+            raise forms.ValidationError(_("Please provide a statement or a URL"))
+        if value == "url" and text:
+            URLValidator()(text)
+        return self.cleaned_data[f"{field}_text"]
+
+    def clean_cas_text(self):
+        """Check cas_text field when cas requires a URL or a free-text statement."""
+        return self._clean_statement_text("cas")
+
+    def clean_das_text(self):
+        """Check das_text field when das requires a URL or a free-text statement."""
+        return self._clean_statement_text("das")
 
     def save(self, commit=True):
         """
@@ -80,16 +104,22 @@ class SubmissionStep6Form(forms.ModelForm):
         instance = super().save(commit=commit)
 
         instance.submission_data.das = self.cleaned_data["das"]
-        if instance.submission_data.das == ArticleSubmission.DasDeclaration.URL:
-            instance.submission_data.das_url = self.cleaned_data["das_url"]
+        if instance.submission_data.das in (
+            ArticleSubmission.DasDeclaration.URL,
+            ArticleSubmission.DasDeclaration.OTHER,
+        ):
+            instance.submission_data.das_text = self.cleaned_data["das_text"]
         else:
-            instance.submission_data.das_url = ""
+            instance.submission_data.das_text = ""
 
         instance.submission_data.cas = self.cleaned_data["cas"]
-        if instance.submission_data.cas == ArticleSubmission.CasDeclaration.URL:
-            instance.submission_data.cas_url = self.cleaned_data["cas_url"]
+        if instance.submission_data.cas in (
+            ArticleSubmission.CasDeclaration.URL,
+            ArticleSubmission.CasDeclaration.OTHER,
+        ):
+            instance.submission_data.cas_text = self.cleaned_data["cas_text"]
         else:
-            instance.submission_data.cas_url = ""
+            instance.submission_data.cas_text = ""
 
         instance.submission_data.save()
         return instance
@@ -316,14 +346,20 @@ class RevisionStep6Form(SubmissionStep6Form):
         revision_storage.revision_step = max(revision_storage.revision_step, self.step)
 
         revision_storage.data["das"] = self.cleaned_data["das"]
-        if revision_storage.data["das"] == ArticleSubmission.DasDeclaration.URL:
-            revision_storage.data["das_url"] = self.cleaned_data["das_url"]
+        if revision_storage.data["das"] in (
+            ArticleSubmission.DasDeclaration.URL,
+            ArticleSubmission.DasDeclaration.OTHER,
+        ):
+            revision_storage.data["das_text"] = self.cleaned_data["das_text"]
         else:
-            revision_storage.data["das_url"] = ""
+            revision_storage.data["das_text"] = ""
         revision_storage.data["cas"] = self.cleaned_data["cas"]
-        if revision_storage.data["cas"] == ArticleSubmission.CasDeclaration.URL:
-            revision_storage.data["cas_url"] = self.cleaned_data["cas_url"]
+        if revision_storage.data["cas"] in (
+            ArticleSubmission.CasDeclaration.URL,
+            ArticleSubmission.CasDeclaration.OTHER,
+        ):
+            revision_storage.data["cas_text"] = self.cleaned_data["cas_text"]
         else:
-            revision_storage.data["cas_url"] = ""
+            revision_storage.data["cas_text"] = ""
         revision_storage.save()
         return self.instance

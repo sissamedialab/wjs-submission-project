@@ -286,24 +286,30 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                     context["files_data"].update(
                         {
                             "cas": self.object.revisionstorage.data["cas"],
-                            "cas_display": self.object.submission_data.CasDeclaration.as_dict()[
-                                self.object.revisionstorage.data["cas"]
-                            ],
-                            "cas_url": self.object.revisionstorage.data["cas_url"],
-                            "cas_show_url": self.object.revisionstorage.data["cas"]
-                            == self.object.submission_data.CasDeclaration.URL.value,
+                            "cas_display": self.object.submission_data.CasDeclaration.as_dict().get(
+                                self.object.revisionstorage.data["cas"], self.object.revisionstorage.data["cas"]
+                            ),
+                            "cas_text": self.object.revisionstorage.data.get("cas_text", ""),
+                            "cas_show_text": self.object.revisionstorage.data["cas"]
+                            in (
+                                self.object.submission_data.CasDeclaration.URL.value,
+                                self.object.submission_data.CasDeclaration.OTHER.value,
+                            ),
                         }
                     )
                 if enable_das:
                     context["files_data"].update(
                         {
                             "das": self.object.revisionstorage.data["das"],
-                            "das_display": self.object.submission_data.DasDeclaration.as_dict()[
-                                self.object.revisionstorage.data["das"]
-                            ],
-                            "das_url": self.object.revisionstorage.data["das_url"],
-                            "das_show_url": self.object.revisionstorage.data["das"]
-                            == self.object.submission_data.DasDeclaration.URL.value,
+                            "das_display": self.object.submission_data.DasDeclaration.as_dict().get(
+                                self.object.revisionstorage.data["das"], self.object.revisionstorage.data["das"]
+                            ),
+                            "das_text": self.object.revisionstorage.data.get("das_text", ""),
+                            "das_show_text": self.object.revisionstorage.data["das"]
+                            in (
+                                self.object.submission_data.DasDeclaration.URL.value,
+                                self.object.submission_data.DasDeclaration.OTHER.value,
+                            ),
                         }
                     )
             else:
@@ -312,9 +318,12 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                         {
                             "cas": self.object.submission_data.cas,
                             "cas_display": self.object.submission_data.get_cas_display(),
-                            "cas_url": self.object.submission_data.cas_url,
-                            "cas_show_url": self.object.submission_data.cas
-                            == self.object.submission_data.CasDeclaration.URL.value,
+                            "cas_text": self.object.submission_data.cas_text,
+                            "cas_show_text": self.object.submission_data.cas
+                            in (
+                                self.object.submission_data.CasDeclaration.URL.value,
+                                self.object.submission_data.CasDeclaration.OTHER.value,
+                            ),
                         }
                     )
                 if enable_das:
@@ -322,9 +331,12 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                         {
                             "das": self.object.submission_data.das,
                             "das_display": self.object.submission_data.get_das_display(),
-                            "das_url": self.object.submission_data.das_url,
-                            "das_show_url": self.object.submission_data.das
-                            == self.object.submission_data.DasDeclaration.URL.value,
+                            "das_text": self.object.submission_data.das_text,
+                            "das_show_text": self.object.submission_data.das
+                            in (
+                                self.object.submission_data.DasDeclaration.URL.value,
+                                self.object.submission_data.DasDeclaration.OTHER.value,
+                            ),
                         }
                     )
             if context["is_revision_full"] or context["is_revision_metadata"]:
@@ -366,9 +378,12 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                     {
                         "cas": self.object.submission_data.cas,
                         "cas_display": self.object.submission_data.get_cas_display(),
-                        "cas_url": self.object.submission_data.cas_url,
-                        "cas_show_url": self.object.submission_data.cas
-                        == self.object.submission_data.CasDeclaration.URL.value,
+                        "cas_text": self.object.submission_data.cas_text,
+                        "cas_show_text": self.object.submission_data.cas
+                        in (
+                            self.object.submission_data.CasDeclaration.URL.value,
+                            self.object.submission_data.CasDeclaration.OTHER.value,
+                        ),
                     }
                 )
             if enable_das:
@@ -376,9 +391,12 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                     {
                         "das": self.object.submission_data.das,
                         "das_display": self.object.submission_data.get_das_display(),
-                        "das_url": self.object.submission_data.das_url,
-                        "das_show_url": self.object.submission_data.das
-                        == self.object.submission_data.DasDeclaration.URL.value,
+                        "das_text": self.object.submission_data.das_text,
+                        "das_show_text": self.object.submission_data.das
+                        in (
+                            self.object.submission_data.DasDeclaration.URL.value,
+                            self.object.submission_data.DasDeclaration.OTHER.value,
+                        ),
                     }
                 )
             context["correspondence_author"] = self.object.correspondence_author
