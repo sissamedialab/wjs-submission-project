@@ -264,9 +264,9 @@ class PopulateStep6:
         """
         article = self.revision_storage.article
         self.revision_storage.data["das"] = article.submission_data.das
-        self.revision_storage.data["das_url"] = article.submission_data.das_url
+        self.revision_storage.data["das_text"] = article.submission_data.das_text
         self.revision_storage.data["cas"] = article.submission_data.cas
-        self.revision_storage.data["cas_url"] = article.submission_data.cas_url
+        self.revision_storage.data["cas_text"] = article.submission_data.cas_text
         # Note that we keep the standard slot names (e.g. manuscript_fileS),
         # even for fields where we know that only one item will be set.
         self.revision_storage.data["manuscript_files"] = None

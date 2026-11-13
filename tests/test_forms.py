@@ -401,7 +401,7 @@ def test_edit_metadata_form(
     list(product(ArticleSubmission.CasDeclaration.values, ArticleSubmission.DasDeclaration.values)),
 )
 @pytest.mark.django_db
-def test_cas_das_url_form(
+def test_cas_das_text_form(
     journal: Journal,
     install_plugins: Callable,
     user: Account,
@@ -410,19 +410,21 @@ def test_cas_das_url_form(
     cas: bool,
     das: bool,
 ):
+    """A single cas_text/das_text field carries the URL (for "url") or the statement (for "other")."""
     data = {
         "das": das,
-        "das_url": "http://example.com" if das == "url" else "",
+        "das_text": {"url": "http://example.com", "other": "some data statement"}.get(das, ""),
         "cas": cas,
-        "cas_url": "http://example.com" if cas == "url" else "",
+        "cas_text": {"url": "http://example.com", "other": "some code statement"}.get(cas, ""),
         "current_step": 6,
     }
     form = SubmissionStep6Form(data=data, journal=journal, instance=article, step=6, initial={})
-    form.is_valid()
     assert form.is_valid()
     instance = form.save()
     assert instance.submission_data.cas == cas
     assert instance.submission_data.das == das
+    assert instance.submission_data.cas_text == data["cas_text"]
+    assert instance.submission_data.das_text == data["das_text"]
 
 
 @pytest.mark.parametrize(
@@ -430,7 +432,7 @@ def test_cas_das_url_form(
     list(product(ArticleSubmission.CasDeclaration.values, ArticleSubmission.DasDeclaration.values)),
 )
 @pytest.mark.django_db
-def test_cas_das_url_error_form(
+def test_cas_das_text_error_form(
     journal: Journal,
     install_plugins: Callable,
     user: Account,
@@ -439,19 +441,66 @@ def test_cas_das_url_error_form(
     cas: bool,
     das: bool,
 ):
+    """An empty cas_text/das_text is rejected when the declaration is "url" or "other"."""
     data = {
         "das": das,
         "cas": cas,
         "current_step": 6,
     }
     form = SubmissionStep6Form(data=data, journal=journal, instance=article, step=6, initial={})
-    if das == "url" or cas == "url":
+    if das in ("url", "other") or cas in ("url", "other"):
         assert not form.is_valid()
     else:
         assert form.is_valid()
         instance = form.save()
         assert instance.submission_data.cas == cas
         assert instance.submission_data.das == das
+
+
+@pytest.mark.parametrize("field", ["cas", "das"])
+@pytest.mark.django_db
+def test_cas_das_text_invalid_url_error_form(
+    journal: Journal,
+    install_plugins: Callable,
+    user: Account,
+    article: Article,
+    fake_request,
+    field: str,
+):
+    """A non-URL value in cas_text/das_text is rejected only when the declaration is "url"."""
+    data = {
+        "das": "no",
+        "cas": "no",
+        field: "url",
+        f"{field}_text": "not a url",
+        "current_step": 6,
+    }
+    form = SubmissionStep6Form(data=data, journal=journal, instance=article, step=6, initial={})
+    assert not form.is_valid()
+    assert f"{field}_text" in form.errors
+
+
+@pytest.mark.django_db
+def test_cas_das_text_other_accepts_non_url_text(
+    journal: Journal,
+    install_plugins: Callable,
+    user: Account,
+    article: Article,
+    fake_request,
+):
+    """The 'other' declaration accepts free text that is not a URL."""
+    data = {
+        "das": "other",
+        "das_text": "Data is available from the authors upon reasonable request.",
+        "cas": "other",
+        "cas_text": "Code is available from the authors upon reasonable request.",
+        "current_step": 6,
+    }
+    form = SubmissionStep6Form(data=data, journal=journal, instance=article, step=6, initial={})
+    assert form.is_valid()
+    instance = form.save()
+    assert instance.submission_data.cas_text == data["cas_text"]
+    assert instance.submission_data.das_text == data["das_text"]
 
 
 @pytest.mark.parametrize(
