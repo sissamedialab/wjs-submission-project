@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.1.9] - 2026-11-16
+
+- [specs#3295: CAS/DAS should accept "other" as valid keyword](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3295) — fix(migration): split 0026 into data copy + RemoveField to avoid pending-trigger-events on PG (!194)
+- [specs#3332: Change textf for DAS/CAS?](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3332) — Feature/issue 3295 cas das other (!191)
+- [specs#3295: CAS/DAS should accept "other" as valid keyword](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3295) — Feature/issue 3295 cas das other (!191)
+- [specs#3233: Internal Server Error: /plugins/wjs-submission/submission/4351/8/](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3233) — fix(step8): serialize step-8 submissions to prevent double submits (!190)
+- [specs#3330: Review design of additional submission fields](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3330) — feat(submission): show required labels and field help text instead of placeholders (!187)
+- [specs#2728: As a user i want to know exactly which fields must be populated to pass validation](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/2728) — Step 4: list missing profile fields, driven by a per-journal required-fields dict (!178)
+
 ## [2.1.8] - 2026-11-05
 
 - [specs#3198: Problems in advanced admin](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3198) — fix(advanced_admin): search article submissions by article title and pk (!185)
