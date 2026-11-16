@@ -122,6 +122,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!keywordWeightListContainer) return;
 
     const weightInfo = document.querySelector('.wjs-submission-form__keywords-weight-info');
+    const weightRequired = document.querySelector('.wjs-submission-form__keywords-weight-required');
 
     const prevSelectedWeights = {};
     const prevWeightContainers = document.querySelectorAll('.wjs-submission-form__keyword-weight-item-weights');
@@ -140,11 +141,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (selectedCheckboxes.length === 0) {
       if (weightInfo) weightInfo.classList.add('d-none');
+      if (weightRequired) weightRequired.classList.add('d-none');
       updateKeywordWeightSelectionState();
       return;
     }
 
     if (weightInfo) weightInfo.classList.remove('d-none');
+    if (weightRequired) weightRequired.classList.remove('d-none');
 
     selectedCheckboxes.forEach(function (checkbox) {
 

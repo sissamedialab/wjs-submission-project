@@ -139,6 +139,7 @@ class AddFundingForm(forms.ModelForm):
         }
         widgets = {
             "article": forms.HiddenInput(),
+            "funding_statement": forms.Textarea(attrs={"rows": 4}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -167,12 +168,19 @@ class AddFundingForm(forms.ModelForm):
         self.data = self.data.copy()
         self.data["article_id"] = self.article.pk
         self.data["article"] = self.article
+        for field in self.fields:
+            if self.fields[field].required:
+                self.fields[field].widget.attrs["required"] = True
+                self.fields[field].help_text = required_help_text()
 
 
 class RevisionAddFundingForm(AddFundingForm):
     class Meta:
         model = RevisionSubmissionArticleFunding
         fields = ["country", "name", "fundref_id", "funding_id", "funding_statement", "revision_storage"]
+        widgets = {
+            "funding_statement": forms.Textarea(attrs={"rows": 4}),
+        }
 
     def __init__(self, *args, **kwargs):
         """

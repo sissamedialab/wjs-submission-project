@@ -2,12 +2,21 @@ from core.models import Account, ControlledAffiliation
 from core.models import File as CoreFile
 from django.contrib import messages
 from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.urls import reverse, reverse_lazy
 from django.utils.translation import gettext_lazy as _
 from django.views.generic import UpdateView
 from repository.models import Author
-from submission.models import LANGUAGE_CHOICES, Article, FrozenAuthor, Section
+from submission.models import (
+    LANGUAGE_CHOICES,
+    STAGE_UNDER_REVISION,
+    STAGE_UNSUBMITTED,
+    Article,
+    FrozenAuthor,
+    Section,
+)
 from utils.setting_handler import get_setting
 
 from ..access_mode import get_effective_access_settings
@@ -80,6 +89,35 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
             )
             return HttpResponseRedirect(reverse("wjs_submission_7", kwargs={"article_id": self.object.pk}))
         return None
+
+    def _is_already_submitted(self) -> bool:
+        """Tell if the article of the request belongs to the user and has already been submitted."""
+        return (
+            Article.objects.filter(
+                Q(owner=self.request.user) | Q(correspondence_author=self.request.user),
+                pk=self.kwargs[self.pk_url_kwarg],
+                journal=self.request.journal,
+            )
+            .exclude(stage__in=(STAGE_UNSUBMITTED, STAGE_UNDER_REVISION))
+            .exists()
+        )
+
+    def post(self, request, *args, **kwargs):
+        """
+        Submit the article, serializing concurrent submissions of the same article.
+
+        Two overlapping POSTs (e.g. a double click on "Submit") would both complete the submission, the second one
+        working on stale data (specs#3233): the article row is locked for the whole request, so the second request
+        reads the article only after the first one has committed, finds it no longer submittable and is sent to the
+        article status page instead.
+        """
+        with transaction.atomic():
+            article_id = self.kwargs[self.pk_url_kwarg]
+            locked = self.get_queryset().select_for_update().filter(pk=article_id).first()
+            if locked is None and self._is_already_submitted():
+                messages.add_message(request, messages.INFO, _("This submission has already been completed."))
+                return HttpResponseRedirect(reverse("wjs_submission_0", kwargs={"article_id": article_id}))
+            return super().post(request, *args, **kwargs)
 
     def get_success_url(self):
         """
@@ -248,24 +286,30 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                     context["files_data"].update(
                         {
                             "cas": self.object.revisionstorage.data["cas"],
-                            "cas_display": self.object.submission_data.CasDeclaration.as_dict()[
-                                self.object.revisionstorage.data["cas"]
-                            ],
-                            "cas_url": self.object.revisionstorage.data["cas_url"],
-                            "cas_show_url": self.object.revisionstorage.data["cas"]
-                            == self.object.submission_data.CasDeclaration.URL.value,
+                            "cas_display": self.object.submission_data.CasDeclaration.as_dict().get(
+                                self.object.revisionstorage.data["cas"], self.object.revisionstorage.data["cas"]
+                            ),
+                            "cas_text": self.object.revisionstorage.data.get("cas_text", ""),
+                            "cas_show_text": self.object.revisionstorage.data["cas"]
+                            in (
+                                self.object.submission_data.CasDeclaration.URL.value,
+                                self.object.submission_data.CasDeclaration.OTHER.value,
+                            ),
                         }
                     )
                 if enable_das:
                     context["files_data"].update(
                         {
                             "das": self.object.revisionstorage.data["das"],
-                            "das_display": self.object.submission_data.DasDeclaration.as_dict()[
-                                self.object.revisionstorage.data["das"]
-                            ],
-                            "das_url": self.object.revisionstorage.data["das_url"],
-                            "das_show_url": self.object.revisionstorage.data["das"]
-                            == self.object.submission_data.DasDeclaration.URL.value,
+                            "das_display": self.object.submission_data.DasDeclaration.as_dict().get(
+                                self.object.revisionstorage.data["das"], self.object.revisionstorage.data["das"]
+                            ),
+                            "das_text": self.object.revisionstorage.data.get("das_text", ""),
+                            "das_show_text": self.object.revisionstorage.data["das"]
+                            in (
+                                self.object.submission_data.DasDeclaration.URL.value,
+                                self.object.submission_data.DasDeclaration.OTHER.value,
+                            ),
                         }
                     )
             else:
@@ -274,9 +318,12 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                         {
                             "cas": self.object.submission_data.cas,
                             "cas_display": self.object.submission_data.get_cas_display(),
-                            "cas_url": self.object.submission_data.cas_url,
-                            "cas_show_url": self.object.submission_data.cas
-                            == self.object.submission_data.CasDeclaration.URL.value,
+                            "cas_text": self.object.submission_data.cas_text,
+                            "cas_show_text": self.object.submission_data.cas
+                            in (
+                                self.object.submission_data.CasDeclaration.URL.value,
+                                self.object.submission_data.CasDeclaration.OTHER.value,
+                            ),
                         }
                     )
                 if enable_das:
@@ -284,9 +331,12 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                         {
                             "das": self.object.submission_data.das,
                             "das_display": self.object.submission_data.get_das_display(),
-                            "das_url": self.object.submission_data.das_url,
-                            "das_show_url": self.object.submission_data.das
-                            == self.object.submission_data.DasDeclaration.URL.value,
+                            "das_text": self.object.submission_data.das_text,
+                            "das_show_text": self.object.submission_data.das
+                            in (
+                                self.object.submission_data.DasDeclaration.URL.value,
+                                self.object.submission_data.DasDeclaration.OTHER.value,
+                            ),
                         }
                     )
             if context["is_revision_full"] or context["is_revision_metadata"]:
@@ -328,9 +378,12 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                     {
                         "cas": self.object.submission_data.cas,
                         "cas_display": self.object.submission_data.get_cas_display(),
-                        "cas_url": self.object.submission_data.cas_url,
-                        "cas_show_url": self.object.submission_data.cas
-                        == self.object.submission_data.CasDeclaration.URL.value,
+                        "cas_text": self.object.submission_data.cas_text,
+                        "cas_show_text": self.object.submission_data.cas
+                        in (
+                            self.object.submission_data.CasDeclaration.URL.value,
+                            self.object.submission_data.CasDeclaration.OTHER.value,
+                        ),
                     }
                 )
             if enable_das:
@@ -338,9 +391,12 @@ class SubmissionStep8View(AuthorFilteringView, StepCheckView, UpdateView):
                     {
                         "das": self.object.submission_data.das,
                         "das_display": self.object.submission_data.get_das_display(),
-                        "das_url": self.object.submission_data.das_url,
-                        "das_show_url": self.object.submission_data.das
-                        == self.object.submission_data.DasDeclaration.URL.value,
+                        "das_text": self.object.submission_data.das_text,
+                        "das_show_text": self.object.submission_data.das
+                        in (
+                            self.object.submission_data.DasDeclaration.URL.value,
+                            self.object.submission_data.DasDeclaration.OTHER.value,
+                        ),
                     }
                 )
             context["correspondence_author"] = self.object.correspondence_author

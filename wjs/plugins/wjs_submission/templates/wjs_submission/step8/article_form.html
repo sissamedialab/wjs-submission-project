@@ -382,7 +382,7 @@
         {% endif %}
       </div>
       <div class="wjs-submission-form__section-content">
-        <p>{{ files_data.das_display }}{% if files_data.das_show_url %}:&nbsp;{{ files_data.das_url }}{% endif %}</p>
+        <p>{{ files_data.das_display }}{% if files_data.das_show_text %}:&nbsp;{{ files_data.das_text }}{% endif %}</p>
       </div>
     </div>
   {% endif %}
@@ -398,7 +398,7 @@
         {% endif %}
       </div>
       <div class="wjs-submission-form__section-content">
-        <p>{{ files_data.cas_display }}{% if files_data.cas_show_url %}: &nbsp;{{ files_data.cas_url }}{% endif %}</p>
+        <p>{{ files_data.cas_display }}{% if files_data.cas_show_text %}: &nbsp;{{ files_data.cas_text }}{% endif %}</p>
       </div>
     </div>
   {% endif %}
@@ -516,4 +516,23 @@
 {% block js %}
   {{ block.super }}
   {% include "wjs/base/fragments/mathjax.html" %}
+  <script>
+    // Submitting takes a while: prevent a second click from sending the submission again (specs#3233).
+    // The server serializes concurrent submissions anyway, this only spares the user a redundant request.
+    (function() {
+      const submitBtn = document.getElementById("submit-btn");
+      if (!submitBtn || !submitBtn.form) {
+        return;
+      }
+      submitBtn.form.addEventListener("submit", function() {
+        submitBtn.disabled = true;
+      });
+      // A page restored from the back/forward cache keeps the disabled state: re-enable the button
+      window.addEventListener("pageshow", function(event) {
+        if (event.persisted) {
+          submitBtn.disabled = false;
+        }
+      });
+    })();
+  </script>
 {% endblock %}

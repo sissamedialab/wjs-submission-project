@@ -10,9 +10,10 @@ from .signals import *  # noqa
 
 class ArticleSubmission(models.Model):
     class CasDeclaration(models.TextChoices):
-        NO = "no", _("My article has no associated code or the code will not be deposited")
-        ESM = "esm", _("My article has code included as electronic supplementary material")
-        URL = "url", _("My article has associated code in a repository")
+        NO = "no", _("This manuscript has no associated code or the code will not be deposited")
+        ESM = "esm", _("This manuscript has code included as electronic supplementary material")
+        URL = "url", _("This manuscript has associated code in a repository")
+        OTHER = "other", _("Other")
 
         @classmethod
         def as_dict(cls) -> dict[str, str]:
@@ -25,9 +26,10 @@ class ArticleSubmission(models.Model):
             return dict(cls.choices)
 
     class DasDeclaration(models.TextChoices):
-        NO = "no", _("My article has no associated data or the data will not be deposited")
-        ESM = "esm", _("My article has data included as electronic supplementary material")
-        URL = "url", _("My article has associated data in a repository")
+        NO = "no", _("This manuscript has no associated data or the data will not be deposited")
+        ESM = "esm", _("This manuscript has data included as electronic supplementary material")
+        URL = "url", _("This manuscript has associated data in a repository")
+        OTHER = "other", _("Other")
 
         @classmethod
         def as_dict(cls) -> dict[str, str]:
@@ -89,14 +91,14 @@ class ArticleSubmission(models.Model):
         choices=CasDeclaration.choices,
         default="",
     )
-    cas_url = models.URLField(verbose_name=_("CAS URL"), default="")
+    cas_text = models.TextField(verbose_name=_("CAS text"), blank=True, default="")
     das = models.CharField(
         max_length=255,
         verbose_name=_("DAS declaration"),
         choices=DasDeclaration.choices,
         default="",
     )
-    das_url = models.URLField(verbose_name=_("DAS URL"), default="")
+    das_text = models.TextField(verbose_name=_("DAS text"), blank=True, default="")
     access_mode = models.ForeignKey("AccessMode", on_delete=models.SET_NULL, null=True, blank=True)
     special_request = models.TextField(verbose_name=_("Special request"), blank=True, default="")
     use_of_ai_flag = models.BooleanField(verbose_name=_("Use of AI"), default=False)
@@ -592,7 +594,7 @@ class WhitelistedCorrespondenceAuthors(models.Model):
 
     This model is used to store information about authors who are allowed
     to be set as corresponding author bypassing validation logic in
-    :py:func:`wjs.plugins.wjs_submission.account_validation.wjs.plugins.wjs_submission.account_validation.is_user_eligible_for_correspondence_author
+    :py:func:`plugins.wjs_submission.account_validation.is_user_eligible_for_correspondence_author`
 
     :ivar user: The account associated with the whitelisted author.
     :type user: Account

@@ -18,12 +18,19 @@ from plugins.wjs_submission.models import (
     Collaboration,
     RevisionStorage,
 )
+from plugins.wjs_submission.revision.logic import SetupRevisionStorageFull, SetupRevisionStorageMetadata
+from plugins.wjs_submission.settings import (
+    DEFAULT_CORRESPONDENCE_AUTHOR_REQUIRED_FIELDS,
+    DEFAULT_CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION,
+)
 from plugins.wjs_submission.step1 import SubmissionStep1View
+from plugins.wjs_submission.step4.views import SubmissionStep4View
 from plugins.wjs_submission.step6 import SubmissionStep6View
 from plugins.wjs_submission.step8.views import SubmissionStep8View
 from plugins.wjs_submission.views import SubmissionLastStepRedirectView
 from plugins.wjs_submission.workflow import STEPS
 from submission.models import (
+    STAGE_UNDER_REVISION,
     Article,
     FrozenAuthor,
     Keyword,
@@ -632,22 +639,30 @@ def test_submission_step4_anonymous_redirects_without_500(client, article):
     assert settings.LOGIN_URL in response.url
 
 
+@pytest.mark.parametrize(
+    ("declaration", "text"),
+    [
+        (ArticleSubmission.CasDeclaration.URL, "http://example.com"),
+        (ArticleSubmission.CasDeclaration.OTHER, "some statement"),
+    ],
+)
 @pytest.mark.django_db
-def test_submission_step6_load_value(fake_request, article):
-    article.submission_data.das = ArticleSubmission.DasDeclaration.URL
-    article.submission_data.das_url = "http://example.com"
-    article.submission_data.cas = ArticleSubmission.CasDeclaration.URL
-    article.submission_data.cas_url = "http://example.com"
+def test_submission_step6_load_value(fake_request, article, declaration, text):
+    """The single cas_text/das_text field is prefilled regardless of whether it holds a URL or free text."""
+    article.submission_data.das = declaration
+    article.submission_data.das_text = text
+    article.submission_data.cas = declaration
+    article.submission_data.cas_text = text
 
     view_obj = SubmissionStep6View()
     view_obj.kwargs = {"article_id": article.pk}
     view_obj.object = article
     view_obj.request = fake_request
     form = view_obj.get_form()
-    assert form.initial["das"] == ArticleSubmission.DasDeclaration.URL
-    assert form.initial["das_url"] == "http://example.com"
-    assert form.initial["cas"] == ArticleSubmission.CasDeclaration.URL
-    assert form.initial["cas_url"] == "http://example.com"
+    assert form.initial["das"] == declaration
+    assert form.initial["das_text"] == text
+    assert form.initial["cas"] == declaration
+    assert form.initial["cas_text"] == text
 
 
 @pytest.mark.django_db
@@ -731,6 +746,109 @@ def test_submission_step8_revision_without_access_mode_redirects(
 
     assert response.status_code == 302
     assert response.headers["Location"] == reverse("wjs_submission_7", kwargs={"article_id": article.pk})
+
+
+def _get_step8_context(client: Client, article: Article):
+    """GET step 8 with rendering replaced by a stub, and return the captured context."""
+    with patch(
+        "plugins.wjs_submission.step8.views.SubmissionStep8View.render_to_response",
+        return_value=HttpResponse("rendered"),
+    ) as render:
+        response = client.get(reverse("wjs_submission_8", kwargs={"article_id": article.pk}))
+    assert response.status_code == 200
+    return render.call_args.args[0]
+
+
+def _enable_cas_das(journal):
+    """Ensure cas/das are enabled, regardless of the journal's own default settings state."""
+    save_setting("wjs_submission", "enable_cas", journal, True)
+    save_setting("wjs_submission", "enable_das", journal, True)
+
+
+@pytest.mark.django_db
+def test_submission_step8_cas_das_other_fresh_submission(client: Client, article: Article, install_plugins: Callable):
+    """The fresh-submission branch shows the free text when cas/das is 'other'."""
+    _enable_cas_das(article.journal)
+    article.submission_data.access_mode = AccessMode.objects.filter(parameters__journal=article.journal).first()
+    article.submission_data.cas = ArticleSubmission.CasDeclaration.OTHER
+    article.submission_data.cas_text = "some code statement"
+    article.submission_data.das = ArticleSubmission.DasDeclaration.OTHER
+    article.submission_data.das_text = "some data statement"
+    article.submission_data.save()
+    client.force_login(article.owner)
+
+    context = _get_step8_context(client, article)
+
+    assert context["files_data"]["cas_show_text"] is True
+    assert context["files_data"]["cas_text"] == "some code statement"
+    assert context["files_data"]["das_show_text"] is True
+    assert context["files_data"]["das_text"] == "some data statement"
+
+
+@pytest.mark.django_db
+def test_submission_step8_cas_das_other_revision_metadata(client: Client, article: Article, install_plugins: Callable):
+    """The revision-metadata branch shows the free text when cas/das is 'other'."""
+    _enable_cas_das(article.journal)
+    article.submission_data.cas = ArticleSubmission.CasDeclaration.OTHER
+    article.submission_data.cas_text = "some code statement"
+    article.submission_data.das = ArticleSubmission.DasDeclaration.OTHER
+    article.submission_data.das_text = "some data statement"
+    article.submission_data.save()
+    article.stage = STAGE_UNDER_REVISION
+    article.save()
+    SetupRevisionStorageMetadata(article_id=article.pk).run()
+    client.force_login(article.owner)
+
+    context = _get_step8_context(client, article)
+
+    assert context["files_data"]["cas_show_text"] is True
+    assert context["files_data"]["cas_text"] == "some code statement"
+    assert context["files_data"]["das_show_text"] is True
+    assert context["files_data"]["das_text"] == "some data statement"
+
+
+@pytest.mark.django_db
+def test_submission_step8_cas_das_other_revision_full(client: Client, article: Article, install_plugins: Callable):
+    """The full-revision branch shows the free text when cas/das is 'other'."""
+    _enable_cas_das(article.journal)
+    article.submission_data.cas = ArticleSubmission.CasDeclaration.OTHER
+    article.submission_data.cas_text = "some code statement"
+    article.submission_data.das = ArticleSubmission.DasDeclaration.OTHER
+    article.submission_data.das_text = "some data statement"
+    article.submission_data.save()
+    article.stage = STAGE_UNDER_REVISION
+    article.save()
+    SetupRevisionStorageFull(article_id=article.pk).run()
+    client.force_login(article.owner)
+
+    context = _get_step8_context(client, article)
+
+    assert context["files_data"]["cas_show_text"] is True
+    assert context["files_data"]["cas_text"] == "some code statement"
+    assert context["files_data"]["das_show_text"] is True
+    assert context["files_data"]["das_text"] == "some data statement"
+
+
+@pytest.mark.django_db
+def test_submission_step8_revision_full_empty_cas_das_does_not_raise(
+    client: Client, article: Article, install_plugins: Callable
+):
+    """
+    Regression: the full-revision branch must not raise KeyError for an unset cas/das.
+
+    ``CasDeclaration.as_dict()[value]`` raised ``KeyError`` for "" (nothing selected yet); it must
+    fall back to showing the raw (empty) value instead.
+    """
+    _enable_cas_das(article.journal)
+    article.stage = STAGE_UNDER_REVISION
+    article.save()
+    SetupRevisionStorageFull(article_id=article.pk).run()
+    client.force_login(article.owner)
+
+    context = _get_step8_context(client, article)
+
+    assert not context["files_data"]["cas_display"]
+    assert not context["files_data"]["das_display"]
 
 
 @pytest.mark.django_db
@@ -828,3 +946,51 @@ def test_step8_revision_cover_letter_is_required_whatever_the_journal_setting(
 
     assert not result["cover_letter"], "a revision without cover letter must be flagged"
     assert not result["valid"], "a revision without cover letter must not be valid"
+
+
+@pytest.mark.django_db
+def test_submission_step4_incomplete_correspondence_author_lists_missing_fields(client, article):
+    """The step 4 context tells exactly which profile fields of the correspondence author are missing."""
+    owner = _user("owner")
+    owner.affiliations.all().delete()
+    article.owner = owner
+    article.correspondence_author = owner
+    article.save()
+    FrozenAuthor.objects.create(article=article, author=owner, order=1)
+
+    captured = {}
+
+    def fake_render(view, context, **response_kwargs):
+        # The full page needs URLs of other plugins (e.g. search-typeahead) that are not available in this repo
+        captured.update(context)
+        return HttpResponse()
+
+    client.force_login(owner)
+    # Pin the default rules: installing projects may override them per journal (e.g. wjs-profile-project)
+    with (
+        patch.object(SubmissionStep4View, "render_to_response", fake_render),
+        patch(
+            "plugins.wjs_submission.account_validation.CORRESPONDENCE_AUTHOR_REQUIRED_FIELDS",
+            DEFAULT_CORRESPONDENCE_AUTHOR_REQUIRED_FIELDS,
+        ),
+        patch(
+            "plugins.wjs_submission.account_validation.CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION",
+            DEFAULT_CORRESPONDENCE_AUTHOR_VALIDATION_FUNCTION,
+        ),
+    ):
+        response = client.get(reverse("wjs_submission_4", kwargs={"article_id": article.pk}))
+
+    assert response.status_code == 200
+    assert [str(field) for field in captured["correspondence_author_missing_fields"]] == ["Affiliation"]
+
+
+@pytest.mark.django_db
+def test_step4_missing_fields_template_lists_fields():
+    html = render_to_string(
+        "wjs_submission/step4/includes/missing_fields.html",
+        {"correspondence_author_missing_fields": ["institution", "email"]},
+    )
+    assert "<strong>Missing:</strong> institution, email." in html
+    assert not render_to_string(
+        "wjs_submission/step4/includes/missing_fields.html", {"correspondence_author_missing_fields": []}
+    ).strip()

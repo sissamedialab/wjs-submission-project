@@ -1,4 +1,5 @@
 import contextlib
+import logging
 
 from core import files as core_files
 from core.models import File
@@ -8,7 +9,6 @@ from django.forms import ModelForm
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 from events import logic as events_logic
-from plugins.wjs_submission.helpers.forms import required_help_text
 from plugins.wjs_submission.workflow import is_revision_confirm, is_revision_full
 from submission.models import Article, Field, FieldAnswer
 from utils.setting_handler import get_setting
@@ -16,7 +16,10 @@ from utils.setting_handler import get_setting
 from .. import settings
 from ..arxiv import HandleArticleCreation
 from ..fields import CoreFileWrapper, WjsMiniHTMLFormField
+from ..helpers.forms import FIELD_SPECS, map_dynamic_field
 from ..models import ArticleSubmission, RevisionStorage
+
+logger = logging.getLogger(__name__)
 
 
 class SubmissionStep1Form(forms.ModelForm):
@@ -77,7 +80,7 @@ class SubmissionStep1Form(forms.ModelForm):
         self.journal = kwargs.pop("journal")
         self.user = kwargs.pop("user")
         self.request = kwargs.pop("request")
-        self._additional_fields = Field.objects.filter(journal=self.journal, display=True).order_by("order")
+        self._additional_fields = self._supported_additional_fields()
         try:
             # As cover_letter_file is a Janeway core File, we can't just pass it to the form FileField, we must wrap it
             # in something which "resembles" a model FileField instance (ie: a File + a URL).
@@ -144,34 +147,32 @@ class SubmissionStep1Form(forms.ModelForm):
         # the following code is copied from submission.forms.ArticleInfo
         if self._additional_fields:
             for element in self._additional_fields:
-                # Add any missing element kinds if necessary
-                if element.kind == "text":
-                    # The help text is shown as placeholder, so it is not repeated below the field
-                    self.fields[element.name] = forms.CharField(
-                        widget=forms.TextInput(attrs={"div_class": element.width, "placeholder": element.help_text}),
-                        required=element.required,
-                    )
-                elif element.kind == "textarea":
-                    self.fields[element.name] = WjsMiniHTMLFormField(
-                        required=element.required,
-                    )
-                elif element.kind == "check":
-                    self.fields[element.name] = forms.BooleanField(
-                        widget=forms.CheckboxInput(attrs={"is_checkbox": True}),
-                        required=element.required,
-                    )
+                self.fields[element.name] = map_dynamic_field(element, self.instance)
 
-                self.fields[element.name].help_text = "" if element.kind == "text" else element.help_text
-                self.fields[element.name].label = element.name
-                if element.required:
-                    self.fields[element.name].help_text = required_help_text(self.fields[element.name].help_text)
+    def _supported_additional_fields(self) -> list[Field]:
+        """
+        Return the journal's displayed additional submission fields that WJS knows how to build.
 
-                if self.instance and self.instance.pk:
-                    try:
-                        check_for_answer = FieldAnswer.objects.get(field=element, article=self.instance)
-                        self.fields[element.name].initial = check_for_answer.answer
-                    except FieldAnswer.DoesNotExist:
-                        pass
+        Elements of a kind that is not in ``FIELD_SPECS`` are left out (so that neither the form nor its validation
+        and saving logic ever deal with them) and a warning is logged for each of them, because it most likely means
+        that Janeway added a new additional field kind that WJS does not support yet.
+
+        :return: the supported field elements, ordered by ``order``
+        :rtype: list[submission.models.Field]
+        """
+        supported = []
+        for element in Field.objects.filter(journal=self.journal, display=True).order_by("order"):
+            if element.kind in FIELD_SPECS:
+                supported.append(element)
+            else:
+                logger.warning(
+                    "Skipping additional field %r (pk=%s): unsupported kind %r. "
+                    "Check if Janeway added new additional submission fields that WJS does not know.",
+                    element.name,
+                    element.pk,
+                    element.kind,
+                )
+        return supported
 
     @property
     def _cover_letter_required(self) -> bool:

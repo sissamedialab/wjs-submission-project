@@ -1,5 +1,5 @@
 {% load django_bootstrap5 field settings static %}
-<div class="modal-header">
+<div class="modal-header" data-modal-size="lg">
   <h5 class="modal-title" id="htmxModalLabel">New Funder</h5>
   {% bootstrap_button button_class="btn-close" data_bs_dismiss="modal" button_type="button" aria_label="Close" content="" %}
 </div>
@@ -16,11 +16,11 @@
       {{ journal|setting:"step7_funders_modal_intro"|safe }}
     </div>
     {% bootstrap_form_errors form %}
-    {% bootstrap_field form.name %}
-    {% bootstrap_field form.fundref_id %}
-    {% bootstrap_field form.country %}
-    {% bootstrap_field form.funding_id %}
-    {% bootstrap_field form.funding_statement %}
+    {% bootstrap_field form.name placeholder="" %}
+    {% bootstrap_field form.fundref_id placeholder="" %}
+    {% bootstrap_field form.country placeholder="" %}
+    {% bootstrap_field form.funding_id placeholder="" %}
+    {% bootstrap_field form.funding_statement placeholder="" %}
     {% bootstrap_button button_type="submit" content="Save Funding" %}
   </form>
 </div>
