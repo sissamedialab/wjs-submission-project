@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.1.10] - 2026-11-17
+
+- [specs#3329: Share filters between articlesubmission, article and articleworkflow](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3329) — feat(advanced_admin): use shared article search on Article submissions (!192)
+- [specs#3414: Same list columns on Articles, Article submissions and Article workflows advanced admin pages](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3414) — feat(advanced_admin): use shared article search on Article submissions (!192)
+
 ## [2.1.9] - 2026-11-16
 
 - [specs#3295: CAS/DAS should accept "other" as valid keyword](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3295) — fix(migration): split 0026 into data copy + RemoveField to avoid pending-trigger-events on PG (!194)
