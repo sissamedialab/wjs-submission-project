@@ -1,4 +1,6 @@
 import requests
+from django.contrib.admin.utils import get_fields_from_path
+from django.core.exceptions import FieldDoesNotExist
 
 
 class DummyResponse:
@@ -43,3 +45,21 @@ def make_arxiv_request(rf, user, journal, arxiv_id):
     req.user = user
     req.journal = journal
     return req
+
+
+def get_changelist(model_admin, request):
+    """
+    Build the admin changelist, leaving out the filters on fields of apps that are not installed.
+
+    The advanced admin article pages add the workflow state filter, which needs wjs_review: this repo's CI does not
+    install it, and Django raises building a changelist with a filter on a missing field.
+    """
+    list_filter = []
+    for lookup in model_admin.get_list_filter(request):
+        try:
+            get_fields_from_path(model_admin.model, lookup)
+        except FieldDoesNotExist:
+            continue
+        list_filter.append(lookup)
+    model_admin.get_list_filter = lambda _request: list_filter
+    return model_admin.get_changelist_instance(request)

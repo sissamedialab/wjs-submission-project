@@ -17,6 +17,7 @@ from django.apps import apps
 from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model
 from django.core import management
+from django.db import connection
 from django.urls.base import clear_script_prefix, clear_url_caches, set_script_prefix
 from django.utils import translation
 from django.utils.timezone import now
@@ -44,6 +45,13 @@ Account = get_user_model()
 
 
 JOURNAL_CODE = "JCOM"
+
+
+@pytest.fixture(scope="session")
+def django_db_setup(django_db_setup, django_db_blocker):
+    """Install the unaccent extension: test settings skip migrations, so wjs_submission 0028 never runs here."""
+    with django_db_blocker.unblock(), connection.cursor() as cursor:
+        cursor.execute("CREATE EXTENSION IF NOT EXISTS unaccent;")
 
 
 @pytest.fixture(autouse=True)
