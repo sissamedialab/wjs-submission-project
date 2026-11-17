@@ -1,4 +1,3 @@
-import re
 from urllib.parse import urlencode
 
 from django.contrib import admin, messages
@@ -7,7 +6,7 @@ from django.http import HttpRequest
 from django.shortcuts import redirect, render, reverse
 from django.urls import path
 from django.utils.translation import gettext_lazy as _
-from wjs.advanced_admin.admin import advanced_admin_site
+from wjs.advanced_admin.admin import ArticleSearchFilterMixin, advanced_admin_site
 
 from ..models import ArticleCollaboration, ArticleSubmission, Collaboration
 from .forms import ArticleSubmissionAdminForm, CollaborationMergeForm
@@ -144,7 +143,7 @@ class CollaborationAdmin(admin.ModelAdmin):
 
 
 @admin.register(ArticleSubmission, site=advanced_admin_site)
-class ArticleSubmissionAdmin(admin.ModelAdmin):
+class ArticleSubmissionAdmin(ArticleSearchFilterMixin, admin.ModelAdmin):
     form = ArticleSubmissionAdminForm
 
     fields = (
@@ -161,19 +160,8 @@ class ArticleSubmissionAdmin(admin.ModelAdmin):
     readonly_fields = ("special_request",)
 
     list_display = ["article_title", "pubid", "article_journal", "state"]
-    list_filter = ["article__journal"]
     ordering = ("-pk",)
-    search_fields = ("article__identifier__identifier", "article__title", "=article__id")
-
-    def get_search_results(self, request, queryset, search_term):
-        """
-        Accept the "<journal code>_<pk>" label shown in wjs-review (e.g. "JQuant_4050") as an article pk.
-
-        The label's numeric part is searched instead, so it hits the exact ``=article__id`` lookup.
-        """
-        if match := re.fullmatch(r"\w+?_(\d+)", search_term.strip()):
-            search_term = match.group(1)
-        return super().get_search_results(request, queryset, search_term)
+    article_lookup_prefix = "article__"
 
     def formfield_for_dbfield(self, db_field, request, **kwargs):
         """
@@ -186,14 +174,6 @@ class ArticleSubmissionAdmin(admin.ModelAdmin):
                 article_id = self.model.objects.get(id=object_id).article.id
                 ff.widget = ParamsWrapper(ff.widget, {"article": article_id})
         return ff
-
-    def get_list_filter(self, request):
-        """
-        Add article__articleworkflow__state to bipass CI error, because CI does not see wjs_review.
-        """
-        list_filter = list(self.list_filter)
-        list_filter.append("article__articleworkflow__state")
-        return list_filter
 
     def has_add_permission(self, request: HttpRequest) -> bool:  # noqa: PLR6301
         """
