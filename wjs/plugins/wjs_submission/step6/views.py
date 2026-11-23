@@ -284,9 +284,13 @@ class RenderSubmissionFile(HtmxMixin, AuthorFilteringView, TableRenderingContext
         to show/hide the delete button and to run the required-fields checklist update.
 
         In step-8 it should be set to True, elsehwere to False (or just be absent).
+
+        Step-8 asks for it explicitly with ``?read_only=1``: while the author is looking at step-8
+        ``current_step`` is still 7, and revisions are never covered by the ``current_step`` rule.
+        Without the query parameter, the ``current_step`` rule applies.
         """
         context = super().get_context_data(**kwargs)
-        if self.object.current_step > 7 and not is_revision(self.object):
+        if self.request.GET.get("read_only") == "1" or (self.object.current_step > 7 and not is_revision(self.object)):
             context["read_only"] = True
         context["skip_connect_websocket"] = True
         return context

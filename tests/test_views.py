@@ -994,3 +994,55 @@ def test_step4_missing_fields_template_lists_fields():
     assert not render_to_string(
         "wjs_submission/step4/includes/missing_fields.html", {"correspondence_author_missing_fields": []}
     ).strip()
+
+
+@pytest.mark.parametrize(
+    ("current_step", "revision", "query", "expected_read_only"),
+    [
+        (7, False, "?read_only=1", True),
+        (7, True, "?read_only=1", True),
+        (6, False, "?read_only=1", True),
+        (6, False, "", False),
+        (7, True, "", False),
+        (7, False, "?read_only=0", False),
+        (8, False, "", True),
+    ],
+)
+@pytest.mark.django_db
+def test_render_submission_file_read_only(
+    client: Client,
+    article: Article,
+    install_plugins: Callable,
+    current_step: int,
+    revision: bool,
+    query: str,
+    expected_read_only: bool,
+):
+    """
+    The files table refreshed from step 8 stays read-only.
+
+    Step 8 asks for it with ``?read_only=1``: ``current_step`` is still 7 while the author looks at step 8 and
+    revisions are never covered by the ``current_step`` rule. Without the flag the old rule applies.
+    """
+    article.current_step = current_step
+    article.save()
+    if revision:
+        RevisionStorage.objects.create(
+            article=article,
+            revision_flow_type=RevisionStorage.RevisionFlowType.FULL,
+            data={"manuscript_files": None, "source_files": None, "supplementary_files": [], "data_figure_files": []},
+        )
+    client.force_login(article.owner)
+    url = reverse("wjs_submission_6_render", kwargs={"article_id": article.pk, "file_type": "manuscript"})
+
+    # The template uses tags provided by wjs-profile-project, which is not available in this repo's CI:
+    # the context is built, the rendering itself is replaced.
+    with patch(
+        "plugins.wjs_submission.step6.views.RenderSubmissionFile.render_to_response",
+        return_value=HttpResponse("rendered"),
+    ) as render:
+        response = client.get(f"{url}{query}")
+
+    assert response.status_code == 200
+    context = render.call_args.args[0]
+    assert bool(context.get("read_only")) is expected_read_only
