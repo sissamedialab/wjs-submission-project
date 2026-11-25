@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.11] - 2026-11-25
+
+- [specs#3392: Review eligibility of correspondence-author wrt to additional informations](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3392) — docs(account_validation): describe how installing projects keep required-field paths to visible fields (!196)
+- No linked issue — docs(rules): always use State: QA label and propose a main: issue (!197)
+- [wjs-submission-project#34: Replace wjs-search-user with and open source alternative](https://gitlab.sissamedialab.it/wjs/wjs-submission-project/-/work_items/34) — docs: add rule on dependencies from wjs-profile-project and wjs-search-user (!193)
+- [specs#3472: Replace wjs-search-user with and open source alternative](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3472) — docs: add rule on dependencies from wjs-profile-project and wjs-search-user (!193)
+- [specs#3353: uploading file in step 8 works not so well](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3353) — fix(step8): keep the files table read-only after the conversion refresh (!195)
+
 ## [2.1.10] - 2026-11-17
 
 - [specs#3329: Share filters between articlesubmission, article and articleworkflow](https://gitlab.sissamedialab.it/wjs/specs/-/work_items/3329) — feat(advanced_admin): use shared article search on Article submissions (!192)
