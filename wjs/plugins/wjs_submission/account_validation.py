@@ -91,10 +91,10 @@ def is_required_field_entry_satisfied(user: Account, entry: RequiredFieldEntry) 
     Without `allowed`, any of the entry's paths having a truthy value is enough; with `allowed`, any path value
     being in `allowed` is enough (no truthiness test).
 
-    Known limitation: the paths are read from the account data whatever the profile pages show. If a journal does
-    not show a field listed in the paths (e.g. a SciX record on a journal without it), a value left from an import or
-    from another journal still satisfies the entry, and the author cannot see or edit that field. Keep the paths of
-    an entry aligned with the fields the journal shows when the journal's fields change.
+    The paths are read from the account data whatever the profile pages show: a value in a field that the journal
+    does not show (left from an import or from another journal) still satisfies the entry, and the author cannot
+    see or edit it. The installing project must keep the paths of each entry limited to the fields its journals
+    show; wjs-profile-project enforces this for its own rules with a startup system check.
 
     :param user: The user account to check
     :type user: Account

@@ -48,6 +48,9 @@
             {% endif %}
             {% if settings.DEBUG and not read_only %}
               {% bootstrap_button button_class="btn btn-sm btn-outline js-refresh ps-0" type="button" hx_get=render_url hx_target=container_id content="<i class='bi bi-arrow-clockwise'></i>" title="DEBUG: Reload table" %}
+            {% elif read_only %}
+              {# in step-8 the refreshed table must stay read-only: ask for it explicitly (see RenderSubmissionFile) #}
+              {% bootstrap_button button_class="js-refresh d-none ps-0" type="button" hx_get=render_url|add:"?read_only=1" hx_target=container_id content="" %}
             {% else %}
               {% bootstrap_button button_class="js-refresh d-none ps-0" type="button" hx_get=render_url hx_target=container_id content="" %}
             {% endif %}
