@@ -1,4 +1,5 @@
 import dataclasses
+import logging
 import xml
 
 import requests
@@ -12,6 +13,7 @@ from django.core.files.base import ContentFile
 from django.db import transaction
 from django.http import HttpRequest
 from django.urls import reverse
+from django.utils.html import escape
 from django.utils.text import format_lazy
 from identifiers.models import Identifier
 from journal.models import Journal
@@ -21,7 +23,11 @@ from utils.setting_handler import get_setting
 from .conversion import start_source_conversion
 from .unique_check import check_article_unique, get_articles_matching_signature
 
+logger = logging.getLogger(__name__)
+
 ARXIV_API_URL = "https://export.arxiv.org/api/query?id_list={}"
+# How much of arXiv's error response body to keep in the error message
+ARXIV_ERROR_BODY_MAX_LENGTH = 500
 
 
 class ArXivQueryError(Exception):
@@ -65,14 +71,18 @@ class ArXivIDContinueSubmissionError(ArXivQueryError):
         self,
         message: str = "this preprint has already been submitted to the Journal. Please contact the "
         "Editorial Office from the article web page for assistance.",
+        existing_article_id: int | None = None,
     ):
         """
         Initialize the exception with a default or custom message.
 
         :param message: A message describing the exception.
         :type message: str
+        :param existing_article_id: The pk of the already-started submission for the same preprint, if known.
+        :type existing_article_id: int | None
         """
         super().__init__(message=message)
+        self.existing_article_id = existing_article_id
 
 
 class ArXivIDNotFoundError(ArXivQueryError):
@@ -225,8 +235,17 @@ def fetch_arxiv_metadata(
     except requests.exceptions.RequestException as e:
         # The following error will never be shown by the microservice because It's overriden with a message
         # containing the Journal's email and information for the user
-        if getattr(e, "response", None) and getattr(e.response, "content", None):
-            msg = f"Connection to arXiv could not be established: {e.response.content.decode()}"
+        # NB: every RequestException has a `response` attribute, but it is not None only when arXiv actually replied
+        # (e.g. HTTPError from raise_for_status()). Do not test the response's truthiness: a Response is falsy when
+        # its status code is >= 400, i.e. exactly in the cases we are interested in.
+        if e.response is not None:
+            response = e.response
+            msg = (
+                "Connection to arXiv could not be established: "
+                f"arXiv replied HTTP {response.status_code} {response.reason} "
+                f"(Retry-After: {response.headers.get('Retry-After')}): "
+                f"{response.text[:ARXIV_ERROR_BODY_MAX_LENGTH]}"
+            )
         else:
             msg = f"Connection to arXiv could not be established: {e!s}"
         raise ArXivConnectionError(msg) from e
@@ -249,6 +268,8 @@ def fetch_arxiv_metadata(
             errors[file_name] = f"HTTP {resp.status_code}"
     except Exception as e:  # noqa: BLE001
         errors[file_name] = str(e)
+    if file_name in errors:
+        logger.error("Cannot download arXiv source file from %s: %s", url, errors[file_name])
 
     return result, errors
 
@@ -308,7 +329,7 @@ class ArXivToArticle:
                     'href="{url}">complete the existing submission</a>',
                     url=url,
                 )
-                raise ArXivIDContinueSubmissionError(msg)
+                raise ArXivIDContinueSubmissionError(msg, existing_article_id=existing_matching_article.pk)
             # if the submission has not gone past step 0 (i.e. the author never pressed "submit" on step-1),
             # we delete the "phantom" article and create a new one
             existing_matching_article.delete()
@@ -368,7 +389,7 @@ class ArXivToArticle:
                     support_email=support_email,
                 )
                 if settings.DEBUG:
-                    msg += f" (DEBUG: {e!s})"
+                    msg += f" (DEBUG: {escape(e)})"
                 raise ArXivConnectionError(msg) from e
             except ArXivCorruptedDataError as e:
                 msg = format_lazy(
@@ -376,14 +397,14 @@ class ArXivToArticle:
                     support_email=support_email,
                 )
                 if settings.DEBUG:
-                    msg += f" (DEBUG: {e!s})"
-                raise ArXivConnectionError(msg) from e
+                    msg += f" (DEBUG: {escape(e)})"
+                raise ArXivCorruptedDataError(msg) from e
             except GenericArxivError as e:
                 msg = format_lazy(
                     "Please contact the Journal for assistance ({support_email})", support_email=support_email
                 )
                 if settings.DEBUG:
-                    msg += f" (DEBUG: {e!s})"
+                    msg += f" (DEBUG: {escape(e)})"
                 raise GenericArxivError(msg) from e
 
             if not check_article_unique(

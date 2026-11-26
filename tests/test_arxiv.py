@@ -1,5 +1,6 @@
 import io
 import json
+import logging
 import random
 import tarfile
 import typing
@@ -14,6 +15,7 @@ from plugins.wjs_submission.arxiv import (
     ArXivConnectionError,
     ArXivCorruptedDataError,
     ArXivIDNotFoundError,
+    ArXivToWjsArticle,
     GenericArxivError,
     fetch_arxiv_metadata,
 )
@@ -186,7 +188,7 @@ def test_fetch_arxiv_metadata_connection_request_exception(monkeypatch):
 
 
 @pytest.mark.django_db
-def test_fetch_arxiv_metadata_connection_http_error(monkeypatch):  # FIXME
+def test_fetch_arxiv_metadata_connection_http_error(monkeypatch):
     resp_404 = DummyResponse(b"", status_code=404)
     monkeypatch.setattr(
         requests,
@@ -197,6 +199,41 @@ def test_fetch_arxiv_metadata_connection_http_error(monkeypatch):  # FIXME
     with pytest.raises(ArXivConnectionError) as excinfo:
         fetch_arxiv_metadata("0000.0000v1")
     assert "Connection to arXiv could not be established" in str(excinfo.value)
+    assert "HTTP 404" in str(excinfo.value), "The HTTP status returned by arXiv should be in the error message"
+
+
+@pytest.mark.django_db
+def test_fetch_arxiv_metadata_http_error_reports_arxiv_response(monkeypatch):
+    """The status code, Retry-After header and (truncated) body of arXiv's error response are reported."""
+    body = "Rate exceeded. " + "x" * 1000
+    resp_429 = DummyResponse(
+        body.encode(), status_code=429, reason="Too Many Requests", headers={"Retry-After": "120"}
+    )
+    monkeypatch.setattr(requests, "get", lambda url, *a, **k: resp_429)
+
+    with pytest.raises(ArXivConnectionError) as excinfo:
+        fetch_arxiv_metadata("0000.0000v1")
+    message = str(excinfo.value)
+    assert "HTTP 429 Too Many Requests" in message, "Status code and reason should be in the error message"
+    assert "Retry-After: 120" in message, "Retry-After header should be in the error message"
+    assert "Rate exceeded." in message, "arXiv's response body should be in the error message"
+    assert "x" * 501 not in message, "arXiv's response body should be truncated"
+
+
+@pytest.mark.django_db
+def test_fetch_arxiv_metadata_source_download_failure_is_logged(arxiv_fixtures, monkeypatch, caplog):
+    metadata_resp = DummyResponse(arxiv_fixtures["xml"], status_code=200, text=arxiv_fixtures["xml"].decode())
+    mock_requests_get(monkeypatch, {"api/query": metadata_resp, "/src/": DummyResponse(b"", status_code=403)})
+
+    with caplog.at_level(logging.WARNING, logger="plugins.wjs_submission.arxiv"):
+        fetch_arxiv_metadata("0000.0000v1")
+
+    assert any(
+        r.levelno == logging.ERROR
+        and "https://arxiv.org/src/0000.0000v1" in r.getMessage()
+        and "HTTP 403" in r.getMessage()
+        for r in caplog.records
+    ), "A failed source download should be logged as error, with URL and reason"
 
 
 @pytest.mark.django_db
@@ -421,3 +458,93 @@ def test_blank_arxiv_id_still_invokes_fetch_and_import(rf, author, journal, arxi
         'cannot be found on <span class=\\"visually-hidden\\">archive.org</span>'
         '<span aria-hidden=\\"true\\">arxiv.org</span>'
     ) in body
+
+
+def _arxiv_view_log_records(caplog):
+    return [r for r in caplog.records if r.name == "plugins.wjs_submission.views"]
+
+
+@pytest.mark.django_db
+def test_view_logs_arxiv_errors_with_context_and_traceback(rf, author, journal, monkeypatch, caplog):
+    """Errors not caused by the author's input are logged as errors, with context and traceback."""
+
+    def fail_get(url, *args, **kwargs):
+        raise requests.exceptions.Timeout("timed out")
+
+    monkeypatch.setattr(requests, "get", fail_get)
+
+    request = make_arxiv_request(rf, author, journal, "1234.5678v1")
+    with caplog.at_level(logging.WARNING, logger="plugins.wjs_submission.views"):
+        ArxivMicroservice.as_view()(request)
+
+    records = _arxiv_view_log_records(caplog)
+    assert len(records) == 1, "Exactly one log record expected for a failed validation"
+    record = records[0]
+    message = record.getMessage()
+    assert record.levelno == logging.ERROR, "arXiv-side errors should be logged as errors"
+    assert record.exc_info, "arXiv-side errors should be logged with traceback"
+    assert f"journal={journal.code}" in message, "Journal code should be logged"
+    assert f"user={author.pk}" in message, "User should be logged"
+    assert "arxiv_id='1234.5678v1'" in message, "arXiv ID should be logged"
+    assert "article_id=new" in message, "Article id should be logged ('new' when no article exists yet)"
+    assert "timed out" in message, "The underlying error should be logged"
+
+
+@pytest.mark.django_db
+def test_view_logs_user_errors_as_warnings(rf, author, journal, arxiv_fixtures, monkeypatch, caplog):
+    """Errors caused by the author's input (e.g. unknown arXiv ID) are logged as warnings, without traceback."""
+    empty_meta = DummyResponse(
+        content=arxiv_fixtures["xml_empty"],
+        status_code=200,
+        text=arxiv_fixtures["xml_empty"].decode(),
+    )
+    mock_requests_get(monkeypatch, {"export.arxiv.org/api/query": empty_meta})
+
+    request = make_arxiv_request(rf, author, journal, "9999.99999")
+    with caplog.at_level(logging.WARNING, logger="plugins.wjs_submission.views"):
+        ArxivMicroservice.as_view()(request)
+
+    records = _arxiv_view_log_records(caplog)
+    assert len(records) == 1, "Exactly one log record expected for a failed validation"
+    assert records[0].levelno == logging.WARNING, "User errors should be logged as warnings"
+    assert not records[0].exc_info, "User errors should be logged without traceback"
+    assert "arxiv_id='9999.99999'" in records[0].getMessage(), "arXiv ID should be logged"
+
+
+@pytest.mark.django_db
+def test_view_escapes_arxiv_response_in_debug_message(rf, author, journal, monkeypatch, settings):
+    """In DEBUG, arXiv's (untrusted) response ends up in the message, which is marked safe: it must be escaped."""
+    settings.DEBUG = True
+    resp_503 = DummyResponse(b"<script>alert(1)</script>", status_code=503, reason="Service Unavailable")
+    monkeypatch.setattr(requests, "get", lambda url, *a, **k: resp_503)
+
+    request = make_arxiv_request(rf, author, journal, "1234.5678v1")
+    response: HttpResponse = ArxivMicroservice.as_view()(request)
+
+    message = json.loads(response.content.decode())["message"]
+    assert "<script>" not in message, "arXiv's response must not be injected as HTML"
+    assert "&lt;script&gt;" in message, "arXiv's response should be shown escaped"
+
+
+@pytest.mark.parametrize("debug", [False, True])
+@pytest.mark.django_db
+def test_view_hides_unexpected_error_details(rf, author, journal, monkeypatch, settings, debug):
+    """Unexpected (non-arXiv) errors are reported with a generic message; details only in DEBUG, escaped."""
+    settings.DEBUG = debug
+
+    def fail_run(self):
+        raise RuntimeError("internal <b>details</b>")
+
+    monkeypatch.setattr(ArXivToWjsArticle, "run", fail_run)
+
+    request = make_arxiv_request(rf, author, journal, "1234.5678v1")
+    response: HttpResponse = ArxivMicroservice.as_view()(request)
+
+    data = json.loads(response.content.decode())
+    assert data["status"] == "error", "The response should report an error"
+    assert "An unexpected error occurred" in data["message"], "A generic message should be shown"
+    assert "<b>" not in data["message"], "Error details must never be injected as HTML"
+    if debug:
+        assert "internal &lt;b&gt;details&lt;/b&gt;" in data["message"], "In DEBUG, details should be shown escaped"
+    else:
+        assert "internal" not in data["message"], "Error details should not be shown outside DEBUG"

@@ -203,9 +203,10 @@ def test_double_arxiv_id_submission(
         assert not Article.objects.filter(pk=article.pk).exists()
 
     else:
-        with pytest.raises(ArXivIDContinueSubmissionError):
+        with pytest.raises(ArXivIDContinueSubmissionError) as excinfo:
             arxiv_article = ArXivToArticle(
                 arxiv_id="2504.10562v1",
                 journal=journal,
                 user=user,
             ).run()
+        assert excinfo.value.existing_article_id == article.pk, "The error should report the existing submission"
