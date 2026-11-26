@@ -6,11 +6,20 @@ from django.core.exceptions import FieldDoesNotExist
 class DummyResponse:
     """Dummy response class for testing."""
 
-    def __init__(self, content: bytes, status_code: int = 200, text: str | None = None):
-        """Initialize with content, status code and optional text."""
+    def __init__(
+        self,
+        content: bytes,
+        status_code: int = 200,
+        text: str | None = None,
+        reason: str = "",
+        headers: dict | None = None,
+    ):
+        """Initialize with content, status code and optional text, reason and headers."""
         self.content = content
         self.status_code = status_code
         self.text = text if text is not None else content.decode(errors="ignore")
+        self.reason = reason
+        self.headers = headers or {}
 
     def raise_for_status(self):
         """
@@ -22,7 +31,8 @@ class DummyResponse:
         :raises requests.exceptions.HTTPError: If the status code is not between 200 and 299.
         """
         if not (200 <= self.status_code < 300):
-            raise requests.exceptions.HTTPError(self.status_code)
+            # Like requests.Response.raise_for_status(), attach the response to the exception
+            raise requests.exceptions.HTTPError(self.status_code, response=self)
 
 
 def mock_requests_get(monkeypatch, responses: dict | None = None):
